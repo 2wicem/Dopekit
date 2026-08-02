@@ -5,7 +5,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import ContactMessage, SalonContactInfo
+from .models import ContactMessage, Salon, SalonContactInfo
+from .salon_utils import get_primary_salon, salon_to_dict
 from .notifications import notify_contact_message_created
 from .rate_limit import rate_limit
 
@@ -42,7 +43,37 @@ def _contact_message_to_dict(message):
 
 
 @require_http_methods(['GET'])
+def list_public_salons(request):
+    salons = Salon.objects.filter(is_active=True).order_by('-is_primary', 'name')
+    return JsonResponse({'salons': [salon_to_dict(salon) for salon in salons]})
+
+
+@require_http_methods(['GET'])
+def get_public_salon_detail(request, slug):
+    salon = Salon.objects.filter(slug=slug, is_active=True).first()
+    if not salon:
+        return JsonResponse({'error': 'Salon not found.'}, status=404)
+
+    from .worker_views import build_public_workers
+
+    return JsonResponse(
+        {
+            'salon': salon_to_dict(salon),
+            'technicians': build_public_workers(salon_id=salon.id),
+        }
+    )
+
+
+@require_http_methods(['GET'])
 def get_contact_info(request):
+    salon = get_primary_salon()
+    if salon:
+        payload = salon_to_dict(salon)
+        payload.pop('id', None)
+        payload.pop('slug', None)
+        payload.pop('is_active', None)
+        payload.pop('is_primary', None)
+        return JsonResponse({'contact_info': payload})
     return JsonResponse({'contact_info': _salon_contact_to_dict(SalonContactInfo.load())})
 
 

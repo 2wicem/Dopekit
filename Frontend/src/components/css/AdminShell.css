@@ -1,0 +1,332 @@
+.admin-app {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  background: var(--dk-bg, #141014);
+  color: var(--dk-text, #f3e8ec);
+}
+
+.admin-app-sidebar {
+  border-right: 1px solid var(--dk-border, rgba(255, 255, 255, 0.1));
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.admin-app-brand {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.admin-app-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-salon-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-salon-switcher label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-salon-switcher select {
+  font-size: 0.88rem;
+}
+
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--dk-text-muted, #e0cdd6);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-nav-btn.is-active,
+.admin-nav-btn:hover {
+  background: rgba(224, 107, 138, 0.14);
+  color: var(--dk-text, #f3e8ec);
+}
+
+.admin-app-links {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-app-main {
+  padding: 1.25rem 1.5rem 2rem;
+  overflow-x: auto;
+}
+
+.admin-panel-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-panel-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.admin-panel-lead {
+  margin: 0.25rem 0 0;
+  color: var(--dk-text-muted, #e0cdd6);
+  font-size: 0.9rem;
+}
+
+.admin-salon-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-salon-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.12));
+  background: var(--dk-surface, rgba(255, 255, 255, 0.04));
+}
+
+.admin-salon-card__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-salon-card__meta {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-salon-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(232, 184, 109, 0.18);
+  color: var(--dk-gold-soft, #f5d9a8);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-salon-badge--muted {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-salon-form {
+  background: var(--dk-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.12));
+  border-radius: 0.85rem;
+  padding: 1rem;
+}
+
+.admin-salon-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.admin-form-field--wide {
+  grid-column: 1 / -1;
+}
+
+.admin-form-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-form-field input,
+.admin-form-field textarea {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.12));
+  color: var(--dk-text, #f3e8ec);
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.admin-form-field select {
+  min-height: 42px;
+  font-size: 0.88rem;
+}
+
+.admin-salon-form-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+}
+
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.admin-walkin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-walkin-lead {
+  margin: 0;
+  color: var(--dk-text-muted, #e0cdd6);
+  font-size: 0.92rem;
+}
+
+.admin-walkin-form {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.1));
+  border-radius: 0.85rem;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-walkin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-walkin-form-grid label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-walkin-form-grid input,
+.admin-walkin-form-grid select {
+  width: 100%;
+}
+
+.admin-walkin-form-grid select {
+  min-height: 42px;
+  font-size: 0.88rem;
+}
+
+.admin-walkin-form-span {
+  grid-column: 1 / -1;
+}
+
+.admin-walkin-actions {
+  margin-top: 0.85rem;
+}
+
+.booking-status-pill {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.booking-status-pill--pending {
+  background: rgba(232, 184, 109, 0.18);
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.booking-status-pill--accepted {
+  background: rgba(120, 196, 145, 0.18);
+  color: #b8f0c8;
+}
+
+.booking-status-pill--cancelled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+@media (max-width: 991px) {
+  .admin-app {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-app-sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--dk-border, rgba(255, 255, 255, 0.1));
+  }
+
+  .admin-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .admin-app-links {
+    margin-top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-salon-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-walkin-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

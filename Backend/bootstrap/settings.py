@@ -272,8 +272,10 @@ ALLOW_TECHNICIAN_SELF_SIGNUP = env_bool(
 
 REQUIRE_TECHNICIAN_APPROVAL = env_bool(
     'REQUIRE_TECHNICIAN_APPROVAL',
-    'True' if not DEBUG else 'False',
+    'True',
 )
+
+TECHNICIAN_SIGNUP_CODE = os.getenv('TECHNICIAN_SIGNUP_CODE', '').strip()
 
 CACHES = {
     'default': {
@@ -301,6 +303,10 @@ RATE_LIMITS = {
 
 BOOKING_NOTIFY_EMAIL = os.getenv('BOOKING_NOTIFY_EMAIL', 'mungaimichael638@gmail.com')
 BOOKING_NOTIFY_PHONE = os.getenv('BOOKING_NOTIFY_PHONE', '+254790331108')
+
+PASSWORD_RESET_OTP_LENGTH = int(os.getenv('PASSWORD_RESET_OTP_LENGTH', '6'))
+PASSWORD_RESET_OTP_TTL = int(os.getenv('PASSWORD_RESET_OTP_TTL', '600'))
+PASSWORD_RESET_OTP_MAX_ATTEMPTS = int(os.getenv('PASSWORD_RESET_OTP_MAX_ATTEMPTS', '5'))
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')

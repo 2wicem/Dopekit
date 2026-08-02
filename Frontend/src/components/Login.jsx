@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
+import { resolvePostAuthDestination } from '../utils/redirect'
 import BrandLogo from './BrandLogo'
+import PasswordInput from './PasswordInput'
 import './css/Signup.css'
 
 const SIGNUP_CONFIG_PATH = '/products/auth/signup-config/'
 
+const resolveDestination = (account, redirectTo) => resolvePostAuthDestination(account, redirectTo)
+
 const Login = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
   const { login, user } = useAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [status, setStatus] = useState(null)
@@ -24,16 +30,9 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      const destination = user.technician_pending
-        ? '/technician-pending'
-        : user.role === 'admin'
-          ? '/admin'
-          : user.role === 'worker'
-            ? '/worker'
-            : '/Services'
-      navigate(destination, { replace: true })
+      navigate(resolveDestination(user, redirectTo), { replace: true })
     }
-  }, [user, navigate])
+  }, [user, navigate, redirectTo])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -47,14 +46,7 @@ const Login = () => {
     try {
       const data = await login(form)
       setStatus({ type: 'success', message: data.message })
-      const destination = data.user?.technician_pending
-        ? '/technician-pending'
-        : data.user?.role === 'admin'
-          ? '/admin'
-          : data.user?.role === 'worker'
-            ? '/worker'
-            : '/Services'
-      setTimeout(() => navigate(destination), 800)
+      setTimeout(() => navigate(resolveDestination(data.user, redirectTo)), 800)
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
@@ -103,13 +95,11 @@ const Login = () => {
                   <label htmlFor="login-password" className="form-label mb-0">
                     Password
                   </label>
-                  <Link to="/forgot-password" className="signup-forgot-link">
+                  <Link to="/forgot-password?channel=phone" className="signup-forgot-link">
                     Forgot password?
                   </Link>
                 </div>
-                <input
-                  type="password"
-                  className="form-control signup-input"
+                <PasswordInput
                   id="login-password"
                   name="password"
                   value={form.password}

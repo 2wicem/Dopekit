@@ -16,11 +16,17 @@ import ResetPassword from "./components/ResetPassword"
 
 import MyBookings from "./components/MyBookings"
 
+import Profile from "./components/Profile"
+
+import OwnerPanel from "./components/OwnerPanel"
+
 import Navbar from "./components/Navbar"
 
 import ProtectedRoute from "./components/ProtectedRoute"
 
 import Services from "./components/Services"
+
+import SalonDetail from "./components/SalonDetail"
 
 import Signup from "./components/Signup"
 
@@ -39,6 +45,8 @@ const AppShell = () => {
   const location = useLocation()
 
   const isWorkerApp = location.pathname === '/worker'
+  const isAdminApp = location.pathname === '/admin'
+  const isOwnerApp = location.pathname === '/owner'
 
 
 
@@ -46,13 +54,15 @@ const AppShell = () => {
 
     <>
 
-      {!isWorkerApp && <Navbar />}
+      {!isWorkerApp && !isAdminApp && !isOwnerApp && <Navbar />}
 
       <Routes>
 
         <Route path='/' element={<Landing />} />
 
         <Route path='/Services' element={<Services />} />
+
+        <Route path='/salons/:slug' element={<SalonDetail />} />
 
         <Route path='/About' element={<About />} />
 
@@ -76,19 +86,21 @@ const AppShell = () => {
         />
 
         <Route
-
-          path='/my-bookings'
-
+          path='/profile'
           element={
-
             <ProtectedRoute>
-
-              <MyBookings />
-
+              <Profile />
             </ProtectedRoute>
-
           }
+        />
 
+        <Route
+          path='/my-bookings'
+          element={
+            <ProtectedRoute roles={['client']}>
+              <MyBookings />
+            </ProtectedRoute>
+          }
         />
 
         <Route
@@ -123,9 +135,18 @@ const AppShell = () => {
 
         />
 
+        <Route
+          path='/owner'
+          element={
+            <ProtectedRoute roles={['salon_owner']}>
+              <OwnerPanel />
+            </ProtectedRoute>
+          }
+        />
+
       </Routes>
 
-      {!isWorkerApp && <Footer />}
+      {!isWorkerApp && !isAdminApp && !isOwnerApp && <Footer />}
 
     </>
 

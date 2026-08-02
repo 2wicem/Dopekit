@@ -421,6 +421,7 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: 0.5rem 0 1.5rem;
+  scroll-margin-top: 1.25rem;
 }
 
 .available-workers-header {
@@ -576,12 +577,298 @@
   color: var(--dk-accent-soft);
 }
 
-.available-worker-card .booking-trigger {
+.available-worker-card .available-worker-card__actions {
   margin-top: auto;
+}
+
+.available-worker-card .available-worker-card__actions .booking-trigger {
+  margin-top: 0;
 }
 
 .available-worker-card .booking-btn--card {
   width: 100%;
   font-size: 0.82rem;
   padding: 0.45rem 0.75rem;
+}
+
+/* Salon locations */
+.available-salons {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.5rem 0 1.5rem;
+}
+
+.available-salons-header {
+  margin-bottom: 1.35rem;
+}
+
+.available-salons-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dk-gold-soft);
+  margin-bottom: 0.35rem;
+}
+
+.available-salons-title {
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+  background: linear-gradient(90deg, var(--dk-accent-soft), var(--dk-gold-soft));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.available-salons-sub {
+  max-width: 34rem;
+  margin: 0 auto;
+  color: var(--dk-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.available-salons-status {
+  color: var(--dk-text-muted);
+  font-size: 0.9rem;
+}
+
+.available-salons-status--error {
+  color: #ffb4c8;
+}
+
+.available-salons-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .available-salons-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 992px) {
+  .available-salons-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.available-salon-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--dk-border);
+  background: linear-gradient(165deg, var(--dk-surface) 0%, rgba(109, 53, 87, 0.28) 100%);
+  box-shadow: 0 8px 24px rgba(224, 107, 138, 0.1);
+}
+
+.available-salon-card:hover {
+  border-color: rgba(255, 143, 171, 0.35);
+  transform: translateY(-2px);
+}
+
+.available-salon-card__top {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.available-salon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, var(--dk-accent-dark), var(--dk-accent));
+  color: var(--dk-gold-soft);
+  flex-shrink: 0;
+}
+
+.available-salon-name {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dk-text);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.available-salon-badge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(232, 184, 109, 0.18);
+  color: var(--dk-gold-soft);
+}
+
+.available-salon-location {
+  margin: 0;
+  color: var(--dk-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.available-salon-location i {
+  margin-right: 0.35rem;
+  color: var(--dk-accent-soft);
+}
+
+.available-salon-services {
+  margin: 0;
+  color: var(--dk-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.available-salon-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.available-salon-contact a {
+  color: var(--dk-accent-soft);
+  text-decoration: none;
+}
+
+.available-salon-contact a:hover {
+  color: var(--dk-gold-soft);
+}
+
+.available-salon-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.available-salon-socials a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--dk-border);
+  color: var(--dk-text-muted);
+  text-decoration: none;
+}
+
+.available-salon-socials a:hover {
+  color: var(--dk-gold-soft);
+  border-color: rgba(255, 143, 171, 0.35);
+}
+
+.available-salon-card .booking-trigger {
+  margin-top: auto;
+}
+
+.available-salon-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: auto;
+}
+
+.available-salon-actions .btn-outline-primary {
+  width: 100%;
+}
+
+.available-workers-section-title {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft);
+}
+
+.available-salon-card .booking-btn--card {
+  width: 100%;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.technician-rating {
+  margin-bottom: 0.65rem;
+}
+
+.technician-rating-stars {
+  display: flex;
+  gap: 0.15rem;
+  color: var(--dk-gold-soft);
+  font-size: 0.82rem;
+}
+
+.technician-rating-label,
+.technician-rating-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted);
+}
+
+.technician-rating--compact {
+  margin-bottom: 0.45rem;
+}
+
+.technician-rating--compact .technician-rating-label {
+  font-size: 0.72rem;
+}
+
+.available-worker-work {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--dk-text-muted);
+}
+
+.available-worker-portfolio {
+  margin-top: 0.35rem;
+}
+
+.available-worker-portfolio-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft);
+}
+
+.available-worker-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.available-worker-portfolio-grid a {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(255, 143, 171, 0.18);
+}
+
+.available-worker-portfolio-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.available-worker-portfolio-empty {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted);
+  font-style: italic;
 }

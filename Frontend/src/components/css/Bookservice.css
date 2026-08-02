@@ -177,6 +177,28 @@
   margin-bottom: 0.75rem;
 }
 
+.booking-auth-gate {
+  text-align: center;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.booking-auth-gate__lead {
+  margin-bottom: 1rem;
+  color: var(--dk-text, #f3e8ec);
+}
+
+.booking-auth-gate__note {
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+}
+
+.booking-auth-gate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
 .booking-modal-body .form-label {
   font-size: 0.9rem;
   margin-bottom: 0.35rem;
@@ -395,6 +417,207 @@
 
 .booking-worker-note {
   margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.booking-salon-picker-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.booking-technician-select {
+  margin-bottom: 0.75rem;
+}
+
+.booking-service-select {
+  margin-bottom: 0;
+}
+
+.booking-portfolio-prompt {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--dk-gold-soft, #f5d9a8);
+  line-height: 1.45;
+}
+
+.technician-preview-portfolio-note {
+  margin: 0 0 0.45rem;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-preview-portfolio-empty,
+.available-worker-portfolio-empty {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted, #b8a9ae);
+  font-style: italic;
+}
+
+.available-worker-portfolio {
+  margin-top: 0.35rem;
+}
+
+.available-worker-portfolio-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.available-worker-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.available-worker-portfolio-grid a {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(255, 143, 171, 0.18);
+}
+
+.available-worker-portfolio-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.booking-freelance-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-preview-freelance-note {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.technician-preview-availability.is-booked {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffb4c8;
+}
+
+.technician-preview {
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 143, 171, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.technician-preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+}
+
+.technician-preview-name {
+  margin: 0;
+  font-weight: 700;
+  color: var(--dk-text, #fff8fa);
+}
+
+.technician-preview-role,
+.technician-preview-specialty,
+.technician-preview-salon {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-preview-specialty {
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.technician-preview-availability {
+  flex-shrink: 0;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-preview-availability.is-open {
+  background: rgba(120, 196, 145, 0.18);
+  color: #b8f0c8;
+}
+
+.technician-rating {
+  margin-bottom: 0.65rem;
+}
+
+.technician-rating-stars {
+  display: flex;
+  gap: 0.15rem;
+  color: var(--dk-gold-soft, #f5d9a8);
+  font-size: 0.82rem;
+}
+
+.technician-rating-label,
+.technician-rating-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-rating--compact .technician-rating-label {
+  font-size: 0.72rem;
+}
+
+.technician-preview-section {
+  margin-top: 0.65rem;
+}
+
+.technician-preview-heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.technician-preview-copy {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--dk-text-muted, #d8c5cc);
+}
+
+.technician-preview-portfolio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.technician-preview-portfolio a {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 143, 171, 0.18);
+}
+
+.technician-preview-portfolio img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.technician-preview-slots {
+  margin: 0.75rem 0 0;
   font-size: 0.78rem;
   color: var(--dk-text-muted, #b8a9ae);
 }

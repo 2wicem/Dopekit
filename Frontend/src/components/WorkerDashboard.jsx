@@ -7,6 +7,7 @@ import BrandLogo from './BrandLogo'
 import InstallPrompt from './InstallPrompt'
 import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
+import ReportsPanel from './ReportsPanel'
 import { apiFetch } from '../config/api'
 import './css/WorkerApp.css'
 
@@ -157,6 +158,9 @@ const WorkerDashboard = () => {
           >
             {refreshing ? '…' : '↻'}
           </button>
+          <Link to="/profile" className="worker-app-icon-btn" aria-label="My profile">
+            <i className="fa-solid fa-user" aria-hidden="true" />
+          </Link>
           <button type="button" className="worker-app-icon-btn" onClick={handleLogout} aria-label="Log out">
             <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
           </button>
@@ -218,11 +222,24 @@ const WorkerDashboard = () => {
             Bookings
             {pendingCount > 0 && <span className="worker-tab-badge">{pendingCount}</span>}
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'reports'}
+            className={`worker-app-tab${activeTab === 'reports' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            Reports
+          </button>
         </div>
 
         {activeTab === 'schedule' ? (
           <div className="worker-app-panel" role="tabpanel">
             <WorkerSchedule onChanged={() => loadBookings(true)} />
+          </div>
+        ) : activeTab === 'reports' ? (
+          <div className="worker-app-panel" role="tabpanel">
+            <ReportsPanel scope={user?.role === 'admin' ? 'admin' : 'technician'} />
           </div>
         ) : (
           <div className="worker-app-panel" role="tabpanel">

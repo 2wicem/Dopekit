@@ -5,7 +5,24 @@ import './css/Dashboard.css'
 
 const formatDate = (value) => new Date(value).toLocaleString()
 
-const BookingsTable = ({ bookings, showDelete = false, onDelete = null, deletingId = null }) => {
+const STATUS_LABELS = {
+  pending: 'Pending',
+  accepted: 'Accepted',
+  cancelled: 'Cancelled',
+}
+
+const BookingsTable = ({
+  bookings,
+  showDelete = false,
+  onDelete = null,
+  deletingId = null,
+  showStatus = false,
+  showActions = false,
+  onAccept = null,
+  onCancel = null,
+  busyId = null,
+  showSalon = false,
+}) => {
   if (bookings.length === 0) {
     return <p className="text-center text-muted dashboard-empty">No bookings yet.</p>
   }
@@ -18,24 +35,36 @@ const BookingsTable = ({ bookings, showDelete = false, onDelete = null, deleting
             <th>Client</th>
             <th>Phone</th>
             <th>Service</th>
+            {showSalon && <th>Salon</th>}
             <th>Type</th>
+            {showStatus && <th>Status</th>}
             <th>Location</th>
             <th>Appointment</th>
             <th>Booked</th>
-            {showDelete && <th aria-label="Actions" />}
+            {(showDelete || showActions) && <th aria-label="Actions" />}
           </tr>
         </thead>
         <tbody>
           {bookings.map((booking) => (
             <tr key={booking.id}>
               <td>{booking.name}</td>
-              <td>{booking.phone}</td>
+              <td>
+                <a href={`tel:${booking.phone}`}>{booking.phone}</a>
+              </td>
               <td>{booking.service || '—'}</td>
+              {showSalon && <td>{booking.salon_name || '—'}</td>}
               <td>
                 <span className={`booking-venue-pill booking-venue-pill--${booking.venue || 'indoor'}`}>
                   {booking.venue_label || venueLabel(booking.venue)}
                 </span>
               </td>
+              {showStatus && (
+                <td>
+                  <span className={`booking-status-pill booking-status-pill--${booking.status || 'pending'}`}>
+                    {STATUS_LABELS[booking.status] || booking.status}
+                  </span>
+                </td>
+              )}
               <td>{booking.location}</td>
               <td>
                 {booking.slot ? (
@@ -67,16 +96,40 @@ const BookingsTable = ({ bookings, showDelete = false, onDelete = null, deleting
                 )}
               </td>
               <td>{formatDate(booking.created_at)}</td>
-              {showDelete && (
-                <td className="text-end">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger dashboard-delete-btn"
-                    onClick={() => onDelete?.(booking.id)}
-                    disabled={deletingId === booking.id}
-                  >
-                    {deletingId === booking.id ? 'Removing...' : 'Delete'}
-                  </button>
+              {(showDelete || showActions) && (
+                <td className="dashboard-row-actions">
+                  <div className="dashboard-confirm-actions">
+                    {showActions && booking.status === 'pending' && onAccept && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={() => onAccept(booking.id)}
+                        disabled={busyId === booking.id}
+                      >
+                        Accept
+                      </button>
+                    )}
+                    {showActions && booking.status !== 'cancelled' && onCancel && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => onCancel(booking.id)}
+                        disabled={busyId === booking.id}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {showDelete && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => onDelete?.(booking.id)}
+                        disabled={deletingId === booking.id}
+                      >
+                        {deletingId === booking.id ? 'Removing...' : 'Delete'}
+                      </button>
+                    )}
+                  </div>
                 </td>
               )}
             </tr>

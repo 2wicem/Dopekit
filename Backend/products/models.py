@@ -6,6 +6,7 @@ class UserRole(models.TextChoices):
     CLIENT = 'client', 'Client'
     WORKER = 'worker', 'Worker'
     ADMIN = 'admin', 'Admin'
+    SALON_OWNER = 'salon_owner', 'Salon owner'
 
 
 class TechnicianApprovalStatus(models.TextChoices):
@@ -55,6 +56,13 @@ class Booking(models.Model):
         null=True,
         blank=True,
         related_name='preferred_bookings',
+    )
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings',
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -113,7 +121,7 @@ class UserProfile(models.Model):
     )
     phone = models.CharField(max_length=20)
     role = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=UserRole.choices,
         default=UserRole.CLIENT,
     )
@@ -123,6 +131,51 @@ class UserProfile(models.Model):
         default=TechnicianApprovalStatus.NOT_APPLICABLE,
     )
     default_location = models.CharField(max_length=200, blank=True, default='')
+    technician_specialty = models.CharField(max_length=100, blank=True, default='')
+    technician_experience_years = models.PositiveSmallIntegerField(null=True, blank=True)
+    technician_reference_name = models.CharField(max_length=100, blank=True, default='')
+    technician_reference_phone = models.CharField(max_length=20, blank=True, default='')
+    technician_application_note = models.TextField(blank=True, default='')
+    technician_invite_verified = models.BooleanField(default=False)
+    technician_work_summary = models.TextField(
+        blank=True,
+        default='',
+        help_text='Public summary of nail styles and services this technician offers.',
+    )
+    technician_portfolio_urls = models.TextField(
+        blank=True,
+        default='',
+        help_text='Public portfolio image URLs, one per line.',
+    )
+    technician_rating_average = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    technician_rating_count = models.PositiveIntegerField(default=0)
+    service_latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text='Map pin for freelance/mobile service area.',
+    )
+    service_longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text='Map pin for freelance/mobile service area.',
+    )
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='staff_profiles',
+        help_text='Home salon for technicians; admins may leave blank for all salons.',
+    )
 
     def __str__(self):
         return f'{self.user.get_full_name() or self.user.username} ({self.get_role_display()})'
@@ -155,6 +208,56 @@ class ContactMessage(models.Model):
     def __str__(self):
         label = self.name or 'Anonymous'
         return f'{label}: {self.message[:40]}'
+
+
+class Salon(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='owned_salons',
+        help_text='Salon owner who manages this branch.',
+    )
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=120, unique=True)
+    phone_primary = models.CharField(max_length=20)
+    phone_secondary = models.CharField(max_length=20, blank=True, default='')
+    email = models.EmailField()
+    location = models.CharField(max_length=200)
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text='GPS latitude for map discovery.',
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text='GPS longitude for map discovery.',
+    )
+    services_summary = models.CharField(max_length=300, blank=True, default='')
+    page_lead = models.TextField(blank=True, default='')
+    instagram_url = models.URLField(blank=True, default='')
+    facebook_url = models.URLField(blank=True, default='')
+    tiktok_url = models.URLField(blank=True, default='')
+    whatsapp_url = models.URLField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    is_primary = models.BooleanField(
+        default=False,
+        help_text='Default salon on the public contact page and for new bookings.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class SalonContactInfo(models.Model):

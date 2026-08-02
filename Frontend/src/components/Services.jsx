@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import AvailableSalons from './AvailableSalons'
 import AvailableWorkers from './AvailableWorkers'
 import Bookservice from './Bookservice'
 import { carouselSlides, priceList, serviceCards } from './servicesData'
@@ -126,6 +127,12 @@ const Services = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="section-band section-band--base">
+        <div className="container-fluid px-2 px-md-4">
+          <AvailableSalons />
         </div>
       </section>
 

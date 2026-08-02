@@ -1,0 +1,207 @@
+.salon-detail-page {
+  min-height: 60vh;
+}
+
+.salon-detail-status,
+.salon-detail-empty {
+  padding: 3rem 1rem;
+  color: var(--dk-text-muted);
+}
+
+.salon-detail-hero {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-top: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+.salon-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  color: var(--dk-accent-soft);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.salon-detail-back:hover {
+  color: var(--dk-gold-soft);
+}
+
+.salon-detail-hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--dk-border);
+  background: linear-gradient(165deg, var(--dk-surface) 0%, rgba(109, 53, 87, 0.28) 100%);
+  box-shadow: 0 8px 24px rgba(224, 107, 138, 0.1);
+}
+
+.salon-detail-hero-top {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.salon-detail-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, var(--dk-accent-dark), var(--dk-accent));
+  color: var(--dk-gold-soft);
+  flex-shrink: 0;
+}
+
+.salon-detail-title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  font-weight: 700;
+  color: var(--dk-text);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.salon-detail-location {
+  margin: 0;
+  color: var(--dk-text-muted);
+  font-size: 0.92rem;
+}
+
+.salon-detail-location i {
+  margin-right: 0.35rem;
+  color: var(--dk-accent-soft);
+}
+
+.salon-detail-lead,
+.salon-detail-services {
+  margin: 0;
+  color: var(--dk-text-muted);
+  line-height: 1.55;
+  font-size: 0.92rem;
+}
+
+.salon-detail-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+}
+
+.salon-detail-contact a {
+  color: var(--dk-accent-soft);
+  text-decoration: none;
+}
+
+.salon-detail-contact a:hover {
+  color: var(--dk-gold-soft);
+}
+
+.salon-detail-hero-card .booking-trigger {
+  margin-top: 0.35rem;
+}
+
+.salon-detail-hero-card .booking-btn--card {
+  width: 100%;
+}
+
+.available-worker-salon,
+.available-worker-specialty {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--dk-text-muted);
+}
+
+.available-worker-specialty {
+  color: var(--dk-gold-soft);
+}
+
+.available-worker-work {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--dk-text-muted);
+}
+
+.available-worker-portfolio {
+  margin-top: 0.35rem;
+}
+
+.available-worker-portfolio-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft);
+}
+
+.available-worker-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.available-worker-portfolio-grid a {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(255, 143, 171, 0.18);
+}
+
+.available-worker-portfolio-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.available-worker-portfolio-empty {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted);
+  font-style: italic;
+}
+
+.available-workers-section + .available-workers-section {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--dk-border);
+}
+
+.available-worker-card.is-freelance {
+  border-color: rgba(232, 184, 109, 0.25);
+}
+
+.available-worker-badge.is-freelance {
+  background: rgba(232, 184, 109, 0.14);
+  color: var(--dk-gold-soft);
+}
+
+.technician-rating {
+  margin-bottom: 0.65rem;
+}
+
+.technician-rating-stars {
+  display: flex;
+  gap: 0.15rem;
+  color: var(--dk-gold-soft);
+  font-size: 0.82rem;
+}
+
+.technician-rating-label,
+.technician-rating-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.76rem;
+  color: var(--dk-text-muted);
+}
+
+.technician-rating--compact {
+  margin-bottom: 0.45rem;
+}

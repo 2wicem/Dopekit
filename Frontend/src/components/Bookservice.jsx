@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { todayIso } from '../constants/slots'
 import {
   SERVICE_VENUES,
@@ -12,7 +12,10 @@ import {
 } from '../constants/serviceVenue'
 import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
+import { withRedirect } from '../utils/redirect'
 import BrandLogo from './BrandLogo'
+import TechnicianPicker from './TechnicianPicker'
+import { priceList } from './servicesData'
 import './css/Bookservice.css'
 
 const emptyForm = { name: '', phone: '', location: '', service: '', venue: 'indoor' }
@@ -54,9 +57,11 @@ const Bookservice = ({
   label = '',
   workerId = null,
   workerName = '',
+  salonId = null,
 }) => {
   const modalId = `booking-modal-${useId().replace(/:/g, '')}`
-  const { user } = useAuth()
+  const location = useLocation()
+  const { user, loading: authLoading } = useAuth()
   const [searchParams] = useSearchParams()
   const [isOpen, setIsOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -69,6 +74,9 @@ const Bookservice = ({
   const [workers, setWorkers] = useState([])
   const [workersLoading, setWorkersLoading] = useState(false)
   const [selectedWorkerId, setSelectedWorkerId] = useState(null)
+  const [salons, setSalons] = useState([])
+  const [salonsLoading, setSalonsLoading] = useState(false)
+  const [selectedSalonId, setSelectedSalonId] = useState(null)
 
   const prefilledWorkerId = useMemo(
     () =>
@@ -78,14 +86,35 @@ const Bookservice = ({
     [workerId, searchParams]
   )
 
+  const prefilledSalonId = useMemo(
+    () => parseWorkerId(salonId) ?? parseWorkerId(searchParams.get('salon')),
+    [salonId, searchParams]
+  )
+
   const prefilledService =
     serviceName || searchParams.get('service') || searchParams.get('serviceName') || ''
 
   const hasFixedService = Boolean(serviceName)
 
+  const canBook = Boolean(user && user.role === 'client' && !user.technician_pending)
+  const returnPath = `${location.pathname}${location.search}`
+  const loginPath = withRedirect('/login', returnPath)
+  const signupPath = withRedirect('/signup', returnPath)
   const selectedWorker = workers.find((entry) => entry.id === selectedWorkerId)
   const selectedWorkerLabel =
     selectedWorker?.name || workerName || (selectedWorkerId ? 'Selected technician' : 'Any available')
+  const isFreelanceBooking = Boolean(selectedWorker?.is_freelance)
+  const selectedSalon = useMemo(() => {
+    if (!salons.length) {
+      return null
+    }
+    if (selectedSalonId != null) {
+      return salons.find((entry) => entry.id === selectedSalonId) || salons[0]
+    }
+    return salons.find((entry) => entry.is_primary) || salons[0]
+  }, [salons, selectedSalonId])
+  const indoorSalonLocation = selectedSalon?.location || SALON_LOCATION
+  const showSalonPicker = salons.length > 0 && !isFreelanceBooking
 
   const closeModal = useCallback(() => {
     setIsOpen(false)
@@ -95,11 +124,49 @@ const Bookservice = ({
     setIsOpen(true)
   }, [])
 
-  const loadWorkers = useCallback(async () => {
+  const loadSalons = useCallback(async (applyInitialSelection = false, initialSalonId = null) => {
+    setSalonsLoading(true)
+
+    try {
+      const response = await apiFetch('/products/salons/')
+      const text = await response.text()
+      const data = text ? JSON.parse(text) : {}
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not load salon locations.')
+      }
+
+      const nextSalons = data.salons || []
+      setSalons(nextSalons)
+
+      if (applyInitialSelection) {
+        const preferredSalon =
+          (initialSalonId && nextSalons.find((entry) => entry.id === initialSalonId)) ||
+          (prefilledSalonId && nextSalons.find((entry) => entry.id === prefilledSalonId)) ||
+          nextSalons.find((entry) => entry.is_primary) ||
+          nextSalons[0]
+        setSelectedSalonId(preferredSalon?.id ?? null)
+      }
+    } catch {
+      setSalons([])
+      if (applyInitialSelection) {
+        setSelectedSalonId(null)
+      }
+    } finally {
+      setSalonsLoading(false)
+    }
+  }, [prefilledSalonId])
+
+  const loadWorkers = useCallback(async (filterSalonId) => {
     setWorkersLoading(true)
 
     try {
-      const response = await apiFetch('/products/workers/')
+      const params = new URLSearchParams()
+      if (filterSalonId) {
+        params.set('salon_id', String(filterSalonId))
+      }
+      const query = params.toString()
+      const response = await apiFetch(query ? `/products/workers/?${query}` : '/products/workers/')
       const text = await response.text()
       const data = text ? JSON.parse(text) : {}
 
@@ -143,7 +210,7 @@ const Bookservice = ({
   }, [])
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !canBook) {
       return undefined
     }
 
@@ -152,27 +219,57 @@ const Bookservice = ({
     setAppointmentDate(todayIso())
     setSelectedSlotId(null)
     setSelectedWorkerId(prefilledWorkerId)
-    loadWorkers()
-  }, [isOpen, user, prefilledService, prefilledWorkerId, loadWorkers])
+    loadSalons(true, prefilledSalonId)
+  }, [isOpen, canBook, user, prefilledService, prefilledWorkerId, loadSalons, prefilledSalonId])
 
   useEffect(() => {
-    if (!isOpen || workersLoading) {
+    if (!isOpen || !canBook || salonsLoading) {
+      return undefined
+    }
+
+    loadWorkers(selectedSalonId)
+  }, [selectedSalonId, isOpen, canBook, salonsLoading, loadWorkers])
+
+  useEffect(() => {
+    if (!isOpen || !canBook || workersLoading) {
+      return undefined
+    }
+
+    if (selectedWorkerId != null && !workers.some((entry) => entry.id === selectedWorkerId)) {
+      setSelectedWorkerId(null)
+    }
+  }, [workers, workersLoading, selectedWorkerId, isOpen, canBook])
+
+  useEffect(() => {
+    if (!isOpen || !canBook || workersLoading) {
       return undefined
     }
 
     if (prefilledWorkerId && workers.some((entry) => entry.id === prefilledWorkerId)) {
       setSelectedWorkerId(prefilledWorkerId)
     }
-  }, [isOpen, workers, workersLoading, prefilledWorkerId])
+  }, [isOpen, canBook, workers, workersLoading, prefilledWorkerId])
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !canBook || !isFreelanceBooking) {
+      return undefined
+    }
+
+    setForm((current) => ({
+      ...current,
+      venue: 'outdoor',
+      location: current.location || user?.default_location || '',
+    }))
+  }, [isOpen, canBook, isFreelanceBooking, selectedWorkerId, user?.default_location])
+
+  useEffect(() => {
+    if (!isOpen || !canBook) {
       return undefined
     }
 
     setSelectedSlotId(null)
     loadAvailableSlots(appointmentDate, selectedWorkerId)
-  }, [appointmentDate, selectedWorkerId, isOpen, loadAvailableSlots])
+  }, [appointmentDate, selectedWorkerId, isOpen, canBook, loadAvailableSlots])
 
   useEffect(() => {
     if (!isOpen) {
@@ -215,13 +312,41 @@ const Bookservice = ({
   const handleWorkerSelect = (id) => {
     setSelectedWorkerId(id)
     setSelectedSlotId(null)
+    const worker = workers.find((entry) => entry.id === id)
+    if (worker?.is_freelance) {
+      setForm((current) => ({
+        ...current,
+        venue: 'outdoor',
+        location: current.location || user?.default_location || '',
+      }))
+    }
+  }
+
+  const handleServiceSelect = (event) => {
+    setForm({ ...form, service: event.target.value })
+  }
+
+  const handleSalonSelect = (event) => {
+    setSelectedSalonId(Number(event.target.value))
+    setSelectedSlotId(null)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (isOutdoorVenue(form.venue) && !form.location.trim()) {
-      setStatus({ type: 'error', message: 'Please enter your address for outdoor service.' })
+    const requiresAddress = isFreelanceBooking || isOutdoorVenue(form.venue)
+    if (requiresAddress && !form.location.trim()) {
+      setStatus({
+        type: 'error',
+        message: isFreelanceBooking
+          ? 'Please enter your address for the freelance visit.'
+          : 'Please enter your address for outdoor service.',
+      })
+      return
+    }
+
+    if (!hasFixedService && !form.service.trim()) {
+      setStatus({ type: 'error', message: 'Please choose a service.' })
       return
     }
 
@@ -229,12 +354,22 @@ const Bookservice = ({
     setStatus(null)
 
     const service = form.service.trim() || serviceName
-    const location = resolveBookingLocation(form.venue, form.location)
+    const bookingVenue = isFreelanceBooking ? 'outdoor' : form.venue
+    const bookingLocation = isFreelanceBooking
+      ? form.location.trim()
+      : bookingVenue === 'indoor'
+        ? indoorSalonLocation
+        : resolveBookingLocation(form.venue, form.location)
     const payload = {
       ...form,
       service,
-      location,
+      venue: bookingVenue,
+      location: bookingLocation,
       requested_date: appointmentDate,
+    }
+
+    if (selectedSalon?.id && !isFreelanceBooking) {
+      payload.salon_id = selectedSalon.id
     }
 
     if (selectedSlotId) {
@@ -354,6 +489,29 @@ const Bookservice = ({
               />
             </div>
             <div className="modal-body booking-modal-body">
+            {authLoading ? (
+              <p className="text-muted mb-0">Checking your account…</p>
+            ) : !canBook ? (
+              <div className="booking-auth-gate">
+                <p className="booking-auth-gate__lead">
+                  Create a free client account to book and manage your appointments in one place.
+                </p>
+                {user && user.role !== 'client' && (
+                  <p className="text-muted booking-auth-gate__note">
+                    Staff and admin accounts cannot book here. Use your dashboard instead.
+                  </p>
+                )}
+                <div className="booking-auth-gate__actions">
+                  <Link to={loginPath} className="btn btn-primary" onClick={closeModal}>
+                    Log in
+                  </Link>
+                  <Link to={signupPath} className="btn btn-outline-primary" onClick={closeModal}>
+                    Create account
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <>
             {user && (
               <p className="booking-prefill-note">
                 Booking as <strong>{user.name}</strong>
@@ -371,16 +529,34 @@ const Bookservice = ({
                 <label htmlFor={`${modalId}-service`} className="form-label">
                   Service
                 </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id={`${modalId}-service`}
-                  name="service"
-                  value={form.service}
-                  onChange={handleChange}
-                  readOnly={hasFixedService}
-                  required
-                />
+                {hasFixedService ? (
+                  <input
+                    type="text"
+                    className="form-control"
+                    id={`${modalId}-service`}
+                    name="service"
+                    value={form.service}
+                    onChange={handleChange}
+                    readOnly
+                    required
+                  />
+                ) : (
+                  <select
+                    id={`${modalId}-service`}
+                    className="form-select site-select booking-service-select"
+                    name="service"
+                    value={form.service}
+                    onChange={handleServiceSelect}
+                    required
+                  >
+                    <option value="">Select a service</option>
+                    {priceList.map(({ id, name, price }) => (
+                      <option key={id} value={name}>
+                        {name} — KSh {price.toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="mb-3">
@@ -395,6 +571,7 @@ const Bookservice = ({
                   value={form.name}
                   onChange={handleChange}
                   autoComplete="name"
+                  readOnly={Boolean(user)}
                   required
                 />
               </div>
@@ -412,48 +589,49 @@ const Bookservice = ({
                   onChange={handleChange}
                   autoComplete="tel"
                   inputMode="tel"
+                  readOnly={Boolean(user)}
                   required
                 />
               </div>
 
-              <div className="mb-3">
-                <span className="form-label d-block">
-                  Technician <span className="booking-slot-optional">(optional)</span>
-                </span>
-                {workersLoading ? (
-                  <p className="booking-worker-empty">Loading technicians...</p>
-                ) : workers.length === 0 ? (
-                  <p className="booking-worker-empty booking-slot-empty--soft">
-                    No technicians listed right now. You can still send your request — we will
-                    assign someone and confirm your time.
-                  </p>
-                ) : (
-                  <div className="booking-worker-grid">
-                    <button
-                      type="button"
-                      className={`booking-worker-btn${selectedWorkerId == null ? ' is-selected' : ''}`}
-                      onClick={() => handleWorkerSelect(null)}
+              {showSalonPicker && (
+                <div className="mb-3">
+                  <label htmlFor={`${modalId}-salon`} className="form-label">
+                    Salon location
+                  </label>
+                  {salonsLoading ? (
+                    <p className="booking-worker-empty">Loading salon locations...</p>
+                  ) : (
+                    <select
+                      id={`${modalId}-salon`}
+                      className="form-select site-select"
+                      value={selectedSalonId ?? ''}
+                      onChange={handleSalonSelect}
+                      required
                     >
-                      <span className="booking-worker-name">Any available</span>
-                      <span className="booking-worker-hint">First open slot</span>
-                    </button>
-                    {workers.map((entry) => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        className={`booking-worker-btn${selectedWorkerId === entry.id ? ' is-selected' : ''}`}
-                        onClick={() => handleWorkerSelect(entry.id)}
-                      >
-                        <span className="booking-worker-name">{entry.name}</span>
-                        <span className="booking-worker-hint">
-                          {entry.is_available
-                            ? `${entry.available_slots} open slot${entry.available_slots === 1 ? '' : 's'}`
-                            : 'No slots soon'}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                      {salons.map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          {entry.name} — {entry.location}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {salons.length > 1 && (
+                    <p className="booking-salon-picker-note">
+                      Choose a different salon anytime — available technicians update automatically.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mb-3">
+                <TechnicianPicker
+                  modalId={modalId}
+                  workers={workers}
+                  selectedWorkerId={selectedWorkerId}
+                  onChange={handleWorkerSelect}
+                  loading={workersLoading}
+                />
                 {selectedWorkerId != null && (
                   <p className="booking-worker-note">
                     Showing times for <strong>{selectedWorkerLabel}</strong>
@@ -520,55 +698,86 @@ const Bookservice = ({
                 )}
               </div>
 
-              <div className="mb-3">
-                <span className="form-label d-block">Service location</span>
-                <div className="booking-venue-grid">
-                  {SERVICE_VENUES.map(({ value, label, hint, icon }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={`booking-venue-btn${form.venue === value ? ' is-selected' : ''}`}
-                      onClick={() => handleVenueSelect(value)}
-                    >
-                      <i className={icon} aria-hidden="true" />
-                      <span className="booking-venue-label">{label}</span>
-                      <span className="booking-venue-hint">{hint}</span>
-                    </button>
-                  ))}
+              {isFreelanceBooking ? (
+                <div className="mb-3">
+                  <label htmlFor={`${modalId}-location`} className="form-label">
+                    Your address
+                  </label>
+                  <p className="booking-freelance-note">
+                    Freelance technicians come to you — enter where you want to be seen.
+                  </p>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id={`${modalId}-location`}
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    placeholder={venueLocationPlaceholder('outdoor')}
+                    autoComplete="street-address"
+                    required
+                  />
                 </div>
-              </div>
-
-              <div className="mb-3">
-                {isOutdoorVenue(form.venue) ? (
-                  <>
-                    <label htmlFor={`${modalId}-location`} className="form-label">
-                      {venueLocationLabel(form.venue)}
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id={`${modalId}-location`}
-                      name="location"
-                      value={form.location}
-                      onChange={handleChange}
-                      placeholder={venueLocationPlaceholder(form.venue)}
-                      autoComplete="street-address"
-                      required
-                    />
-                  </>
-                ) : (
-                  <div className="booking-salon-info">
-                    <span className="form-label d-block">{venueLocationLabel(form.venue)}</span>
-                    <p className="booking-salon-info__address">
-                      <i className="fa-solid fa-location-dot" aria-hidden="true" />
-                      {SALON_LOCATION}
-                    </p>
-                    <p className="booking-salon-info__hint">
-                      Your appointment will be at our salon — no address needed.
-                    </p>
+              ) : (
+                <>
+                  <div className="mb-3">
+                    <span className="form-label d-block">Service location</span>
+                    <div className="booking-venue-grid">
+                      {SERVICE_VENUES.map(({ value, label, hint, icon }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`booking-venue-btn${form.venue === value ? ' is-selected' : ''}`}
+                          onClick={() => handleVenueSelect(value)}
+                        >
+                          <i className={icon} aria-hidden="true" />
+                          <span className="booking-venue-label">{label}</span>
+                          <span className="booking-venue-hint">{hint}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="mb-3">
+                    {isOutdoorVenue(form.venue) ? (
+                      <>
+                        <label htmlFor={`${modalId}-location`} className="form-label">
+                          {venueLocationLabel(form.venue)}
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id={`${modalId}-location`}
+                          name="location"
+                          value={form.location}
+                          onChange={handleChange}
+                          placeholder={venueLocationPlaceholder(form.venue)}
+                          autoComplete="street-address"
+                          required
+                        />
+                      </>
+                    ) : (
+                      <div className="booking-salon-info">
+                        <span className="form-label d-block">{venueLocationLabel(form.venue)}</span>
+                        <p className="booking-salon-info__address">
+                          <i className="fa-solid fa-location-dot" aria-hidden="true" />
+                          {indoorSalonLocation}
+                        </p>
+                        {selectedSalon?.name && (
+                          <p className="booking-salon-info__hint">
+                            {selectedSalon.name} — your appointment will be at our salon.
+                          </p>
+                        )}
+                        {!selectedSalon?.name && (
+                          <p className="booking-salon-info__hint">
+                            Your appointment will be at our salon — no address needed.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div className="booking-modal-footer">
                 <button type="button" className="btn btn-outline-secondary" onClick={handleClose}>
@@ -579,6 +788,8 @@ const Bookservice = ({
                 </button>
               </div>
             </form>
+              </>
+            )}
             </div>
           </div>
         </div>

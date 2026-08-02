@@ -1,0 +1,62 @@
+.owner-shell .admin-shell-lead {
+  max-width: 36rem;
+}
+
+.owner-branch-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 320px;
+  margin-bottom: 1.25rem;
+}
+
+.owner-branch-picker label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.owner-staff-section + .owner-staff-section {
+  margin-top: 1.5rem;
+}
+
+.owner-staff-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.owner-staff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.owner-staff-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--dk-border, #3a2f35);
+  background: var(--dk-surface-raised, #241c22);
+}
+
+.owner-staff-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.owner-staff-item strong {
+  font-size: 0.92rem;
+}
+
+.owner-staff-item span {
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}

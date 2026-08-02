@@ -1,0 +1,105 @@
+.client-reschedule-content {
+  background: var(--dk-surface, #1a1418);
+  border: 1px solid var(--dk-border, #3a2f35);
+  color: var(--dk-text, #f3e8ec);
+}
+
+.client-reschedule-modal .modal-header {
+  border-bottom-color: var(--dk-border, #3a2f35);
+}
+
+.client-reschedule-modal .form-label {
+  font-weight: 600;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.client-reschedule-modal .form-control {
+  background: var(--dk-surface-raised, #241c22);
+  border-color: var(--dk-border, #3a2f35);
+  color: var(--dk-text, #f3e8ec);
+}
+
+.client-reschedule-optional {
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.client-reschedule-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.client-reschedule-empty--soft {
+  font-style: italic;
+}
+
+.client-reschedule-date-note,
+.client-reschedule-worker-note {
+  font-size: 0.85rem;
+  color: var(--dk-text-muted, #b8a9ae);
+  margin-bottom: 0.5rem;
+}
+
+.client-reschedule-worker-grid,
+.client-reschedule-slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.client-reschedule-chip,
+.client-reschedule-slot {
+  border: 1px solid var(--dk-border, #3a2f35);
+  background: var(--dk-surface-raised, #241c22);
+  color: var(--dk-text, #f3e8ec);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.client-reschedule-slot {
+  border-radius: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 110px;
+}
+
+.client-reschedule-chip.is-selected,
+.client-reschedule-slot.is-selected {
+  border-color: var(--dk-accent-bright, #ff8fab);
+  background: rgba(255, 143, 171, 0.15);
+}
+
+.client-reschedule-slot-worker {
+  font-size: 0.72rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.client-reschedule-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.client-booking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.client-booking-actions .btn {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.75rem;
+}
+
+.client-booking-status--cancelled {
+  color: #f1948a;
+  font-weight: 600;
+}

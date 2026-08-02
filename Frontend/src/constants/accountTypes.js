@@ -10,12 +10,24 @@ export const ACCOUNT_TYPES = {
   technician: {
     value: 'technician',
     label: 'Technician',
-    shortLabel: 'Salon team',
-    signupTitle: 'Join the salon team',
-    signupSubtitle: 'Create a technician account to manage your schedule and client bookings.',
-    submitLabel: 'Join as technician',
+    shortLabel: 'Studio team',
+    signupTitle: 'Welcome to the studio',
+    signupSubtitle:
+      'Apply as a technician. An admin will review your account before you can access the staff dashboard.',
+    submitLabel: 'Submit application',
+  },
+  salon_owner: {
+    value: 'salon_owner',
+    label: 'Salon owner',
+    shortLabel: 'Manage branches',
+    signupTitle: 'Register your salon business',
+    signupSubtitle: 'Create an owner account to add branches, locations, and assign technicians.',
+    submitLabel: 'Sign up as salon owner',
   },
 }
 
-export const parseSignupAccountType = (value) =>
-  value === 'technician' ? 'technician' : 'client'
+export const parseSignupAccountType = (value) => {
+  if (value === 'technician') return 'technician'
+  if (value === 'salon_owner') return 'salon_owner'
+  return 'client'
+}

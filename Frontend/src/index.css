@@ -56,6 +56,20 @@
   --bs-link-color: var(--dk-accent-soft);
   --bs-link-hover-color: var(--dk-gold-soft);
   --bs-border-color: var(--dk-border);
+
+  --site-select-bg: rgba(255, 255, 255, 0.08);
+  --site-select-bg-hover: rgba(255, 255, 255, 0.1);
+  --site-select-bg-focus: rgba(255, 255, 255, 0.12);
+  --site-select-border: rgba(255, 143, 171, 0.35);
+  --site-select-border-hover: rgba(255, 143, 171, 0.55);
+  --site-select-border-focus: var(--dk-accent-bright);
+  --site-select-text: var(--dk-text);
+  --site-select-text-muted: var(--dk-text-muted);
+  --site-select-option-bg: var(--dk-surface);
+  --site-select-option-bg-active: var(--dk-plum);
+  --site-select-option-bg-selected: var(--dk-accent-dark);
+  --site-select-option-text: var(--dk-text);
+  --site-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23f5d9a8'%3E%3Cpath d='M4.5 6l3.5 3.5L11.5 6'/%3E%3C/svg%3E");
 }
 
 body {
@@ -602,6 +616,143 @@ a:hover {
   --bs-btn-hover-bg: var(--dk-surface-raised);
   --bs-btn-hover-border-color: var(--dk-accent-bright);
   --bs-btn-hover-color: var(--dk-text);
+}
+
+/* Shared dropdown / select styling */
+.form-select {
+  --bs-form-select-bg: var(--site-select-bg);
+  --bs-form-select-color: var(--site-select-text);
+  --bs-form-select-border-color: var(--site-select-border);
+  --bs-form-select-focus-border-color: var(--site-select-border-focus);
+  --bs-form-select-focus-box-shadow: 0 0 0 0.2rem rgba(255, 143, 171, 0.22);
+}
+
+select,
+.form-select,
+.site-select {
+  color-scheme: dark;
+  accent-color: var(--dk-accent);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 2.35rem 0.55rem 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--site-select-border);
+  background-color: var(--site-select-bg) !important;
+  background-image: var(--site-select-chevron) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.85rem center !important;
+  background-size: 0.9rem !important;
+  color: var(--site-select-text) !important;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+select:hover,
+.form-select:hover,
+.site-select:hover {
+  border-color: var(--site-select-border-hover);
+  background-color: var(--site-select-bg-hover) !important;
+}
+
+select:focus,
+.form-select:focus,
+.site-select:focus {
+  outline: none;
+  border-color: var(--site-select-border-focus);
+  background-color: var(--site-select-bg-focus) !important;
+  box-shadow: 0 0 0 0.2rem rgba(255, 143, 171, 0.22);
+  color: var(--site-select-text) !important;
+}
+
+select:disabled,
+.form-select:disabled,
+.site-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+select option,
+.form-select option {
+  background-color: var(--site-select-option-bg);
+  color: var(--site-select-option-text);
+}
+
+select option:checked,
+.form-select option:checked {
+  background: linear-gradient(0deg, var(--site-select-option-bg-selected), var(--site-select-option-bg-selected));
+  color: var(--dk-text);
+}
+
+select option:hover,
+.form-select option:hover,
+select option:focus,
+.form-select option:focus {
+  background-color: var(--site-select-option-bg-active);
+  color: var(--dk-gold-soft);
+}
+
+select option[value=''],
+.form-select option[value=''] {
+  color: var(--site-select-text-muted);
+  background-color: var(--dk-surface-raised);
+}
+
+.form-select-sm,
+.site-select--sm,
+select.site-select--sm {
+  min-height: 34px;
+  padding: 0.3rem 1.85rem 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  border-radius: 999px;
+  background-position: right 0.6rem center !important;
+  background-size: 0.72rem !important;
+}
+
+/* Booking modal — match text inputs */
+.booking-modal-body select,
+.booking-modal-body .form-select {
+  --site-select-bg: rgba(255, 255, 255, 0.08);
+  --site-select-bg-hover: rgba(255, 255, 255, 0.1);
+  --site-select-bg-focus: rgba(255, 255, 255, 0.12);
+  --site-select-border: rgba(255, 143, 171, 0.35);
+  --site-select-option-bg: var(--dk-surface-raised);
+}
+
+/* Signup card */
+.signup-page select,
+.signup-page .form-select {
+  --site-select-bg: rgba(255, 255, 255, 0.08);
+  --site-select-border: rgba(255, 143, 171, 0.35);
+  --site-select-option-bg: var(--dk-plum-deep);
+}
+
+/* Admin dashboard shell */
+.admin-app select,
+.admin-app .form-select {
+  --site-select-bg: rgba(255, 255, 255, 0.06);
+  --site-select-bg-hover: rgba(255, 255, 255, 0.08);
+  --site-select-bg-focus: rgba(255, 255, 255, 0.1);
+  --site-select-border: rgba(255, 255, 255, 0.12);
+  --site-select-option-bg: var(--dk-surface);
+  --site-select-option-bg-active: rgba(109, 53, 87, 0.95);
+}
+
+/* Public pages (services, profile, etc.) */
+.section-band select,
+.section-band .form-select,
+.dashboard-page select,
+.dashboard-page .form-select {
+  --site-select-option-bg: var(--dk-surface-raised);
 }
 
 /* Services carousel indicators */

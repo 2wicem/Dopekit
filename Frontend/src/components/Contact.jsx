@@ -151,61 +151,68 @@ const Contact = () => {
                 Quick note
               </p>
 
-              <label className="visually-hidden" htmlFor="contact-note-name">
-                Your name
-              </label>
-              <input
-                id="contact-note-name"
-                type="text"
-                name="name"
-                className="contact-envelope-note__input"
-                value={note.name}
-                onChange={handleNoteChange}
-                placeholder="Your name"
-                autoComplete="name"
-              />
+              <div className="contact-envelope-note__fields">
+                <div className="contact-envelope-note__contact-grid">
+                  <label className="visually-hidden" htmlFor="contact-note-name">
+                    Your name
+                  </label>
+                  <input
+                    id="contact-note-name"
+                    type="text"
+                    name="name"
+                    className="contact-envelope-note__input contact-envelope-note__input--name"
+                    value={note.name}
+                    onChange={handleNoteChange}
+                    placeholder="Your name"
+                    autoComplete="name"
+                    readOnly={Boolean(user)}
+                  />
 
-              <label className="visually-hidden" htmlFor="contact-note-phone">
-                Your phone
-              </label>
-              <input
-                id="contact-note-phone"
-                type="tel"
-                name="phone"
-                className="contact-envelope-note__input"
-                value={note.phone}
-                onChange={handleNoteChange}
-                placeholder="Your phone"
-                autoComplete="tel"
-              />
+                  <label className="visually-hidden" htmlFor="contact-note-phone">
+                    Your phone
+                  </label>
+                  <input
+                    id="contact-note-phone"
+                    type="tel"
+                    name="phone"
+                    className="contact-envelope-note__input"
+                    value={note.phone}
+                    onChange={handleNoteChange}
+                    placeholder="Phone"
+                    autoComplete="tel"
+                    readOnly={Boolean(user)}
+                  />
 
-              <label className="visually-hidden" htmlFor="contact-note-email">
-                Your email
-              </label>
-              <input
-                id="contact-note-email"
-                type="email"
-                name="email"
-                className="contact-envelope-note__input"
-                value={note.email}
-                onChange={handleNoteChange}
-                placeholder="Your email"
-                autoComplete="email"
-              />
+                  <label className="visually-hidden" htmlFor="contact-note-email">
+                    Your email
+                  </label>
+                  <input
+                    id="contact-note-email"
+                    type="email"
+                    name="email"
+                    className="contact-envelope-note__input"
+                    value={note.email}
+                    onChange={handleNoteChange}
+                    placeholder="Email"
+                    autoComplete="email"
+                    readOnly={Boolean(user)}
+                  />
+                </div>
 
-              <label className="visually-hidden" htmlFor="contact-note-message">
-                Your message
-              </label>
-              <textarea
-                id="contact-note-message"
-                name="message"
-                className="contact-envelope-note__textarea"
-                value={note.message}
-                onChange={handleNoteChange}
-                placeholder="Your message…"
-                rows={2}
-                required
-              />
+                <label className="visually-hidden" htmlFor="contact-note-message">
+                  Your message
+                </label>
+                <textarea
+                  id="contact-note-message"
+                  name="message"
+                  className="contact-envelope-note__textarea"
+                  value={note.message}
+                  onChange={handleNoteChange}
+                  placeholder="Your message…"
+                  rows={2}
+                  required
+                />
+              </div>
 
               <button type="submit" className="contact-envelope-note__send" disabled={sending}>
                 <i className="fa-solid fa-paper-plane" aria-hidden="true" />

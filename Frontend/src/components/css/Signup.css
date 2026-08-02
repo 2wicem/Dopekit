@@ -136,6 +136,11 @@
   color: var(--dk-text, #fff8fa);
 }
 
+select.signup-input,
+.form-select.signup-input {
+  padding-right: 2.35rem;
+}
+
 .signup-input:focus {
   background: rgba(255, 255, 255, 0.12);
   border-color: var(--dk-accent-bright, #ff8fab);
@@ -145,6 +150,44 @@
 
 .signup-input::placeholder {
   color: rgba(255, 248, 250, 0.45);
+}
+
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap .signup-input,
+.password-input-wrap .form-control {
+  padding-right: 2.85rem;
+}
+
+.password-input-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dk-text-muted, #e0cdd6);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.password-input-toggle:hover {
+  color: var(--dk-accent-soft, #f8d0de);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.password-input-toggle:focus-visible {
+  outline: 2px solid var(--dk-accent-bright, #ff8fab);
+  outline-offset: 2px;
 }
 
 .signup-submit {
@@ -164,6 +207,52 @@
   margin-top: 0.65rem;
 }
 
+.signup-page .signup-card:has(.signup-verification-block) {
+  max-width: 520px;
+}
+
+.signup-verification-block {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(232, 184, 109, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.signup-verification-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.signup-verification-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.signup-optional {
+  font-weight: 400;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.signup-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--dk-text, #f3e8ec);
+}
+
+.signup-checkbox input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
 .signup-forgot-link {
   font-size: 0.78rem;
   color: var(--dk-accent-soft, #f8d0de);
@@ -181,8 +270,56 @@
   margin: 0.35rem 0 0;
 }
 
+.reset-channel-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.reset-channel-btn {
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--dk-text-muted, #e0cdd6);
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.reset-channel-btn.is-active {
+  background: rgba(224, 107, 138, 0.16);
+  border-color: var(--dk-accent-soft, #f8d0de);
+  color: var(--dk-text, #f3e8ec);
+}
+
+.reset-otp-input {
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.reset-resend-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+}
+
+.reset-resend-btn {
+  padding: 0;
+  text-decoration: none;
+}
+
 .signup-debug-link {
   font-size: 0.82rem;
+}
+
+.signup-confirm-hint {
+  font-size: 0.82rem;
+  color: var(--dk-text-muted, #e0cdd6);
+  line-height: 1.45;
 }
 
 .signup-link {

@@ -112,7 +112,27 @@ const Navbar = () => {
                 </Link>
               </li>
 
-              {!loading && user && user.role === 'client' && (
+              {!loading && user && (
+                <li className="nav-item">
+                  <Link to="/profile" className={navLinkClass('/profile')} onClick={handleNavClick}>
+                    My profile
+                  </Link>
+                </li>
+              )}
+
+              {!loading && user && user.technician_pending && (
+                <li className="nav-item">
+                  <Link
+                    to="/technician-pending"
+                    className={navLinkClass('/technician-pending')}
+                    onClick={handleNavClick}
+                  >
+                    Application pending
+                  </Link>
+                </li>
+              )}
+
+              {!loading && user && user.role === 'client' && !user.technician_pending && (
                 <li className="nav-item">
                   <Link to="/my-bookings" className={navLinkClass('/my-bookings')} onClick={handleNavClick}>
                     My bookings
@@ -124,6 +144,14 @@ const Navbar = () => {
                 <li className="nav-item">
                   <Link to="/worker" className={navLinkClass('/worker')} onClick={handleNavClick}>
                     Dashboard
+                  </Link>
+                </li>
+              )}
+
+              {!loading && user && user.role === 'salon_owner' && (
+                <li className="nav-item">
+                  <Link to="/owner" className={navLinkClass('/owner')} onClick={handleNavClick}>
+                    My salons
                   </Link>
                 </li>
               )}

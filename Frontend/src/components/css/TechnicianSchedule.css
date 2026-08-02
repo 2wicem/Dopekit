@@ -1,0 +1,155 @@
+.technician-schedule-btn {
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+  border: 2px solid var(--dk-accent-soft, #e8c4cf) !important;
+  white-space: nowrap;
+}
+
+.technician-schedule-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--dk-accent-bright, #ff8fab) !important;
+}
+
+.technician-schedule-content {
+  background: var(--dk-surface, #1a1418);
+  border: 1px solid var(--dk-border, #3a2f35);
+  color: var(--dk-text, #f3e8ec);
+}
+
+.technician-schedule-modal .modal-header {
+  border-bottom-color: var(--dk-border, #3a2f35);
+  align-items: flex-start;
+}
+
+.technician-schedule-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.technician-schedule-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-schedule-status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-schedule-status--error {
+  color: #ffb4c8;
+}
+
+.technician-schedule-summary {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--dk-accent-soft, #e8c4cf);
+}
+
+.technician-schedule-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--dk-text-muted, #b8a9ae);
+  font-style: italic;
+}
+
+.technician-schedule-days {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.technician-schedule-day-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--dk-text, #f3e8ec);
+}
+
+.technician-schedule-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.technician-schedule-slot {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--dk-border, #3a2f35);
+  background: var(--dk-surface-raised, #241c22);
+  min-width: 108px;
+}
+
+.technician-schedule-slot.is-available {
+  border-color: rgba(232, 184, 109, 0.55);
+  background: rgba(232, 184, 109, 0.12);
+}
+
+.technician-schedule-slot.is-booked {
+  opacity: 0.72;
+}
+
+.technician-schedule-slot-time {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.technician-schedule-slot-status {
+  font-size: 0.72rem;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
+.technician-schedule-slot.is-available .technician-schedule-slot-status {
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.technician-schedule-footer {
+  border-top-color: var(--dk-border, #3a2f35);
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.technician-schedule-footer .booking-trigger {
+  margin-left: auto;
+}
+
+.technician-schedule-footer .booking-btn--card {
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+}
+
+.available-worker-card__actions,
+.landing-tech-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: auto;
+}
+
+.available-worker-card__actions .booking-trigger,
+.landing-tech-card__actions .booking-trigger {
+  margin-top: 0;
+}
+
+.available-worker-card__actions .technician-schedule-btn,
+.landing-tech-card__actions .technician-schedule-btn {
+  width: 100%;
+}
+
+.available-worker-card__actions .booking-btn--card,
+.landing-tech-card__actions .booking-btn--card {
+  width: 100%;
+}

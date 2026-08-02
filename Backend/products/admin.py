@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Booking, ContactMessage, SalonContactInfo, TimeSlot, UserProfile
+from .models import Booking, ContactMessage, Salon, SalonContactInfo, TimeSlot, UserProfile
 
 
 @admin.register(Booking)
@@ -19,7 +19,7 @@ class TimeSlotAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'phone', 'role', 'default_location')
+    list_display = ('user', 'phone', 'role', 'salon', 'technician_rating_average', 'default_location')
     list_filter = ('role',)
     search_fields = ('user__username', 'user__email', 'phone')
 
@@ -34,6 +34,14 @@ class ContactMessageAdmin(admin.ModelAdmin):
     @admin.display(description='Message')
     def message_preview(self, obj):
         return obj.message[:80]
+
+
+@admin.register(Salon)
+class SalonAdmin(admin.ModelAdmin):
+    list_display = ('name', 'location', 'phone_primary', 'is_active', 'is_primary', 'updated_at')
+    list_filter = ('is_active', 'is_primary')
+    search_fields = ('name', 'location', 'email', 'phone_primary')
+    prepopulated_fields = {'slug': ('name',)}
 
 
 @admin.register(SalonContactInfo)

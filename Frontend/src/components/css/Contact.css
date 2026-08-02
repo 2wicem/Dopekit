@@ -53,6 +53,7 @@
   aspect-ratio: 960 / 560;
   line-height: normal;
   filter: drop-shadow(0 14px 32px rgba(0, 0, 0, 0.28));
+  overflow: visible;
 }
 
 .contact-envelope img {
@@ -60,26 +61,33 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center top;
 }
 
 /* Compact letter form — top-centre of the paper inside the envelope */
 .contact-envelope-note {
   position: absolute;
-  top: 35%;
+  top: 30%;
   left: 50%;
   transform: translateX(-50%);
-  width: 38%;
-  max-width: 10.5rem;
+  width: 42%;
+  max-width: 11.5rem;
+  max-height: 48%;
   z-index: 2;
   margin: 0;
   padding: 0;
   font-size: clamp(9px, 1.9vw, 10px);
+  display: flex;
+  flex-direction: column;
 }
 
 .contact-envelope-note__paper {
   display: flex;
   flex-direction: column;
   gap: 0.22em;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
   padding: 0.5em 0.55em 0.45em;
   border-radius: 0.35em;
   background: linear-gradient(180deg, rgba(255, 252, 253, 0.98) 0%, rgba(255, 245, 248, 0.96) 100%);
@@ -87,6 +95,38 @@
   box-shadow:
     0 3px 12px rgba(0, 0, 0, 0.22),
     0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  overflow: hidden;
+}
+
+.contact-envelope-note__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.contact-envelope-note__contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2em;
+}
+
+.contact-envelope-note__input--name {
+  grid-column: 1 / -1;
+}
+
+.contact-envelope-note__input[readonly] {
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(47, 31, 40, 0.78);
+  font-size: 0.76em;
+  font-weight: 500;
+  padding: 0.2em 0.35em;
+  min-height: 1.6em;
+  letter-spacing: 0.01em;
 }
 
 .contact-envelope-note__heading {
@@ -116,11 +156,12 @@
   color: #2f1f28;
   font-family: inherit;
   font-size: 1em;
-  line-height: 1.35;
+  line-height: 1.25;
   resize: none;
   outline: none;
-  padding: 0.35em 0.45em;
+  padding: 0.28em 0.4em;
   margin: 0;
+  min-height: 1.85em;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -146,8 +187,8 @@
 }
 
 .contact-envelope-note__textarea {
-  min-height: 2.4em;
-  line-height: 1.35em;
+  min-height: 2.2em;
+  line-height: 1.25em;
   background-image: repeating-linear-gradient(
     transparent,
     transparent 1.34em,
@@ -162,7 +203,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.28em;
-  margin-top: 0.1em;
+  width: 100%;
+  margin-top: 0.15em;
   padding: 0.38em 0.55em;
   border: none;
   border-radius: 999px;
@@ -173,6 +215,9 @@
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(224, 107, 138, 0.4);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
   transition:
     filter 0.18s ease,
     transform 0.18s ease;
@@ -228,42 +273,77 @@
 
 @media (min-width: 768px) {
   .contact-envelope-note {
-    top: 35.5%;
-    width: 36%;
-    max-width: 11rem;
+    top: 31%;
+    width: 40%;
+    max-width: 12rem;
+    max-height: 46%;
     font-size: 10px;
+  }
+
+  .contact-envelope-note__contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-envelope-note__input--name {
+    grid-column: auto;
   }
 }
 
-/* All mobile — wider form across the letter (matches paper width in SVG ~42%) */
+/* Mobile — slightly taller envelope + letter form sized to fit without spilling */
 @media (max-width: 767.98px) {
   .contact-envelope {
-    width: min(500px, 96vw);
+    /* ~15% taller than SVG (960×560) for extra letter room */
+    width: min(520px, 98vw);
+    aspect-ratio: 960 / 645;
   }
 
   .contact-envelope-note {
-    top: 35%;
-    width: min(42%, 15rem);
+    top: 26%;
+    width: min(48%, 16rem);
     max-width: none;
-    font-size: clamp(10px, 2.75vw, 12px);
+    /* top + max-height must stay ~≤74% to avoid spilling past the envelope */
+    max-height: 47%;
+    font-size: clamp(10px, 2.65vw, 11px);
   }
 
   .contact-envelope-note__paper {
-    padding: 0.6em 0.75em 0.55em;
-    gap: 0.32em;
+    height: 100%;
+    max-height: 100%;
+    padding: 0.45em 0.55em 0.4em;
+    gap: 0.22em;
+  }
+
+  .contact-envelope-note__fields {
+    gap: 0.22em;
+  }
+
+  .contact-envelope-note__contact-grid {
+    gap: 0.22em;
   }
 
   .contact-envelope-note__input,
   .contact-envelope-note__textarea {
-    padding: 0.4em 0.55em;
+    padding: 0.28em 0.38em;
+    min-height: 1.85em;
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+  }
+
+  .contact-envelope-note__input[readonly] {
+    font-size: 11px;
+    min-height: 1.5em;
+    padding: 0.18em 0.32em;
   }
 
   .contact-envelope-note__textarea {
-    min-height: 3.2em;
+    flex: 1 1 auto;
+    min-height: 2.5em;
+    max-height: 3.2em;
   }
 
   .contact-envelope-note__send {
-    padding: 0.45em 0.75em;
+    min-height: 2.2em;
+    padding: 0.38em 0.6em;
+    font-size: 0.92em;
   }
 
   .contact-envelope-note__status {
@@ -274,12 +354,14 @@
 
 @media (max-width: 575.98px) {
   .contact-envelope {
-    width: min(460px, 96vw);
+    width: min(480px, 98vw);
+    aspect-ratio: 960 / 660;
     margin-bottom: clamp(1rem, 3.5vw, 1.5rem);
   }
 
   .contact-envelope-note {
-    width: min(44%, 14.5rem);
+    width: min(50%, 15rem);
+    max-height: 48%;
   }
 
   .contact-detail__phones a {
@@ -296,12 +378,14 @@
   }
 
   .contact-envelope {
-    width: min(340px, 96vw);
+    width: min(360px, 98vw);
+    aspect-ratio: 960 / 670;
   }
 
   .contact-envelope-note {
-    width: min(46%, 13rem);
+    width: min(52%, 14rem);
     font-size: 10px;
+    max-height: 48%;
   }
 }
 
@@ -429,13 +513,20 @@
   }
 
   .contact-envelope {
-    width: min(280px, 42vh);
+    width: min(300px, 55vh);
+    aspect-ratio: 960 / 650;
     margin-bottom: 0.75rem;
   }
 
   .contact-envelope-note {
-    width: min(48%, 10rem);
+    top: 26%;
+    width: min(52%, 11rem);
+    max-height: 46%;
     font-size: 9px;
+  }
+
+  .contact-envelope-note__send {
+    min-height: 2em;
   }
 
   .contact-details {
