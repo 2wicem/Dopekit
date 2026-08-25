@@ -1,11 +1,11 @@
 # Nails-service
 
-Streamlining nail care and beauty services for **Voltage smuk** — indoor/outdoor manicure and pedicure in Kenya.
+Streamlining nail care and beauty services through *dope kit** — indoor/outdoor beauty services in Kenya.
 
 ## Stack
 
 - **Frontend:** React + Vite + Bootstrap 5
-- **Backend:** Django 5 + SQLite
+- **Backend:** Django 5 + PostgreSQL
 
 ## Project structure
 
