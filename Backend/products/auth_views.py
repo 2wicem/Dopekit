@@ -18,9 +18,11 @@ from django.views.decorators.http import require_http_methods
 from .auth_utils import signup_role_from_account_type, user_to_dict
 from .models import TechnicianApprovalStatus, UserProfile, UserRole
 from .notifications import (
+    notify_owner_technician_application,
     notify_technician_application,
     send_password_reset_email,
     send_password_reset_otp_sms,
+    send_technician_signup_otp_sms,
 )
 from .password_reset_otp import (
     find_user_by_phone,
@@ -29,8 +31,9 @@ from .password_reset_otp import (
     store_otp,
     verify_otp,
 )
+from .technician_signup_otp import clear_signup_phone_verification, store_signup_otp
 from .password_utils import PASSWORD_HINT, password_strength_error
-from .geo_utils import parse_coordinate, validate_latitude, validate_longitude
+from .geo_utils import parse_coordinate, resolve_coordinates, validate_latitude, validate_longitude
 from .technician_showcase import parse_portfolio_urls, portfolio_urls_to_text
 from .technician_verification import is_valid_ke_phone, validate_technician_application
 from .rate_limit import rate_limit
@@ -148,7 +151,7 @@ def register(request):
 
     application_data = None
     if role == UserRole.WORKER:
-        application_data, application_error = validate_technician_application(data)
+        application_data, application_error = validate_technician_application({**data, 'phone': phone})
         if application_error:
             return JsonResponse({'error': application_error}, status=400)
 
@@ -160,26 +163,38 @@ def register(request):
     )
 
     if role == UserRole.WORKER:
-        profile_fields = application_data or {}
+        profile_fields = dict(application_data or {})
+        is_freelance = profile_fields.pop('technician_is_freelance', False)
         if settings.REQUIRE_TECHNICIAN_APPROVAL:
+            initial_status = (
+                TechnicianApprovalStatus.PENDING_ADMIN
+                if is_freelance
+                else TechnicianApprovalStatus.PENDING_OWNER
+            )
             UserProfile.objects.create(
                 user=user,
                 phone=phone,
                 role=UserRole.CLIENT,
-                technician_approval=TechnicianApprovalStatus.PENDING,
+                technician_approval=initial_status,
                 **profile_fields,
             )
+            clear_signup_phone_verification(phone)
             auth_login(request, user)
             try:
-                notify_technician_application(user)
+                if is_freelance:
+                    notify_technician_application(user)
+                else:
+                    notify_owner_technician_application(user)
             except Exception:
                 pass
+            success_message = (
+                'Application received. A platform admin will review your freelance profile soon.'
+                if is_freelance
+                else 'Application received. Your salon manager will review it first, then platform admin.'
+            )
             return JsonResponse(
                 {
-                    'message': (
-                        'Application received. An admin will verify your details '
-                        'and approve your technician account soon.'
-                    ),
+                    'message': success_message,
                     'user': user_to_dict(user),
                 },
                 status=201,
@@ -192,6 +207,7 @@ def register(request):
             technician_approval=TechnicianApprovalStatus.APPROVED,
             **profile_fields,
         )
+        clear_signup_phone_verification(phone)
     elif role == UserRole.SALON_OWNER:
         profile = UserProfile.objects.create(
             user=user,
@@ -431,13 +447,38 @@ def csrf_bootstrap(request):
     return JsonResponse({'ok': True})
 
 
+@csrf_exempt
+@require_http_methods(['POST'])
+@rate_limit('auth_technician_signup_otp')
+def send_technician_signup_otp(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    phone = data.get('phone', '').strip()
+    if not is_valid_ke_phone(phone):
+        return JsonResponse({'error': 'Enter a valid Kenyan phone number.'}, status=400)
+
+    otp = store_signup_otp(phone)
+    sms_sent = send_technician_signup_otp_sms(phone, otp)
+    response = {
+        'message': 'If this number can receive SMS, we sent a verification code.',
+        'masked_phone': mask_phone(phone),
+    }
+    if settings.DEBUG and not sms_sent:
+        response['debug_otp'] = otp
+    return JsonResponse(response)
+
+
 @require_http_methods(['GET'])
 def signup_config(request):
     return JsonResponse(
         {
             'allow_technician_signup': settings.ALLOW_TECHNICIAN_SELF_SIGNUP,
             'require_technician_approval': settings.REQUIRE_TECHNICIAN_APPROVAL,
-            'require_technician_invite_code': bool(settings.TECHNICIAN_SIGNUP_CODE),
+            'require_technician_phone_otp': True,
+            'require_salon_invite_code': True,
             'password_hint': PASSWORD_HINT,
         }
     )
@@ -483,7 +524,12 @@ def update_profile(request):
 
     update_fields = ['phone', 'default_location']
     profile.phone = phone
+    previous_location = profile.default_location or ''
     profile.default_location = default_location
+    location_changed = default_location != previous_location
+
+    latitude_provided = 'service_latitude' in data and data.get('service_latitude') not in (None, '')
+    longitude_provided = 'service_longitude' in data and data.get('service_longitude') not in (None, '')
 
     if profile.role in (UserRole.WORKER, UserRole.ADMIN):
         if 'technician_work_summary' in data:
@@ -514,6 +560,28 @@ def update_profile(request):
             profile.service_latitude = latitude
             profile.service_longitude = longitude
             update_fields.extend(['service_latitude', 'service_longitude'])
+
+        should_geocode_service_area = default_location and (
+            profile.technician_is_freelance or profile.salon_id is None
+        ) and (
+            location_changed
+            or profile.service_latitude is None
+            or profile.service_longitude is None
+        )
+        if should_geocode_service_area and not (latitude_provided and longitude_provided):
+            latitude, longitude, geo_error = resolve_coordinates(
+                location=default_location,
+                latitude=profile.service_latitude,
+                longitude=profile.service_longitude,
+                latitude_provided=latitude_provided,
+                longitude_provided=longitude_provided,
+            )
+            if geo_error:
+                return JsonResponse({'error': geo_error}, status=400)
+            profile.service_latitude = latitude
+            profile.service_longitude = longitude
+            if 'service_latitude' not in update_fields:
+                update_fields.extend(['service_latitude', 'service_longitude'])
 
     profile.save(update_fields=update_fields)
 

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from products.models import Booking, TimeSlot
+from products.models import Booking, ContactMessage, Salon, SalonContactInfo, TimeSlot
 
 
 class Command(BaseCommand):
@@ -38,6 +38,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Keep booking rows (user links are cleared when users are deleted).',
         )
+        parser.add_argument(
+            '--include-salons',
+            action='store_true',
+            help='Also delete all salon branches and reset contact info to blank.',
+        )
 
     def handle(self, *args, **options):
         if not settings.DEBUG and not options['force']:
@@ -53,6 +58,8 @@ class Command(BaseCommand):
         user_count = users_qs.count()
         slot_count = TimeSlot.objects.count()
         booking_count = Booking.objects.count()
+        salon_count = Salon.objects.count()
+        message_count = ContactMessage.objects.count()
 
         if user_count == 0:
             self.stdout.write(self.style.WARNING('No matching users found; nothing to delete.'))
@@ -70,13 +77,21 @@ class Command(BaseCommand):
             self.stdout.write('Bookings: kept (user/preferred_worker will be cleared)')
             self.stdout.write(f'Time slots removed via worker delete: {slot_count}')
 
+        if options['include_salons']:
+            self.stdout.write(f'Salon branches to delete: {salon_count}')
+            self.stdout.write(f'Contact messages to delete: {message_count}')
+            self.stdout.write('Salon contact info will be reset to blank.')
+
         if options['dry_run']:
             self.stdout.write(self.style.WARNING('Dry run only — no data was changed.'))
             return
 
         if not options['yes']:
             self.stdout.write('')
-            self.stdout.write('Salons and salon contact info will NOT be deleted.')
+            if options['include_salons']:
+                self.stdout.write('All salon branches and contact messages will be deleted.')
+            else:
+                self.stdout.write('Salons and salon contact info will NOT be deleted.')
             confirm = input('Type "delete all users" to confirm: ').strip()
             if confirm != 'delete all users':
                 raise CommandError('Aborted.')
@@ -91,6 +106,21 @@ class Command(BaseCommand):
 
             users_deleted, breakdown = users_qs.delete()
 
+            if options['include_salons']:
+                ContactMessage.objects.all().delete()
+                Salon.objects.all().delete()
+                SalonContactInfo.objects.update_or_create(
+                    pk=1,
+                    defaults={
+                        'phone_primary': '',
+                        'phone_secondary': '',
+                        'email': '',
+                        'location': '',
+                        'services_summary': '',
+                        'page_lead': '',
+                    },
+                )
+
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS(f'Deleted {users_deleted} user-related row(s).'))
         if breakdown:
@@ -101,6 +131,6 @@ class Command(BaseCommand):
             self.stdout.write(f'Removed {slots_deleted} time slot(s) and {bookings_deleted} booking(s).')
 
         self.stdout.write('')
-        self.stdout.write('To recreate demo staff and slots after a wipe:')
-        self.stdout.write('  python manage.py seed_worker_slots')
-        self.stdout.write('  python manage.py create_technician_steve')
+        self.stdout.write('Next steps for a clean platform:')
+        self.stdout.write('  python manage.py createsuperuser')
+        self.stdout.write('  Add salons and staff via /admin or owner signup — no demo accounts are seeded.')

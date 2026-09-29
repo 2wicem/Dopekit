@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dopekit</string>
+    <string name="title_activity_main">Dopekit</string>
+    <string name="package_name">ke.co.dopekit.app</string>
+    <string name="custom_url_scheme">ke.co.dopekit.app</string>
+</resources>

@@ -26,6 +26,8 @@ import ProtectedRoute from "./components/ProtectedRoute"
 
 import Services from "./components/Services"
 
+import DiscoverSalonsTechnicians from "./components/DiscoverSalonsTechnicians"
+
 import SalonDetail from "./components/SalonDetail"
 
 import Signup from "./components/Signup"
@@ -35,6 +37,8 @@ import TechnicianPending from "./components/TechnicianPending"
 import WorkerDashboard from "./components/WorkerDashboard"
 
 import { AuthProvider } from "./context/AuthContext"
+
+import { ThemeProvider } from "./context/ThemeContext"
 
 import { Routes, Route, useLocation } from 'react-router-dom'
 
@@ -61,6 +65,8 @@ const AppShell = () => {
         <Route path='/' element={<Landing />} />
 
         <Route path='/Services' element={<Services />} />
+
+        <Route path='/Services/discover' element={<DiscoverSalonsTechnicians />} />
 
         <Route path='/salons/:slug' element={<SalonDetail />} />
 
@@ -160,11 +166,15 @@ const App = () => {
 
   return (
 
-    <AuthProvider>
+    <ThemeProvider>
 
-      <AppShell />
+      <AuthProvider>
 
-    </AuthProvider>
+        <AppShell />
+
+      </AuthProvider>
+
+    </ThemeProvider>
 
   )
 

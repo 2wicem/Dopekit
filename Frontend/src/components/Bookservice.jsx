@@ -1,5 +1,14 @@
 /* eslint-disable react/prop-types */
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { todayIso } from '../constants/slots'
@@ -51,15 +60,20 @@ const formFromUser = (user, service = '') => {
 
 const isOutdoorVenue = (venue) => venue === 'outdoor'
 
-const Bookservice = ({
-  serviceName = '',
-  variant = 'cta',
-  label = '',
-  workerId = null,
-  workerName = '',
-  salonId = null,
-}) => {
+const Bookservice = forwardRef(function Bookservice(
+  {
+    serviceName = '',
+    variant = 'cta',
+    label = '',
+    workerId = null,
+    workerName = '',
+    salonId = null,
+    hideTrigger = false,
+  },
+  ref
+) {
   const modalId = `booking-modal-${useId().replace(/:/g, '')}`
+  const pendingPrefillRef = useRef(null)
   const location = useLocation()
   const { user, loading: authLoading } = useAuth()
   const [searchParams] = useSearchParams()
@@ -117,12 +131,22 @@ const Bookservice = ({
   const showSalonPicker = salons.length > 0 && !isFreelanceBooking
 
   const closeModal = useCallback(() => {
+    pendingPrefillRef.current = null
     setIsOpen(false)
   }, [])
 
-  const openModal = useCallback(() => {
+  const openModal = useCallback((prefill = null) => {
+    pendingPrefillRef.current = prefill
     setIsOpen(true)
   }, [])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      open: openModal,
+    }),
+    [openModal]
+  )
 
   const loadSalons = useCallback(async (applyInitialSelection = false, initialSalonId = null) => {
     setSalonsLoading(true)
@@ -214,12 +238,14 @@ const Bookservice = ({
       return undefined
     }
 
+    const prefill = pendingPrefillRef.current
+
     setStatus(null)
     setForm(formFromUser(user, prefilledService))
-    setAppointmentDate(todayIso())
+    setAppointmentDate(prefill?.date || todayIso())
     setSelectedSlotId(null)
     setSelectedWorkerId(prefilledWorkerId)
-    loadSalons(true, prefilledSalonId)
+    loadSalons(true, prefill?.salonId ?? prefilledSalonId)
   }, [isOpen, canBook, user, prefilledService, prefilledWorkerId, loadSalons, prefilledSalonId])
 
   useEffect(() => {
@@ -270,6 +296,22 @@ const Bookservice = ({
     setSelectedSlotId(null)
     loadAvailableSlots(appointmentDate, selectedWorkerId)
   }, [appointmentDate, selectedWorkerId, isOpen, canBook, loadAvailableSlots])
+
+  useEffect(() => {
+    if (!isOpen || !canBook || slotsLoading) {
+      return undefined
+    }
+
+    const prefill = pendingPrefillRef.current
+    if (!prefill?.slotId) {
+      return undefined
+    }
+
+    if (availableSlots.some((slot) => slot.id === prefill.slotId)) {
+      setSelectedSlotId(prefill.slotId)
+      pendingPrefillRef.current = null
+    }
+  }, [availableSlots, slotsLoading, isOpen, canBook])
 
   useEffect(() => {
     if (!isOpen) {
@@ -444,21 +486,6 @@ const Bookservice = ({
   const handleOpen = (event) => {
     event.stopPropagation()
     openModal()
-  }
-
-  if (!isOpen) {
-    return (
-      <div className={`booking-trigger${variant === 'table' ? ' booking-trigger--table' : ''}`}>
-        <button
-          type="button"
-          className={`btn btn-primary booking-btn booking-btn--${variant}`}
-          onClick={handleOpen}
-          data-booking-trigger
-        >
-          {triggerLabel}
-        </button>
-      </div>
-    )
   }
 
   const modal = (
@@ -799,18 +826,22 @@ const Bookservice = ({
   )
 
   return (
-    <div className={`booking-trigger${variant === 'table' ? ' booking-trigger--table' : ''}`}>
-      <button
-        type="button"
-        className={`btn btn-primary booking-btn booking-btn--${variant}`}
-        onClick={handleOpen}
-        data-booking-trigger
-      >
-        {triggerLabel}
-      </button>
-      {createPortal(modal, document.body)}
-    </div>
+    <>
+      {!hideTrigger && (
+        <div className={`booking-trigger${variant === 'table' ? ' booking-trigger--table' : ''}`}>
+          <button
+            type="button"
+            className={`btn btn-primary booking-btn booking-btn--${variant}`}
+            onClick={handleOpen}
+            data-booking-trigger
+          >
+            {triggerLabel}
+          </button>
+        </div>
+      )}
+      {isOpen && createPortal(modal, document.body)}
+    </>
   )
-}
+})
 
 export default Bookservice

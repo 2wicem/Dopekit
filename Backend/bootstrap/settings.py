@@ -88,6 +88,7 @@ MIDDLEWARE.extend(
         'corsheaders.middleware.CorsMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.middleware.common.CommonMiddleware',
+        'bootstrap.tunnel_csrf.TrustTunnelCsrfOriginMiddleware',
         'django.middleware.csrf.CsrfViewMiddleware',
         'django.contrib.auth.middleware.AuthenticationMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
@@ -197,6 +198,11 @@ if DEBUG:
     CORS_ALLOWED_ORIGIN_REGEXES = [
         r'^http://192\.168\.\d+\.\d+(:\d+)?$',
         r'^http://10\.\d+\.\d+\.\d+(:\d+)?$',
+        r'^https://[\w-]+\.trycloudflare\.com$',
+        r'^https://[\w-]+\.ngrok-free\.app$',
+        r'^https://[\w-]+\.ngrok\.io$',
+        r'^https://localhost(:\d+)?$',
+        r'^capacitor://localhost$',
     ]
 else:
     CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -265,6 +271,13 @@ X_FRAME_OPTIONS = 'DENY'
 
 SALON_LOCATION = os.getenv('SALON_LOCATION', 'Dopekit Studio, Kikuyu Town')
 
+GEOCODING_ENABLED = env_bool('GEOCODING_ENABLED', 'True')
+GEOCODING_DEFAULT_COUNTRY = os.getenv('GEOCODING_DEFAULT_COUNTRY', 'Kenya').strip()
+GEOCODING_USER_AGENT = os.getenv(
+    'GEOCODING_USER_AGENT',
+    'DopekitNailsService/1.0 (local dev)',
+).strip()
+
 ALLOW_TECHNICIAN_SELF_SIGNUP = env_bool(
     'ALLOW_TECHNICIAN_SELF_SIGNUP',
     'True' if DEBUG else 'False',
@@ -294,6 +307,7 @@ if _redis_url:
 # (max requests, window seconds)
 RATE_LIMITS = {
     'auth_register': (5, 3600),
+    'auth_technician_signup_otp': (8, 3600),
     'auth_login': (10, 900),
     'auth_forgot_password': (5, 3600),
     'auth_reset_password': (5, 3600),

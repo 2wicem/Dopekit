@@ -3,23 +3,40 @@ import { apiFetch } from '../config/api'
 
 const POLL_MS = 45000
 
-const canNotify = () =>
-  typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+const hasNotificationApi = () =>
+  typeof window !== 'undefined' && 'Notification' in window
 
-export const requestWorkerNotifications = async () => {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
+export const getNotificationPermission = () => {
+  if (!hasNotificationApi()) {
     return 'unsupported'
+  }
+  return Notification.permission
+}
+
+export const canNotify = () => getNotificationPermission() === 'granted'
+
+export const requestWorkerNotifications = () => {
+  if (!hasNotificationApi()) {
+    return Promise.resolve('unsupported')
   }
 
   if (Notification.permission === 'granted') {
-    return 'granted'
+    return Promise.resolve('granted')
   }
 
   if (Notification.permission === 'denied') {
-    return 'denied'
+    return Promise.resolve('denied')
   }
 
-  return Notification.requestPermission()
+  try {
+    const result = Notification.requestPermission()
+    if (result && typeof result.then === 'function') {
+      return result
+    }
+    return Promise.resolve(result)
+  } catch {
+    return Promise.resolve('denied')
+  }
 }
 
 const notifyNewBooking = (booking, onOpen) => {

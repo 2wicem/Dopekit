@@ -50,6 +50,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.io'],
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
@@ -61,6 +62,7 @@ export default defineConfig({
   preview: {
     host: true,
     port: 5173,
+    allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.io'],
     proxy: {
       '/api': {
         target: process.env.VITE_DEV_API_PROXY || 'http://127.0.0.1:8000',

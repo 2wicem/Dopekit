@@ -27,7 +27,7 @@ from .models import (
 )
 from .notifications import notify_booking_created
 from .contact_views import _salon_contact_to_dict
-from .geo_utils import parse_coordinate, validate_latitude, validate_longitude
+from .geo_utils import parse_coordinate, resolve_coordinates, validate_latitude, validate_longitude
 from .salon_utils import (
     assign_primary_salon,
     filter_bookings_by_salon,
@@ -37,7 +37,8 @@ from .salon_utils import (
     salon_to_dict,
     unique_slug,
 )
-from .technician_utils import auto_approve_technician, reject_technician
+from .technician_utils import auto_approve_technician, is_pending_admin_review, reject_technician
+from .technician_verification import technician_application_to_dict
 from .technician_showcase import normalize_rating_average, parse_portfolio_urls, portfolio_urls_to_text
 from .views import _booking_to_dict, _forbidden, _unauthorized
 
@@ -63,7 +64,7 @@ def _admin_user_to_dict(user):
         data['salon_id'] = profile.salon_id
         salon = getattr(profile, 'salon', None)
         data['salon_name'] = salon.name if salon else None
-        if profile.technician_approval == TechnicianApprovalStatus.PENDING:
+        if profile and is_pending_admin_review(profile):
             data['technician_application'] = technician_application_to_dict(profile)
     return data
 
@@ -94,7 +95,10 @@ def stats(request):
             'workers': counts_by_role.get(UserRole.WORKER, 0),
             'admins': counts_by_role.get(UserRole.ADMIN, 0),
             'pending_technicians': UserProfile.objects.filter(
-                technician_approval=TechnicianApprovalStatus.PENDING
+                technician_approval__in=(
+                    TechnicianApprovalStatus.PENDING_ADMIN,
+                    TechnicianApprovalStatus.PENDING,
+                )
             ).count(),
             'salon_id': salon_id,
         }
@@ -440,8 +444,13 @@ def list_pending_technicians(request):
         return denied
 
     users = (
-        User.objects.filter(profile__technician_approval=TechnicianApprovalStatus.PENDING)
-        .select_related('profile')
+        User.objects.filter(
+            profile__technician_approval__in=(
+                TechnicianApprovalStatus.PENDING_ADMIN,
+                TechnicianApprovalStatus.PENDING,
+            )
+        )
+        .select_related('profile', 'profile__technician_application_salon')
         .order_by('-date_joined')[:100]
     )
     return JsonResponse({'technicians': [_admin_user_to_dict(user) for user in users]})
@@ -456,7 +465,7 @@ def approve_technician(request, user_id):
 
     target = get_object_or_404(User.objects.select_related('profile'), pk=user_id)
     profile = getattr(target, 'profile', None)
-    if not profile or profile.technician_approval != TechnicianApprovalStatus.PENDING:
+    if not profile or not is_pending_admin_review(profile):
         return JsonResponse({'error': 'No pending technician application for this user.'}, status=400)
 
     auto_approve_technician(profile)
@@ -478,7 +487,7 @@ def reject_technician_view(request, user_id):
 
     target = get_object_or_404(User.objects.select_related('profile'), pk=user_id)
     profile = getattr(target, 'profile', None)
-    if not profile or profile.technician_approval != TechnicianApprovalStatus.PENDING:
+    if not profile or not is_pending_admin_review(profile):
         return JsonResponse({'error': 'No pending technician application for this user.'}, status=400)
 
     reject_technician(profile)
@@ -506,6 +515,8 @@ def _apply_salon_fields(salon: Salon, data: dict) -> str | None:
         salon.email = data.get('email', '').strip()
     if 'location' in data:
         salon.location = data.get('location', '').strip()
+    latitude_provided = 'latitude' in data and data.get('latitude') not in (None, '')
+    longitude_provided = 'longitude' in data and data.get('longitude') not in (None, '')
     if 'latitude' in data:
         latitude = validate_latitude(parse_coordinate(data.get('latitude')))
         if data.get('latitude') not in (None, '') and latitude is None:
@@ -537,6 +548,30 @@ def _apply_salon_fields(salon: Salon, data: dict) -> str | None:
         return 'Email is required.'
     if not salon.location:
         return 'Location is required.'
+
+    has_manual_coords = (
+        latitude_provided
+        and longitude_provided
+        and salon.latitude is not None
+        and salon.longitude is not None
+    )
+    needs_coordinates = (
+        not has_manual_coords
+        and (
+            salon.latitude is None
+            or salon.longitude is None
+            or 'location' in data
+        )
+    )
+    if needs_coordinates:
+        salon.latitude, salon.longitude, geo_error = resolve_coordinates(
+            location=salon.location,
+            latitude=salon.latitude,
+            longitude=salon.longitude,
+        )
+        if geo_error:
+            return geo_error
+
     return None
 
 
@@ -590,6 +625,8 @@ def create_salon(request):
     salon.save()
     if data.get('is_primary'):
         assign_primary_salon(salon)
+
+    ensure_salon_invite_code(salon)
 
     raw_owner_id = data.get('owner_id')
     if raw_owner_id not in (None, '', 'null'):

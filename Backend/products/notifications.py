@@ -4,8 +4,6 @@ import re
 from django.conf import settings
 from django.core.mail import send_mail
 
-from .technician_verification import technician_application_to_dict
-
 logger = logging.getLogger(__name__)
 
 
@@ -206,6 +204,8 @@ def notify_booking_rescheduled(booking) -> dict:
 
 
 def _technician_application_email_body(user) -> str:
+    from .technician_verification import technician_application_to_dict
+
     profile = getattr(user, 'profile', None)
     phone = profile.phone if profile else ''
     application = technician_application_to_dict(profile)
@@ -222,10 +222,13 @@ def _technician_application_email_body(user) -> str:
         lines.extend(
             [
                 '',
+                f'Type: {"Freelance/mobile" if application.get("is_freelance") else "Salon team"}',
+                f'Salon branch: {application.get("application_salon_name") or "—"}',
                 f'Specialty: {application.get("specialty_label") or "—"}',
                 f'Experience: {application.get("experience_years", "—")} year(s)',
                 f'Reference: {application.get("reference_name") or "—"} ({application.get("reference_phone") or "—"})',
-                f'Invite code verified: {"Yes" if application.get("invite_verified") else "No"}',
+                f'Phone verified: {"Yes" if application.get("phone_verified") else "No"}',
+                f'Salon invite verified: {"Yes" if application.get("invite_verified") else "No"}',
             ]
         )
         if application.get('application_note'):
@@ -274,6 +277,94 @@ def notify_technician_application(user) -> dict:
             logger.exception('Failed to send technician application SMS for %s', user.email)
 
     return {'email_sent': email_sent, 'sms_sent': sms_sent}
+
+
+def notify_owner_technician_application(user) -> dict:
+    from .technician_verification import technician_application_to_dict
+
+    profile = getattr(user, 'profile', None)
+    salon = getattr(profile, 'technician_application_salon', None) if profile else None
+    if not salon or not salon.owner_id:
+        return notify_technician_application(user)
+
+    owner = salon.owner
+    owner_profile = getattr(owner, 'profile', None)
+    owner_phone = owner_profile.phone if owner_profile else ''
+    application = technician_application_to_dict(profile)
+
+    subject = f'New technician application for {salon.name}'
+    lines = [
+        f'A technician applied to join {salon.name}.',
+        '',
+        f'Name: {user.first_name or user.username}',
+        f'Email: {user.email}',
+        f'Phone: {profile.phone if profile else "—"}',
+        'Type: Salon team',
+        f'Specialty: {application.get("specialty_label") or "—"}',
+        '',
+        'Log in to My salons → Applications to review this request.',
+    ]
+
+    email_sent = False
+    if owner.email and settings.EMAIL_HOST_USER and settings.EMAIL_HOST_PASSWORD:
+        try:
+            send_mail(
+                subject=subject,
+                message='\n'.join(lines),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[owner.email],
+                fail_silently=False,
+            )
+            email_sent = True
+        except Exception:
+            logger.exception('Failed to notify salon owner about technician application')
+
+    sms_sent = False
+    if owner_phone and settings.AT_API_KEY:
+        try:
+            import africastalking
+
+            africastalking.initialize(settings.AT_USERNAME, settings.AT_API_KEY)
+            sms = africastalking.SMS
+            message = (
+                f'Dopekit: new technician application for {salon.name}. '
+                f'Review it in My salons.'
+            )[:160]
+            kwargs = {}
+            if settings.AT_SENDER_ID:
+                kwargs['sender_id'] = settings.AT_SENDER_ID
+            sms.send(message, [normalize_ke_phone(owner_phone)], **kwargs)
+            sms_sent = True
+        except Exception:
+            logger.exception('Failed to SMS salon owner about technician application')
+
+    return {'email_sent': email_sent, 'sms_sent': sms_sent}
+
+
+def send_technician_signup_otp_sms(phone: str, otp: str) -> bool:
+    if not settings.AT_API_KEY:
+        logger.warning('Technician signup OTP SMS skipped: AT_API_KEY not set.')
+        return False
+
+    ttl_minutes = max(1, getattr(settings, 'PASSWORD_RESET_OTP_TTL', 600) // 60)
+    message = (
+        f'Dopekit verification code: {otp}. '
+        f'Expires in {ttl_minutes} min. Do not share this code.'
+    )[:160]
+
+    try:
+        import africastalking
+
+        africastalking.initialize(settings.AT_USERNAME, settings.AT_API_KEY)
+        sms = africastalking.SMS
+        kwargs = {}
+        if settings.AT_SENDER_ID:
+            kwargs['sender_id'] = settings.AT_SENDER_ID
+        sms.send(message, [normalize_ke_phone(phone)], **kwargs)
+        return True
+    except Exception:
+        logger.exception('Failed to send technician signup OTP SMS to %s', phone)
+        return False
 
 
 def _contact_email_body(contact_message) -> str:

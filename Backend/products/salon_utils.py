@@ -3,6 +3,23 @@ from django.utils.text import slugify
 from .geo_utils import coordinate_pair_to_dict
 from .models import Salon
 
+
+def generate_salon_invite_code() -> str:
+    import secrets
+
+    while True:
+        code = secrets.token_hex(4).upper()
+        if not Salon.objects.filter(technician_invite_code__iexact=code).exists():
+            return code
+
+
+def ensure_salon_invite_code(salon: Salon) -> str:
+    if salon.technician_invite_code:
+        return salon.technician_invite_code
+    salon.technician_invite_code = generate_salon_invite_code()
+    salon.save(update_fields=['technician_invite_code'])
+    return salon.technician_invite_code
+
 def salon_to_dict(salon: Salon, *, include_owner: bool = False) -> dict:
     phones = [salon.phone_primary]
     if salon.phone_secondary:
@@ -28,6 +45,7 @@ def salon_to_dict(salon: Salon, *, include_owner: bool = False) -> dict:
         'whatsapp_url': salon.whatsapp_url,
         'is_active': salon.is_active,
         'is_primary': salon.is_primary,
+        'technician_invite_code': salon.technician_invite_code,
         'updated_at': salon.updated_at.isoformat(),
     }
 

@@ -22,7 +22,7 @@ const LandingFreelancersTab = () => {
           Mobile nail care at your location — browse portfolios and ratings before you book.
         </p>
         <Link
-          to="/Services#technicians"
+          to="/Services/discover#technicians"
           className="btn btn-outline-light btn-sm rounded-pill px-3 landing-btn-secondary"
         >
           All technicians

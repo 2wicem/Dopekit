@@ -5,10 +5,11 @@ import { ROLE_LABELS } from '../constants/roles'
 import { SERVICE_VENUES } from '../constants/serviceVenue'
 import { useAuth } from '../context/useAuth'
 import { useAdminSalon } from '../hooks/useAdminSalon'
-import { apiFetch } from '../config/api'
+import { apiFetch, parseApiResponse } from '../config/api'
 import AdminSalonsPanel from './AdminSalonsPanel'
 import BookingsTable, { RoleBadge } from './BookingsTable'
 import ReportsPanel from './ReportsPanel'
+import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
 import './css/AdminShell.css'
 
@@ -65,11 +66,7 @@ const AdminPanel = () => {
 
   const loadSalons = useCallback(async () => {
     const response = await apiFetch(SALONS_PATH)
-    const text = await response.text()
-    const data = text ? JSON.parse(text) : {}
-    if (!response.ok) {
-      throw new Error(data.error || 'Could not load salons.')
-    }
+    const data = await parseApiResponse(response, 'Salons')
     setSalons(data.salons || [])
     return data.salons || []
   }, [])
@@ -87,21 +84,12 @@ const AdminPanel = () => {
         apiFetch(PENDING_TECHNICIANS_PATH),
       ])
 
-      const parse = async (response) => {
-        const text = await response.text()
-        const data = text ? JSON.parse(text) : {}
-        if (!response.ok) {
-          throw new Error(data.error || 'Request failed.')
-        }
-        return data
-      }
-
       const [statsData, usersData, bookingsData, messagesData, pendingData] = await Promise.all([
-        parse(statsRes),
-        parse(usersRes),
-        parse(bookingsRes),
-        parse(messagesRes),
-        parse(pendingRes),
+        parseApiResponse(statsRes, 'Dashboard stats'),
+        parseApiResponse(usersRes, 'Users'),
+        parseApiResponse(bookingsRes, 'Bookings'),
+        parseApiResponse(messagesRes, 'Messages'),
+        parseApiResponse(pendingRes, 'Technician applications'),
       ])
 
       setStats(statsData)
@@ -466,9 +454,12 @@ const AdminPanel = () => {
             </h1>
             <p className="admin-panel-lead">{salonScopeLabel}</p>
           </div>
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={loadData} disabled={loading}>
-            Refresh
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <ThemeToggle />
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={loadData} disabled={loading}>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {status && (
@@ -698,6 +689,16 @@ const AdminPanel = () => {
 
                         <dl className="technician-review-details">
                           <div>
+                            <dt>Type</dt>
+                            <dd>{application.is_freelance ? 'Freelance' : 'Salon team'}</dd>
+                          </div>
+                          {!application.is_freelance && (
+                            <div>
+                              <dt>Branch</dt>
+                              <dd>{application.application_salon_name || '—'}</dd>
+                            </div>
+                          )}
+                          <div>
                             <dt>Specialty</dt>
                             <dd>{application.specialty_label || '—'}</dd>
                           </div>
@@ -719,9 +720,15 @@ const AdminPanel = () => {
                             </dd>
                           </div>
                           <div>
-                            <dt>Invite code</dt>
-                            <dd>{application.invite_verified ? 'Verified' : 'Not verified'}</dd>
+                            <dt>Phone verified</dt>
+                            <dd>{application.phone_verified ? 'Yes' : 'No'}</dd>
                           </div>
+                          {!application.is_freelance && (
+                            <div>
+                              <dt>Invite code</dt>
+                              <dd>{application.invite_verified ? 'Verified' : 'Not verified'}</dd>
+                            </div>
+                          )}
                         </dl>
 
                         {application.application_note && (
@@ -856,14 +863,17 @@ const AdminPanel = () => {
                             )}
                           </td>
                           <td>
-                            {entry.technician_approval === 'pending'
-                              ? 'Pending approval'
-                              : entry.technician_approval === 'rejected'
-                                ? 'Rejected'
-                                : entry.technician_approval === 'approved' &&
-                                    entry.role === 'worker'
-                                  ? 'Approved'
-                                  : '—'}
+                            {entry.technician_approval === 'pending_owner'
+                              ? 'Pending salon review'
+                              : entry.technician_approval === 'pending_admin' ||
+                                  entry.technician_approval === 'pending'
+                                ? 'Pending admin review'
+                                : entry.technician_approval === 'rejected'
+                                  ? 'Rejected'
+                                  : entry.technician_approval === 'approved' &&
+                                      entry.role === 'worker'
+                                    ? 'Approved'
+                                    : '—'}
                           </td>
                           <td>{new Date(entry.date_joined).toLocaleDateString()}</td>
                           <td className="dashboard-row-actions">

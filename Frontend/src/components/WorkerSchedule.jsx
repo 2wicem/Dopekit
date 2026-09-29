@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { todayIso } from '../constants/slots'
 import { apiFetch } from '../config/api'
 import './css/Dashboard.css'
@@ -21,11 +21,14 @@ const bookingStatusLabel = (slot) => {
   return STATUS_LABELS[slot.status]
 }
 
+const cloneSlots = (slots) => slots.map((slot) => ({ ...slot }))
+
 const WorkerSchedule = ({ onChanged = null }) => {
   const [date, setDate] = useState(todayIso())
-  const [slots, setSlots] = useState([])
+  const [savedSlots, setSavedSlots] = useState([])
+  const [draftSlots, setDraftSlots] = useState([])
   const [loading, setLoading] = useState(true)
-  const [toggling, setToggling] = useState(null)
+  const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null)
   const [offDayLoading, setOffDayLoading] = useState(false)
 
@@ -42,10 +45,13 @@ const WorkerSchedule = ({ onChanged = null }) => {
         throw new Error(data.error || 'Could not load schedule.')
       }
 
-      setSlots(data.slots || [])
+      const nextSlots = data.slots || []
+      setSavedSlots(nextSlots)
+      setDraftSlots(cloneSlots(nextSlots))
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
-      setSlots([])
+      setSavedSlots([])
+      setDraftSlots([])
     } finally {
       setLoading(false)
     }
@@ -55,47 +61,112 @@ const WorkerSchedule = ({ onChanged = null }) => {
     loadSlots()
   }, [loadSlots])
 
+  const hasChanges = useMemo(() => {
+    if (savedSlots.length !== draftSlots.length) {
+      return true
+    }
+
+    return draftSlots.some((slot, index) => {
+      const saved = savedSlots[index]
+      if (!saved || slot.start_hour !== saved.start_hour) {
+        return true
+      }
+      if (slot.status === 'booked' || saved.status === 'booked') {
+        return false
+      }
+      return slot.status !== saved.status
+    })
+  }, [draftSlots, savedSlots])
+
   const shiftDate = (days) => {
+    if (hasChanges) {
+      const leave = window.confirm('You have unsaved working hours. Discard changes and change day?')
+      if (!leave) {
+        return
+      }
+    }
+
     const next = new Date(`${date}T12:00:00`)
     next.setDate(next.getDate() + days)
     setDate(next.toISOString().slice(0, 10))
   }
 
-  const toggleSlot = async (slot) => {
+  const handleDateChange = (nextDate) => {
+    if (hasChanges) {
+      const leave = window.confirm('You have unsaved working hours. Discard changes and change day?')
+      if (!leave) {
+        return
+      }
+    }
+    setDate(nextDate)
+  }
+
+  const toggleDraftSlot = (slot) => {
     if (slot.status === 'booked') {
       return
     }
 
-    const nextStatus = slot.status === 'available' ? 'unavailable' : 'available'
-    setToggling(slot.start_hour)
+    setDraftSlots((current) =>
+      current.map((item) => {
+        if (item.start_hour !== slot.start_hour || item.status === 'booked') {
+          return item
+        }
+
+        return {
+          ...item,
+          status: item.status === 'available' ? 'unavailable' : 'available',
+        }
+      })
+    )
+  }
+
+  const handleCancelChanges = () => {
+    setDraftSlots(cloneSlots(savedSlots))
+    setStatus(null)
+  }
+
+  const handleSubmitSchedule = async () => {
+    const changes = draftSlots.filter((slot, index) => {
+      const saved = savedSlots[index]
+      if (!saved || slot.status === 'booked' || saved.status === 'booked') {
+        return false
+      }
+      return slot.status !== saved.status
+    })
+
+    if (changes.length === 0) {
+      return
+    }
+
+    setSaving(true)
     setStatus(null)
 
     try {
-      const response = await apiFetch(TOGGLE_PATH, {
-        method: 'POST',
-        body: JSON.stringify({
-          date,
-          start_hour: slot.start_hour,
-          status: nextStatus,
-        }),
-      })
+      for (const slot of changes) {
+        const response = await apiFetch(TOGGLE_PATH, {
+          method: 'POST',
+          body: JSON.stringify({
+            date,
+            start_hour: slot.start_hour,
+            status: slot.status,
+          }),
+        })
 
-      const text = await response.text()
-      const data = text ? JSON.parse(text) : {}
+        const text = await response.text()
+        const data = text ? JSON.parse(text) : {}
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not update slot.')
+        if (!response.ok) {
+          throw new Error(data.error || `Could not update ${slot.label}.`)
+        }
       }
 
-      setSlots((current) =>
-        current.map((item) =>
-          item.start_hour === slot.start_hour ? { ...item, ...data.slot } : item
-        )
-      )
+      setStatus({ type: 'success', message: 'Working hours saved.' })
+      await loadSlots()
+      onChanged?.()
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
-      setToggling(null)
+      setSaving(false)
     }
   }
 
@@ -146,7 +217,7 @@ const WorkerSchedule = ({ onChanged = null }) => {
         <div>
           <h2 className="worker-schedule-title">Your 2-hour slots</h2>
           <p className="text-muted mb-0 worker-schedule-subtitle">
-            Mark slots as available so clients can book. Booked slots lock automatically.
+            Tap slots to set your availability, then submit to save. Booked slots lock automatically.
           </p>
         </div>
         <div className="worker-schedule-nav">
@@ -158,7 +229,7 @@ const WorkerSchedule = ({ onChanged = null }) => {
             className="form-control form-control-sm worker-schedule-date"
             value={date}
             min={todayIso()}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => handleDateChange(e.target.value)}
           />
           <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => shiftDate(1)}>
             Next →
@@ -173,9 +244,9 @@ const WorkerSchedule = ({ onChanged = null }) => {
           type="button"
           className="btn btn-sm btn-outline-secondary worker-offday-btn"
           onClick={markOffDay}
-          disabled={offDayLoading}
+          disabled={offDayLoading || saving}
         >
-          {offDayLoading ? 'Saving...' : 'Mark off day'}
+          {offDayLoading ? 'Saving…' : 'Mark off day'}
         </button>
       </div>
 
@@ -189,20 +260,27 @@ const WorkerSchedule = ({ onChanged = null }) => {
         <p className="text-center text-muted">Loading schedule...</p>
       ) : (
         <div className="worker-slot-grid">
-          {slots.map((slot) => {
+          {draftSlots.map((slot) => {
+            const saved = savedSlots.find((item) => item.start_hour === slot.start_hour)
             const isBooked = slot.status === 'booked'
             const isPending = isBooked && slot.booking?.status === 'pending'
             const isAvailable = slot.status === 'available'
-            const busy = toggling === slot.start_hour
+            const isDirty =
+              !isBooked &&
+              saved &&
+              saved.status !== 'booked' &&
+              slot.status !== saved.status
             const cardStatus = isPending ? 'pending' : slot.status
 
             return (
               <button
                 key={slot.start_hour}
                 type="button"
-                className={`worker-slot-card worker-slot-card--${cardStatus}`}
-                onClick={() => toggleSlot(slot)}
-                disabled={isBooked || busy}
+                className={`worker-slot-card worker-slot-card--${cardStatus}${
+                  isDirty ? ' worker-slot-card--dirty' : ''
+                }`}
+                onClick={() => toggleDraftSlot(slot)}
+                disabled={isBooked || saving}
                 title={
                   isPending
                     ? slot.booking
@@ -225,11 +303,37 @@ const WorkerSchedule = ({ onChanged = null }) => {
                   </span>
                 )}
                 {!isBooked && (
-                  <span className="worker-slot-hint">{busy ? 'Saving...' : 'Tap to toggle'}</span>
+                  <span className="worker-slot-hint">
+                    {isDirty ? 'Changed — submit below' : 'Tap to toggle'}
+                  </span>
                 )}
               </button>
             )
           })}
+        </div>
+      )}
+
+      {hasChanges && !loading && (
+        <div className="worker-schedule-submit-bar">
+          <p className="worker-schedule-submit-note">You have unsaved working hours for this day.</p>
+          <div className="worker-schedule-submit-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSubmitSchedule}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Submit working hours'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={handleCancelChanges}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -10,12 +10,12 @@
   overflow: hidden;
   background: linear-gradient(
     165deg,
-    var(--dk-plum-deep, #3a1f33) 0%,
-    #4a2a42 45%,
-    #3d3040 100%
+    var(--dk-surface) 0%,
+    var(--dk-surface-raised) 45%,
+    var(--dk-surface) 100%
   );
-  border: 1px solid rgba(255, 143, 171, 0.35);
-  box-shadow: 0 16px 48px rgba(58, 31, 51, 0.45);
+  border: 1px solid var(--dk-border);
+  box-shadow: 0 16px 48px rgba(58, 31, 51, 0.18);
 }
 
 .signup-card-header {
@@ -231,6 +231,65 @@ select.signup-input,
   font-size: 0.84rem;
   line-height: 1.45;
   color: var(--dk-text-muted, #e0cdd6);
+}
+
+.signup-phone-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.signup-phone-row .signup-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.signup-technician-type {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.signup-technician-type-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.signup-technician-type-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 143, 171, 0.28);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.signup-technician-type-option input {
+  margin-top: 0.2rem;
+}
+
+.signup-technician-type-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.signup-technician-type-option strong {
+  font-size: 0.88rem;
+  color: var(--dk-text, #f3e8ec);
+}
+
+.signup-technician-type-option small {
+  font-size: 0.76rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.signup-technician-type-option:has(input:checked) {
+  border-color: rgba(232, 184, 109, 0.55);
+  background: rgba(224, 107, 138, 0.12);
 }
 
 .signup-optional {

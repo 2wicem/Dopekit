@@ -14,7 +14,9 @@ import './css/Signup.css'
 const SIGNUP_CONFIG_PATH = '/products/auth/signup-config/'
 
 const emptyTechnicianFields = {
+  technician_type: 'salon',
   technician_invite_code: '',
+  phone_otp: '',
   technician_specialty: '',
   technician_experience_years: '',
   technician_reference_name: '',
@@ -31,7 +33,9 @@ const Signup = () => {
   const prefilledType = parseSignupAccountType(searchParams.get('type'))
   const [allowTechnicianSignup, setAllowTechnicianSignup] = useState(true)
   const [requireTechnicianApproval, setRequireTechnicianApproval] = useState(true)
-  const [requireTechnicianInviteCode, setRequireTechnicianInviteCode] = useState(true)
+  const [requireTechnicianPhoneOtp, setRequireTechnicianPhoneOtp] = useState(true)
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpSent, setOtpSent] = useState(false)
   const [accountType, setAccountType] = useState('client')
   const [form, setForm] = useState({
     username: '',
@@ -51,7 +55,7 @@ const Signup = () => {
         const allowed = data.allow_technician_signup !== false
         setAllowTechnicianSignup(allowed)
         setRequireTechnicianApproval(data.require_technician_approval === true)
-        setRequireTechnicianInviteCode(data.require_technician_invite_code === true)
+        setRequireTechnicianPhoneOtp(data.require_technician_phone_otp !== false)
         const nextType =
           prefilledType === 'salon_owner'
             ? 'salon_owner'
@@ -71,6 +75,38 @@ const Signup = () => {
     ? Object.values(ACCOUNT_TYPES)
     : [ACCOUNT_TYPES.client, ACCOUNT_TYPES.salon_owner]
   const isTechnicianSignup = accountType === 'technician'
+  const isSalonTechnician = form.technician_type === 'salon'
+
+  const handleSendOtp = async () => {
+    if (!form.phone.trim()) {
+      setStatus({ type: 'error', message: 'Enter your phone number first.' })
+      return
+    }
+
+    setOtpSending(true)
+    setStatus(null)
+    try {
+      const response = await apiFetch('/products/auth/technician/send-otp/', {
+        method: 'POST',
+        body: JSON.stringify({ phone: form.phone.trim() }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not send verification code.')
+      }
+      setOtpSent(true)
+      setStatus({
+        type: 'success',
+        message: data.debug_otp
+          ? `Code sent (dev: ${data.debug_otp})`
+          : data.message || 'Verification code sent.',
+      })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setOtpSending(false)
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -111,15 +147,22 @@ const Signup = () => {
     }
 
     if (isTechnicianSignup) {
-      if (requireTechnicianInviteCode && !form.technician_invite_code.trim()) {
-        setStatus({ type: 'error', message: 'Enter the salon invite code from your manager.' })
+      if (requireTechnicianPhoneOtp && !form.phone_otp.trim()) {
+        setStatus({ type: 'error', message: 'Enter the SMS verification code sent to your phone.' })
+        setLoading(false)
+        return
+      }
+      if (isSalonTechnician && !form.technician_invite_code.trim()) {
+        setStatus({ type: 'error', message: 'Enter the salon invite code from your branch manager.' })
         setLoading(false)
         return
       }
       if (!form.staff_authorized) {
         setStatus({
           type: 'error',
-          message: 'Confirm that you are an authorized salon team member.',
+          message: isSalonTechnician
+            ? 'Confirm that you are authorized to apply as salon staff.'
+            : 'Confirm that your freelance application details are accurate.',
         })
         setLoading(false)
         return
@@ -137,6 +180,8 @@ const Signup = () => {
 
     if (isTechnicianSignup) {
       Object.assign(payload, {
+        technician_type: form.technician_type,
+        phone_otp: form.phone_otp.trim(),
         technician_invite_code: form.technician_invite_code.trim(),
         technician_specialty: form.technician_specialty,
         technician_experience_years: form.technician_experience_years,
@@ -239,29 +284,94 @@ const Signup = () => {
                 <label htmlFor="signup-phone" className="form-label">
                   Phone
                 </label>
-                <input
-                  type="tel"
-                  className="form-control signup-input"
-                  id="signup-phone"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  autoComplete="tel"
-                  inputMode="tel"
-                  placeholder="e.g. 0790331108"
-                  required
-                />
+                <div className="signup-phone-row">
+                  <input
+                    type="tel"
+                    className="form-control signup-input"
+                    id="signup-phone"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    autoComplete="tel"
+                    inputMode="tel"
+                    placeholder="e.g. 0790331108"
+                    required
+                  />
+                  {isTechnicianSignup && requireTechnicianPhoneOtp && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm"
+                      onClick={handleSendOtp}
+                      disabled={otpSending || !form.phone.trim()}
+                    >
+                      {otpSending ? 'Sending…' : otpSent ? 'Resend code' : 'Send code'}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {isTechnicianSignup && requireTechnicianPhoneOtp && (
+                <div className="mb-3">
+                  <label htmlFor="signup-phone-otp" className="form-label">
+                    SMS verification code
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control signup-input"
+                    id="signup-phone-otp"
+                    name="phone_otp"
+                    value={form.phone_otp}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="6-digit code"
+                    required
+                  />
+                </div>
+              )}
 
               {isTechnicianSignup && (
                 <div className="signup-verification-block">
-                  <h2 className="signup-verification-title">Team verification</h2>
+                  <h2 className="signup-verification-title">Technician verification</h2>
                   <p className="signup-verification-lead">
-                    Only authorized Dopekit salon staff can apply. Your manager will review these
-                    details before your account is activated.
+                    {isSalonTechnician
+                      ? 'Salon team members need a branch invite code, phone verification, and manager approval before platform admin activates the account.'
+                      : 'Freelance technicians are verified by phone and reviewed by platform admin before they can accept bookings.'}
                   </p>
 
-                  {requireTechnicianInviteCode && (
+                  <fieldset className="signup-technician-type mb-3">
+                    <legend className="form-label">How are you joining?</legend>
+                    <div className="signup-technician-type-options">
+                      <label className="signup-technician-type-option">
+                        <input
+                          type="radio"
+                          name="technician_type"
+                          value="salon"
+                          checked={form.technician_type === 'salon'}
+                          onChange={handleChange}
+                        />
+                        <span>
+                          <strong>Salon team</strong>
+                          <small>I work at a Dopekit branch</small>
+                        </span>
+                      </label>
+                      <label className="signup-technician-type-option">
+                        <input
+                          type="radio"
+                          name="technician_type"
+                          value="freelance"
+                          checked={form.technician_type === 'freelance'}
+                          onChange={handleChange}
+                        />
+                        <span>
+                          <strong>Freelance</strong>
+                          <small>I work independently</small>
+                        </span>
+                      </label>
+                    </div>
+                  </fieldset>
+
+                  {isSalonTechnician && (
                     <div className="mb-3">
                       <label htmlFor="signup-invite-code" className="form-label">
                         Salon invite code
@@ -274,7 +384,7 @@ const Signup = () => {
                         value={form.technician_invite_code}
                         onChange={handleChange}
                         autoComplete="off"
-                        placeholder="From your salon manager"
+                        placeholder="From your branch manager"
                         required
                       />
                     </div>
@@ -321,7 +431,7 @@ const Signup = () => {
 
                   <div className="mb-3">
                     <label htmlFor="signup-reference-name" className="form-label">
-                      Salon reference name
+                      {isSalonTechnician ? 'Salon reference name' : 'Professional reference name'}
                     </label>
                     <input
                       type="text"
@@ -330,7 +440,9 @@ const Signup = () => {
                       name="technician_reference_name"
                       value={form.technician_reference_name}
                       onChange={handleChange}
-                      placeholder="Supervisor or salon manager"
+                      placeholder={
+                        isSalonTechnician ? 'Supervisor or salon manager' : 'Previous employer or mentor'
+                      }
                       required
                     />
                   </div>
@@ -377,8 +489,9 @@ const Signup = () => {
                       required
                     />
                     <span>
-                      I confirm I am an authorized Dopekit salon team member applying for a
-                      technician account.
+                      {isSalonTechnician
+                        ? 'I confirm I am authorized to apply as salon staff at the branch matching my invite code.'
+                        : 'I confirm my freelance application details are accurate and I am ready for platform review.'}
                     </span>
                   </label>
                 </div>
@@ -417,8 +530,9 @@ const Signup = () => {
 
               {isTechnicianSignup && requireTechnicianApproval && (
                 <p className="signup-team-note">
-                  Applications are reviewed manually. You cannot access the staff dashboard until
-                  an admin approves your details.
+                  {isSalonTechnician
+                    ? 'Your branch manager reviews salon applications first, then platform admin gives final approval.'
+                    : 'Freelance applications go straight to platform admin for verification.'}
                 </p>
               )}
 

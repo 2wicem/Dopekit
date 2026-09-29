@@ -10,8 +10,15 @@ from .admin_views import _apply_salon_fields
 from .auth_utils import user_to_dict
 from .models import Salon, TechnicianApprovalStatus, UserProfile, UserRole
 from .salon_owner_permissions import get_owned_salon, owned_salon_queryset, require_salon_owner
-from .salon_utils import salon_to_dict, unique_slug
-from .technician_utils import is_approved_technician
+from .salon_utils import ensure_salon_invite_code, salon_to_dict, unique_slug
+from .technician_utils import (
+    forward_technician_to_admin,
+    is_approved_technician,
+    is_pending_owner_review,
+    reject_technician,
+)
+from .technician_verification import technician_application_to_dict
+from .notifications import notify_technician_application
 
 User = get_user_model()
 
@@ -99,6 +106,7 @@ def create_owner_salon(request):
         return JsonResponse({'error': error}, status=400)
 
     salon.save()
+    ensure_salon_invite_code(salon)
 
     return JsonResponse(
         {
@@ -252,5 +260,112 @@ def owner_me(request):
             'user': user_to_dict(owner),
             'branch_count': salons.count(),
             'technician_count': staff_count,
+        }
+    )
+
+
+def _application_to_dict(user):
+    profile = user.profile
+    application = technician_application_to_dict(profile)
+    return {
+        'id': user.id,
+        'name': user.first_name or user.username,
+        'email': user.email,
+        'phone': profile.phone,
+        'date_joined': user.date_joined.isoformat(),
+        'technician_application': application,
+    }
+
+
+@require_http_methods(['GET'])
+def list_owner_applications(request):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    owned_ids = list(owned_salon_queryset(owner).values_list('id', flat=True))
+    users = (
+        User.objects.filter(
+            profile__technician_approval=TechnicianApprovalStatus.PENDING_OWNER,
+            profile__technician_application_salon_id__in=owned_ids,
+        )
+        .select_related('profile', 'profile__technician_application_salon')
+        .order_by('-date_joined')[:100]
+    )
+    return JsonResponse({'applications': [_application_to_dict(user) for user in users]})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def approve_owner_application(request, user_id):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    owned_ids = set(owned_salon_queryset(owner).values_list('id', flat=True))
+    target = get_object_or_404(
+        User.objects.select_related('profile', 'profile__technician_application_salon'),
+        pk=user_id,
+    )
+    profile = getattr(target, 'profile', None)
+    if (
+        not profile
+        or not is_pending_owner_review(profile)
+        or profile.technician_application_salon_id not in owned_ids
+    ):
+        return JsonResponse({'error': 'Application not found.'}, status=404)
+
+    forward_technician_to_admin(profile)
+    try:
+        notify_technician_application(target)
+    except Exception:
+        pass
+
+    return JsonResponse(
+        {
+            'message': 'Application forwarded to platform admin for final approval.',
+            'application': _application_to_dict(target),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def reject_owner_application(request, user_id):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    owned_ids = set(owned_salon_queryset(owner).values_list('id', flat=True))
+    target = get_object_or_404(User.objects.select_related('profile'), pk=user_id)
+    profile = getattr(target, 'profile', None)
+    if (
+        not profile
+        or not is_pending_owner_review(profile)
+        or profile.technician_application_salon_id not in owned_ids
+    ):
+        return JsonResponse({'error': 'Application not found.'}, status=404)
+
+    reject_technician(profile)
+    return JsonResponse({'message': 'Application rejected.', 'application': _application_to_dict(target)})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def regenerate_salon_invite_code(request, salon_id):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    salon = get_owned_salon(owner, salon_id)
+    from .salon_utils import generate_salon_invite_code
+
+    salon.technician_invite_code = generate_salon_invite_code()
+    salon.save(update_fields=['technician_invite_code'])
+
+    return JsonResponse(
+        {
+            'message': 'Invite code regenerated.',
+            'salon': _owner_salon_to_dict(salon),
         }
     )

@@ -1,10 +1,13 @@
 from .models import TechnicianApprovalStatus, UserRole
 from .technician_showcase import parse_portfolio_urls
+from .technician_utils import technician_is_pending
 from .technician_verification import technician_application_to_dict
 
 TECHNICIAN_APPROVAL_LABELS = {
     TechnicianApprovalStatus.NOT_APPLICABLE: 'Not applicable',
-    TechnicianApprovalStatus.PENDING: 'Pending approval',
+    TechnicianApprovalStatus.PENDING: 'Pending admin review',
+    TechnicianApprovalStatus.PENDING_OWNER: 'Pending salon review',
+    TechnicianApprovalStatus.PENDING_ADMIN: 'Pending admin review',
     TechnicianApprovalStatus.APPROVED: 'Approved',
     TechnicianApprovalStatus.REJECTED: 'Rejected',
 }
@@ -30,13 +33,13 @@ def user_to_dict(user):
             technician_approval,
             technician_approval,
         ),
-        'technician_pending': technician_approval == TechnicianApprovalStatus.PENDING,
+        'technician_pending': technician_is_pending(profile) if profile else False,
         'default_location': profile.default_location if profile else '',
         'is_staff': user.is_staff,
         'date_joined': user.date_joined.isoformat() if user.date_joined else None,
     }
 
-    if profile and technician_approval != TechnicianApprovalStatus.NOT_APPLICABLE:
+    if profile and technician_is_pending(profile):
         application = technician_application_to_dict(profile)
         if application.get('specialty') or profile.technician_experience_years:
             data['technician_application'] = application

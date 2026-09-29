@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _salon_contact_to_dict(info):
-    phones = [info.phone_primary]
-    if info.phone_secondary:
-        phones.append(info.phone_secondary)
+    phones = [phone for phone in (info.phone_primary, info.phone_secondary) if phone]
 
     return {
         'phones': phones,

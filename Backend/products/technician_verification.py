@@ -1,8 +1,9 @@
-import re
-
 from django.conf import settings
 
-PHONE_DIGITS = re.compile(r'\D')
+from .models import Salon, TechnicianApprovalStatus
+from .technician_signup_otp import is_phone_verified_for_signup, verify_signup_otp
+
+PHONE_DIGITS = __import__('re').compile(r'\D')
 
 VALID_SPECIALTIES = {
     'manicure',
@@ -40,10 +41,33 @@ def is_valid_ke_phone(phone: str) -> bool:
 
 
 def invite_code_required() -> bool:
-    return bool(getattr(settings, 'TECHNICIAN_SIGNUP_CODE', '').strip())
+    return True
+
+
+def resolve_salon_from_invite_code(code: str) -> Salon | None:
+    normalized = (code or '').strip().upper()
+    if not normalized:
+        return None
+    return Salon.objects.filter(technician_invite_code__iexact=normalized, is_active=True).first()
 
 
 def validate_technician_application(data) -> tuple[dict | None, str | None]:
+    technician_type = (data.get('technician_type') or 'salon').strip().lower()
+    if technician_type not in ('salon', 'freelance'):
+        return None, 'Choose whether you are joining a salon team or applying as freelance.'
+
+    phone = data.get('phone', '').strip()
+    phone_otp = data.get('phone_otp', '').strip()
+    if not is_valid_ke_phone(phone):
+        return None, 'Enter a valid Kenyan phone number.'
+
+    if phone_otp:
+        verified, otp_error = verify_signup_otp(phone, phone_otp)
+        if not verified:
+            return None, otp_error
+    elif not is_phone_verified_for_signup(phone):
+        return None, 'Verify your phone number with the SMS code before applying.'
+
     invite_code = data.get('technician_invite_code', '').strip()
     specialty = data.get('technician_specialty', '').strip().lower()
     experience_raw = data.get('technician_experience_years')
@@ -52,15 +76,10 @@ def validate_technician_application(data) -> tuple[dict | None, str | None]:
     application_note = data.get('technician_application_note', '').strip()
     staff_authorized = data.get('staff_authorized') is True
 
-    required_code = getattr(settings, 'TECHNICIAN_SIGNUP_CODE', '').strip()
-    if required_code:
-        if not invite_code:
-            return None, 'Salon invite code is required for technician applications.'
-        if invite_code.upper() != required_code.upper():
-            return None, 'Invalid salon invite code. Ask the salon admin for the team code.'
-
     if not staff_authorized:
-        return None, 'You must confirm that you are an authorized salon team member.'
+        if technician_type == 'freelance':
+            return None, 'You must confirm that your application details are accurate.'
+        return None, 'You must confirm that you are authorized to apply as salon staff.'
 
     if specialty not in VALID_SPECIALTIES:
         return None, 'Please select your nail service specialty.'
@@ -74,13 +93,30 @@ def validate_technician_application(data) -> tuple[dict | None, str | None]:
         return None, 'Years of experience must be between 0 and 50.'
 
     if len(reference_name) < 2:
-        return None, 'Enter the name of your salon supervisor or reference.'
+        return None, 'Enter the name of your supervisor or reference.'
 
     if not is_valid_ke_phone(reference_phone):
         return None, 'Enter a valid Kenyan reference phone number.'
 
     if len(application_note) > 500:
         return None, 'Application note is too long (max 500 characters).'
+
+    application_salon = None
+    invite_verified = False
+
+    if technician_type == 'salon':
+        application_salon = resolve_salon_from_invite_code(invite_code)
+        if not application_salon:
+            legacy_code = getattr(settings, 'TECHNICIAN_SIGNUP_CODE', '').strip()
+            if legacy_code and invite_code.upper() == legacy_code.upper():
+                from .salon_utils import get_primary_salon
+
+                application_salon = get_primary_salon()
+            if not application_salon:
+                return None, 'Enter a valid salon invite code from your branch manager.'
+        invite_verified = True
+    elif invite_code:
+        return None, 'Salon invite codes are only used for salon team applications.'
 
     return (
         {
@@ -89,7 +125,10 @@ def validate_technician_application(data) -> tuple[dict | None, str | None]:
             'technician_reference_name': reference_name,
             'technician_reference_phone': reference_phone,
             'technician_application_note': application_note,
-            'technician_invite_verified': bool(required_code and invite_code),
+            'technician_invite_verified': invite_verified,
+            'technician_is_freelance': technician_type == 'freelance',
+            'technician_application_salon': application_salon,
+            'technician_phone_verified': True,
         },
         None,
     )
@@ -100,6 +139,7 @@ def technician_application_to_dict(profile) -> dict:
         return {}
 
     specialty = profile.technician_specialty or ''
+    application_salon = getattr(profile, 'technician_application_salon', None)
     return {
         'specialty': specialty,
         'specialty_label': SPECIALTY_LABELS.get(specialty, specialty.replace('_', ' ').title()),
@@ -108,4 +148,9 @@ def technician_application_to_dict(profile) -> dict:
         'reference_phone': profile.technician_reference_phone,
         'application_note': profile.technician_application_note,
         'invite_verified': profile.technician_invite_verified,
+        'is_freelance': profile.technician_is_freelance,
+        'phone_verified': profile.technician_phone_verified,
+        'application_salon_id': application_salon.id if application_salon else None,
+        'application_salon_name': application_salon.name if application_salon else None,
+        'approval_stage': profile.technician_approval,
     }

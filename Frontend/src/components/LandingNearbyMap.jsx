@@ -126,7 +126,8 @@ const LandingNearbyMap = () => {
       </div>
 
       <p className="landing-nearby-map-hint text-center">
-        Tip: tap anywhere on the map to place yourself if GPS is blocked.
+        Scroll the page as usual — the map stays still. Tap <strong>Move map</strong> only if you need to pan,
+        or tap the map to drop your pin if GPS is blocked.
       </p>
 
       {!loading && nearestMarkers.length > 0 && (

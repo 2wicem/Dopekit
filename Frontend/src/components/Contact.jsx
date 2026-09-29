@@ -1,20 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import contactEnvelope from './images/contact-envelope.svg'
 import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
+import { useContactInfo } from '../hooks/useContactInfo'
 import './css/Contact.css'
 
 const CONTACT_PATH = '/products/contact/'
-const CONTACT_INFO_PATH = '/products/contact/info/'
-
-const DEFAULT_CONTACT_INFO = {
-  phones: ['0790331108', '0727083181'],
-  email: 'dopekit@gmail.com',
-  location: 'Wangige Mall',
-  services_summary: 'Indoor and outdoor manicure & pedicure',
-  page_lead:
-    'Have a question or want to book an appointment? Reach out — we would love to hear from you.',
-}
 
 const formatPhoneDisplay = (phone) => {
   const digits = phone.replace(/\D/g, '')
@@ -52,31 +43,10 @@ const noteFromUser = (user) => {
 
 const Contact = () => {
   const { user } = useAuth()
-  const [contactInfo, setContactInfo] = useState(DEFAULT_CONTACT_INFO)
+  const { contactInfo, loading: infoLoading, hasContactDetails } = useContactInfo()
   const [note, setNote] = useState(emptyNote)
   const [noteStatus, setNoteStatus] = useState(null)
   const [sending, setSending] = useState(false)
-  const [infoLoading, setInfoLoading] = useState(true)
-
-  const loadContactInfo = useCallback(async () => {
-    try {
-      const response = await apiFetch(CONTACT_INFO_PATH)
-      const text = await response.text()
-      const data = text ? JSON.parse(text) : {}
-
-      if (response.ok && data.contact_info) {
-        setContactInfo(data.contact_info)
-      }
-    } catch {
-      setContactInfo(DEFAULT_CONTACT_INFO)
-    } finally {
-      setInfoLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadContactInfo()
-  }, [loadContactInfo])
 
   useEffect(() => {
     setNote(noteFromUser(user))
@@ -138,7 +108,7 @@ const Contact = () => {
         <header className="contact-header text-center">
           <h1 className="contact-title">Contact Us</h1>
           <p className="contact-lead">
-            {infoLoading ? DEFAULT_CONTACT_INFO.page_lead : contactInfo.page_lead}
+            {infoLoading ? 'Loading contact details…' : contactInfo.page_lead}
           </p>
         </header>
 
@@ -240,11 +210,15 @@ const Contact = () => {
                     <div className="contact-detail__body">
                       <strong>Phone</strong>
                       <div className="contact-detail__phones">
-                        {phones.map((phone) => (
-                          <a key={phone} href={phoneTelHref(phone)}>
-                            {formatPhoneDisplay(phone)}
-                          </a>
-                        ))}
+                        {phones.length > 0 ? (
+                          phones.map((phone) => (
+                            <a key={phone} href={phoneTelHref(phone)}>
+                              {formatPhoneDisplay(phone)}
+                            </a>
+                          ))
+                        ) : (
+                          <span className="text-muted">Not set yet</span>
+                        )}
                       </div>
                     </div>
                   </li>
@@ -255,9 +229,13 @@ const Contact = () => {
                     </span>
                     <div className="contact-detail__body">
                       <strong>Email</strong>
-                      <a className="contact-detail__link" href={`mailto:${contactInfo.email}`}>
-                        {contactInfo.email}
-                      </a>
+                      {contactInfo.email ? (
+                        <a className="contact-detail__link" href={`mailto:${contactInfo.email}`}>
+                          {contactInfo.email}
+                        </a>
+                      ) : (
+                        <span className="text-muted">Not set yet</span>
+                      )}
                     </div>
                   </li>
 
@@ -267,7 +245,7 @@ const Contact = () => {
                     </span>
                     <div className="contact-detail__body">
                       <strong>Location</strong>
-                      <span>{contactInfo.location}</span>
+                      <span>{contactInfo.location || 'Not set yet'}</span>
                     </div>
                   </li>
 
@@ -277,7 +255,7 @@ const Contact = () => {
                     </span>
                     <div className="contact-detail__body">
                       <strong>Services</strong>
-                      <span>{contactInfo.services_summary}</span>
+                      <span>{contactInfo.services_summary || 'Not set yet'}</span>
                     </div>
                   </li>
                 </ul>
@@ -285,6 +263,12 @@ const Contact = () => {
             </div>
           </div>
         </div>
+
+        {!hasContactDetails && !infoLoading && (
+          <p className="contact-footnote text-muted text-center">
+            Platform admins can add contact details in Django admin under Salon contact info.
+          </p>
+        )}
 
         <p className="contact-footnote text-muted text-center">
           To book a specific service, visit the Services page and use the booking form.

@@ -623,6 +623,18 @@
   }
 }
 
+.landing-book-discovery {
+  scroll-margin-top: 5.5rem;
+}
+
+.landing-book-discovery-salons {
+  padding: 0 1rem 0.5rem;
+}
+
+.landing-book-discovery-salons .available-salons {
+  padding-top: 0;
+}
+
 .landing-technicians {
   position: relative;
   padding: 1.75rem 1rem 1.5rem;
@@ -727,6 +739,19 @@
 
 .landing-technicians-status--error {
   color: #ffb4c8;
+}
+
+.landing-technicians-section + .landing-technicians-section {
+  margin-top: 1.75rem;
+}
+
+.landing-technicians-section-title {
+  margin: 0 auto 1rem;
+  max-width: 920px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dk-gold-soft);
 }
 
 .landing-technicians-grid {
@@ -1113,6 +1138,39 @@
   min-height: 190px;
   width: 100%;
   background: rgba(36, 20, 30, 0.85);
+  touch-action: pan-y;
+}
+
+.nearby-map.leaflet-container {
+  touch-action: pan-y !important;
+}
+
+.nearby-map.nearby-map--unlocked.leaflet-container {
+  touch-action: none !important;
+}
+
+.nearby-map-lock-btn {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  background: rgba(26, 14, 22, 0.82);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.nearby-map-lock-btn.is-active {
+  background: var(--dk-accent, #e06b8a);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .nearby-map--pickable {
@@ -1304,3 +1362,71 @@
     transform: none;
   }
 }
+
+[data-theme='light'] .landing-swipe-hint {
+  color: rgba(42, 21, 37, 0.5);
+}
+
+[data-theme='light'] .landing-tab-btn {
+  color: rgba(42, 21, 37, 0.55);
+}
+
+[data-theme='light'] .landing-tab-btn:not(.is-active):hover {
+  color: var(--dk-text);
+  background: rgba(92, 45, 74, 0.08);
+}
+
+[data-theme='light'] .landing-tab-btn.is-active {
+  color: #fff;
+}
+
+[data-theme='light'] .landing-app-steps li {
+  color: var(--dk-text);
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(184, 77, 114, 0.22);
+}
+
+[data-theme='light'] .landing-tab-bar {
+  background: linear-gradient(
+    180deg,
+    rgba(250, 243, 246, 0.98) 0%,
+    rgba(244, 230, 236, 0.94) 55%,
+    rgba(250, 243, 246, 0.78) 100%
+  );
+}
+
+[data-theme='light'] .landing-tab-scroll {
+  background:
+    linear-gradient(180deg, rgba(250, 243, 246, 0.7) 0%, var(--dk-bg) 12%),
+    var(--dk-bg);
+}
+
+[data-theme='light'] .landing-technicians,
+[data-theme='light'] .landing-nearby {
+  background: var(--dk-bg);
+}
+
+[data-theme='light'] .landing-tech-card__name,
+[data-theme='light'] .landing-nearby-card__name,
+[data-theme='light'] .landing-nearby-clear,
+[data-theme='light'] .landing-nearby-locate,
+[data-theme='light'] .landing-nearby-filter,
+[data-theme='light'] .landing-technicians-more-link:hover {
+  color: var(--dk-text);
+}
+
+[data-theme='light'] .landing-nearby-card {
+  background: linear-gradient(145deg, var(--dk-surface) 0%, var(--dk-surface-raised) 100%);
+}
+
+[data-theme='light'] .landing-nearby-filter.is-active,
+[data-theme='light'] .landing-hero-content {
+  color: #fff;
+}
+
+[data-theme='light'] .nearby-map-lock-btn {
+  background: rgba(255, 248, 250, 0.92);
+  color: var(--dk-plum-deep, #5c2d4a);
+  border-color: rgba(92, 45, 74, 0.22);
+}
+

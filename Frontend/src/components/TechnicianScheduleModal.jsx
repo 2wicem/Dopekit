@@ -3,7 +3,6 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { todayIso } from '../constants/slots'
 import { apiFetch } from '../config/api'
-import Bookservice from './Bookservice'
 import './css/TechnicianSchedule.css'
 
 const formatDayHeader = (isoDate) => {
@@ -37,7 +36,7 @@ const slotStatusLabel = (status) => {
   return 'Off'
 }
 
-const TechnicianScheduleModal = ({ worker, salonId = null, onClose }) => {
+const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }) => {
   const modalId = `technician-schedule-${useId().replace(/:/g, '')}`
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -86,6 +85,18 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose }) => {
       document.body.style.removeProperty('overflow')
     }
   }, [onClose])
+
+  const handleSlotBook = (dayDate, slot) => {
+    if (slot.status !== 'available' || !slot.id) {
+      return
+    }
+
+    onBookSlot?.({
+      date: dayDate,
+      slotId: slot.id,
+      salonId: salonId ?? worker.salon_id ?? null,
+    })
+  }
 
   const visibleDays =
     scheduleData?.schedule?.filter((day) =>
@@ -148,15 +159,25 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose }) => {
                             {day.slots
                               .filter((slot) => slot.status === 'available' || slot.status === 'booked')
                               .map((slot) => (
-                                <span
+                                <button
                                   key={`${day.date}-${slot.start_hour}`}
-                                  className={`technician-schedule-slot is-${slot.status}`}
+                                  type="button"
+                                  className={`technician-schedule-slot is-${slot.status}${
+                                    slot.status === 'available' ? ' is-clickable' : ''
+                                  }`}
+                                  onClick={() => handleSlotBook(day.date, slot)}
+                                  disabled={slot.status !== 'available'}
+                                  title={
+                                    slot.status === 'available'
+                                      ? `Book ${slot.label} on ${formatDayHeader(day.date)}`
+                                      : `${slot.label} — already booked`
+                                  }
                                 >
                                   <span className="technician-schedule-slot-time">{slot.label}</span>
                                   <span className="technician-schedule-slot-status">
-                                    {slotStatusLabel(slot.status)}
+                                    {slot.status === 'available' ? 'Tap to book' : slotStatusLabel(slot.status)}
                                   </span>
-                                </span>
+                                </button>
                               ))}
                           </div>
                         </section>
@@ -171,13 +192,13 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose }) => {
               <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
                 Close
               </button>
-              <Bookservice
-                variant="card"
-                workerId={worker.id}
-                workerName={worker.name}
-                salonId={salonId ?? worker.salon_id}
-                label={`Book with ${worker.name}`}
-              />
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => onBookSlot?.({ salonId: salonId ?? worker.salon_id ?? null })}
+              >
+                Book with {worker.name}
+              </button>
             </div>
           </div>
         </div>

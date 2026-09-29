@@ -1,0 +1,11 @@
+# Railway — static React SPA (set service Root Directory to Frontend)
+# https://docs.railway.com/reference/config-as-code
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm ci && npm run build"
+
+[deploy]
+startCommand = "npx --yes serve dist -l tcp://0.0.0.0:$PORT -s"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

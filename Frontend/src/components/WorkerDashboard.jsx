@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { todayIso } from '../constants/slots'
 import { useAuth } from '../context/useAuth'
-import { requestWorkerNotifications, useWorkerNotifications } from '../hooks/useWorkerNotifications'
+import { requestWorkerNotifications, useWorkerNotifications, getNotificationPermission } from '../hooks/useWorkerNotifications'
 import BrandLogo from './BrandLogo'
 import InstallPrompt from './InstallPrompt'
+import ThemeToggle from './ThemeToggle'
 import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
 import ReportsPanel from './ReportsPanel'
@@ -23,9 +24,8 @@ const WorkerDashboard = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [highlightId, setHighlightId] = useState(null)
-  const [notifyPermission, setNotifyPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  )
+  const [notifyPermission, setNotifyPermission] = useState(getNotificationPermission)
+  const [enablingAlerts, setEnablingAlerts] = useState(false)
 
   const loadBookings = useCallback(async (silent = false) => {
     if (silent) {
@@ -72,9 +72,96 @@ const WorkerDashboard = () => {
     loadBookings()
   }, [loadBookings])
 
-  const handleEnableNotifications = async () => {
-    const result = await requestWorkerNotifications()
-    setNotifyPermission(result)
+  useEffect(() => {
+    if (!('permissions' in navigator) || typeof navigator.permissions.query !== 'function') {
+      return undefined
+    }
+
+    let cancelled = false
+    let permissionStatus = null
+
+    navigator.permissions
+      .query({ name: 'notifications' })
+      .then((status) => {
+        if (cancelled) {
+          return
+        }
+        permissionStatus = status
+        setNotifyPermission(getNotificationPermission())
+        status.onchange = () => {
+          setNotifyPermission(getNotificationPermission())
+        }
+      })
+      .catch(() => {
+        // Some browsers do not expose the notifications permission query.
+      })
+
+    return () => {
+      cancelled = true
+      if (permissionStatus) {
+        permissionStatus.onchange = null
+      }
+    }
+  }, [])
+
+  const handleEnableNotifications = () => {
+    if (enablingAlerts) {
+      return
+    }
+
+    setStatus(null)
+
+    if (notifyPermission === 'unsupported') {
+      setStatus({
+        type: 'error',
+        message: 'This browser does not support booking alerts. Keep the staff app open to see new requests.',
+      })
+      return
+    }
+
+    if (notifyPermission === 'denied') {
+      setStatus({
+        type: 'error',
+        message:
+          'Notifications are blocked for this site. Open browser settings → Site settings → Notifications → Allow, then refresh.',
+      })
+      return
+    }
+
+    setEnablingAlerts(true)
+
+    requestWorkerNotifications()
+      .then((result) => {
+        setNotifyPermission(result)
+        if (result === 'granted') {
+          setStatus({
+            type: 'success',
+            message: 'Alerts enabled. You will be notified when a client books.',
+          })
+          return
+        }
+        if (result === 'denied') {
+          setStatus({
+            type: 'error',
+            message:
+              'Notifications were blocked. Allow notifications in your browser site settings, then try again.',
+          })
+          return
+        }
+        setStatus({
+          type: 'error',
+          message: 'Could not enable alerts. Try again or check browser notification settings.',
+        })
+      })
+      .catch(() => {
+        setStatus({
+          type: 'error',
+          message: 'Could not enable alerts. Try again or check browser notification settings.',
+        })
+      })
+      .finally(() => {
+        setEnablingAlerts(false)
+      })
   }
 
   const handleBookingAction = async (bookingId, action) => {
@@ -149,6 +236,7 @@ const WorkerDashboard = () => {
           <p className="worker-app-date">{formattedToday}</p>
         </div>
         <div className="worker-app-header-actions">
+          <ThemeToggle variant="icon" />
           <button
             type="button"
             className="worker-app-icon-btn"
@@ -172,10 +260,32 @@ const WorkerDashboard = () => {
 
         {notifyPermission !== 'granted' && notifyPermission !== 'unsupported' && (
           <div className="worker-notify-banner">
-            <p>Turn on alerts to get notified when a client books.</p>
-            <button type="button" className="btn btn-sm btn-primary" onClick={handleEnableNotifications}>
-              Enable alerts
+            <p>
+              {notifyPermission === 'denied'
+                ? 'Booking alerts are blocked in your browser. Allow notifications for this site to get alerts.'
+                : 'Turn on alerts to get notified when a client books.'}
+            </p>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={handleEnableNotifications}
+              disabled={enablingAlerts}
+            >
+              {enablingAlerts
+                ? 'Enabling…'
+                : notifyPermission === 'denied'
+                  ? 'How to unblock'
+                  : 'Enable alerts'}
             </button>
+          </div>
+        )}
+
+        {notifyPermission === 'unsupported' && (
+          <div className="worker-notify-banner worker-notify-banner--muted">
+            <p>
+              Push alerts are not available in this browser. New bookings still appear when you
+              refresh or keep this tab open.
+            </p>
           </div>
         )}
 

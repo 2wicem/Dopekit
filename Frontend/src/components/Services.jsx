@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import AvailableSalons from './AvailableSalons'
 import AvailableWorkers from './AvailableWorkers'
 import Bookservice from './Bookservice'
@@ -11,6 +12,14 @@ const formatPrice = (amount) => `KSh ${amount.toLocaleString()}`
 
 const Services = () => {
   const [activeIndex, setActiveIndex] = useState(0)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (location.hash === '#technicians' || location.hash === '#salons') {
+      navigate(`/Services/discover${location.hash}`, { replace: true })
+    }
+  }, [location.hash, navigate])
 
   useEffect(() => {
     const timer = setInterval(() => {

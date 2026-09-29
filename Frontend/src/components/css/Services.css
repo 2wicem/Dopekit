@@ -872,3 +872,14 @@
   color: var(--dk-text-muted);
   font-style: italic;
 }
+
+#salons,
+#technicians,
+#book-discovery {
+  scroll-margin-top: 5.5rem;
+}
+
+.services-page--discover .discover-intro {
+  max-width: 36rem;
+  margin: 0 auto;
+}

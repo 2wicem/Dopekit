@@ -3,6 +3,11 @@ export const TECHNICIAN_SORT_OPTIONS = [
   { id: 'most-booked', label: 'Most booked' },
 ]
 
+export const partitionTechniciansByType = (workers) => ({
+  salonTechnicians: workers.filter((worker) => !worker.is_freelance),
+  freelanceTechnicians: workers.filter((worker) => worker.is_freelance),
+})
+
 export const sortTechnicians = (workers, sortBy = 'top-rated') => {
   const list = [...workers]
 

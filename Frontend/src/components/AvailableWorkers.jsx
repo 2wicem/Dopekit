@@ -1,16 +1,13 @@
 import { useMemo } from 'react'
 import { usePublicWorkers } from '../hooks/usePublicWorkers'
+import { partitionTechniciansByType } from '../utils/sortTechnicians'
 import TechnicianCard from './TechnicianCard'
 
 const AvailableWorkers = () => {
   const { workers, loading, error } = usePublicWorkers()
 
-  const salonTechnicians = useMemo(
-    () => workers.filter((worker) => !worker.is_freelance),
-    [workers]
-  )
-  const freelanceTechnicians = useMemo(
-    () => workers.filter((worker) => worker.is_freelance),
+  const { salonTechnicians, freelanceTechnicians } = useMemo(
+    () => partitionTechniciansByType(workers),
     [workers]
   )
 

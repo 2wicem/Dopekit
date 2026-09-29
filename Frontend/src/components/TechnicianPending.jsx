@@ -10,8 +10,34 @@ const TechnicianPending = () => {
   const [checking, setChecking] = useState(false)
   const [status, setStatus] = useState(null)
 
-  const isRejected = user?.technician_approval === 'rejected'
+  const application = user?.technician_application || {}
+  const approvalStage = application.approval_stage || user?.technician_approval
+  const isFreelance = application.is_freelance === true
+  const isRejected = approvalStage === 'rejected'
+  const isPendingOwner = approvalStage === 'pending_owner'
   const isPending = user?.technician_pending
+
+  const pendingTitle = isRejected
+    ? 'Application not approved'
+    : isPendingOwner
+      ? 'Waiting for salon review'
+      : isFreelance
+        ? 'Freelance application under review'
+        : 'Waiting for platform review'
+
+  const pendingSubtitle = isRejected
+    ? 'Your technician application was not approved. You can still book services as a client.'
+    : isPendingOwner
+      ? `Thanks for applying to join ${application.application_salon_name || 'your salon branch'}. Your branch manager must review your application before it goes to platform admin.`
+      : isFreelance
+        ? 'Thanks for applying as a freelance technician. Platform admin is reviewing your profile and references.'
+        : 'Your salon manager approved your application. Platform admin is doing the final verification before you can open the staff dashboard.'
+
+  const pendingHint = isPendingOwner
+    ? 'We notified your salon owner when you applied. Check back here after they review your details.'
+    : isFreelance
+      ? 'Freelance technicians are verified directly by platform admin. You will get access to the staff dashboard once approved.'
+      : 'Final approval usually happens soon after your salon manager forwards your application.'
 
   useEffect(() => {
     if (!user) {
@@ -39,6 +65,8 @@ const TechnicianPending = () => {
 
     try {
       const account = await refreshUser()
+      const nextStage = account?.technician_application?.approval_stage || account?.technician_approval
+
       if (account?.role === 'worker' && account.technician_approval === 'approved') {
         setStatus({ type: 'success', text: 'Approved! Opening your staff dashboard…' })
         setTimeout(() => navigate('/worker', { replace: true }), 800)
@@ -51,7 +79,17 @@ const TechnicianPending = () => {
         })
         return
       }
-      setStatus({ type: 'info', text: 'Still under review. The salon admin will approve you soon.' })
+      if (nextStage === 'pending_owner') {
+        setStatus({
+          type: 'info',
+          text: 'Still waiting for your salon manager to review your application.',
+        })
+        return
+      }
+      setStatus({
+        type: 'info',
+        text: 'Still under platform review. Admin approval is the final step.',
+      })
     } catch (error) {
       setStatus({ type: 'error', text: error.message || 'Could not refresh your application status.' })
     } finally {
@@ -65,22 +103,13 @@ const TechnicianPending = () => {
         <div className="signup-card mx-auto">
           <div className="signup-card-header text-center">
             <BrandLogo size="md" />
-            <h1 className="signup-title">
-              {isRejected ? 'Application not approved' : 'Application under review'}
-            </h1>
-            <p className="signup-subtitle">
-              {isRejected
-                ? 'Your technician application was not approved. You can still book services as a client.'
-                : 'Thanks for applying to join the Dopekit team. A salon admin must approve your account before you can manage schedules and bookings.'}
-            </p>
+            <h1 className="signup-title">{pendingTitle}</h1>
+            <p className="signup-subtitle">{pendingSubtitle}</p>
           </div>
 
           <div className="signup-card-body text-center">
             {!isRejected && (
-              <p className="text-muted mb-4">
-                We will notify the salon when you apply. Once approved, you can open the staff
-                dashboard from here or after logging in again.
-              </p>
+              <p className="text-muted mb-4">{pendingHint}</p>
             )}
 
             {status && (

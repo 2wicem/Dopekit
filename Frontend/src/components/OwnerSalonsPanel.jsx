@@ -7,8 +7,6 @@ export const emptyBranchForm = {
   phone_secondary: '',
   email: '',
   location: '',
-  latitude: '',
-  longitude: '',
   services_summary: '',
   page_lead: '',
   instagram_url: '',
@@ -23,6 +21,44 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState(emptyBranchForm)
   const [saving, setSaving] = useState(false)
+  const [regeneratingId, setRegeneratingId] = useState(null)
+
+  const handleCopyInviteCode = async (code) => {
+    if (!code) {
+      onStatus?.({ type: 'error', message: 'No invite code available for this branch yet.' })
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(code)
+      onStatus?.({ type: 'success', message: 'Invite code copied.' })
+    } catch {
+      onStatus?.({ type: 'error', message: 'Could not copy invite code.' })
+    }
+  }
+
+  const handleRegenerateInviteCode = async (salonId) => {
+    if (!window.confirm('Generate a new invite code? The old code will stop working immediately.')) {
+      return
+    }
+
+    setRegeneratingId(salonId)
+    onStatus?.(null)
+    try {
+      const response = await apiFetch(`/products/owner/salons/${salonId}/invite-code/`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not regenerate invite code.')
+      }
+      onStatus?.({ type: 'success', message: data.message || 'Invite code regenerated.' })
+      await onChanged?.()
+    } catch (error) {
+      onStatus?.({ type: 'error', message: error.message })
+    } finally {
+      setRegeneratingId(null)
+    }
+  }
 
   useEffect(() => {
     if (editingId && editingId !== 'new') {
@@ -34,8 +70,6 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
           phone_secondary: salon.phone_secondary || '',
           email: salon.email || '',
           location: salon.location || '',
-          latitude: salon.latitude ?? '',
-          longitude: salon.longitude ?? '',
           services_summary: salon.services_summary || '',
           page_lead: salon.page_lead || '',
           instagram_url: salon.instagram_url || '',
@@ -103,7 +137,8 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
         <div>
           <h2 className="admin-panel-title">My branches</h2>
           <p className="admin-panel-lead">
-            Add salon locations with address, contact details, and map coordinates.
+            Add salon locations with address and contact details. Map coordinates are generated
+            automatically when you save.
           </p>
         </div>
         {!editingId && (
@@ -120,33 +155,13 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
               <label htmlFor="branch-name">Branch name</label>
               <input id="branch-name" name="name" value={form.name} onChange={handleChange} required />
             </div>
-            <div className="admin-form-field">
+            <div className="admin-form-field admin-form-field--wide">
               <label htmlFor="branch-location">Location</label>
               <input id="branch-location" name="location" value={form.location} onChange={handleChange} required />
-            </div>
-            <div className="admin-form-field">
-              <label htmlFor="branch-latitude">Latitude</label>
-              <input
-                id="branch-latitude"
-                name="latitude"
-                type="number"
-                step="any"
-                value={form.latitude}
-                onChange={handleChange}
-                placeholder="-1.246600"
-              />
-            </div>
-            <div className="admin-form-field">
-              <label htmlFor="branch-longitude">Longitude</label>
-              <input
-                id="branch-longitude"
-                name="longitude"
-                type="number"
-                step="any"
-                value={form.longitude}
-                onChange={handleChange}
-                placeholder="36.664700"
-              />
+              <p className="admin-form-hint">
+                Include area or town (e.g. Wangige, Kikuyu). Latitude and longitude are filled in
+                automatically on save.
+              </p>
             </div>
             <div className="admin-form-field">
               <label htmlFor="branch-phone-primary">Primary phone</label>
@@ -228,12 +243,39 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
                     )}
                   </h3>
                   <p className="admin-salon-card__meta">{salon.location}</p>
+                  {salon.latitude != null && salon.longitude != null && (
+                    <p className="admin-salon-card__meta">
+                      Map: {Number(salon.latitude).toFixed(5)}, {Number(salon.longitude).toFixed(5)}
+                    </p>
+                  )}
                   <p className="admin-salon-card__meta">
                     {salon.phone_primary} · {salon.email}
                   </p>
                   <p className="admin-salon-card__meta">
                     {salon.technician_count ?? salon.technicians?.length ?? 0} technician(s)
                   </p>
+                  <div className="owner-invite-code-row">
+                    <span className="owner-invite-code-label">Team invite code</span>
+                    <code className="owner-invite-code">{salon.technician_invite_code || 'Not set'}</code>
+                    <div className="owner-invite-code-actions">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => handleCopyInviteCode(salon.technician_invite_code)}
+                        disabled={!salon.technician_invite_code}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleRegenerateInviteCode(salon.id)}
+                        disabled={regeneratingId === salon.id}
+                      >
+                        {regeneratingId === salon.id ? 'Regenerating…' : 'Regenerate'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setEditingId(salon.id)}>
                   Edit

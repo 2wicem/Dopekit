@@ -209,7 +209,8 @@ const Profile = () => {
                   maxLength={200}
                 />
                 <p className="profile-field-hint">
-                  Used when you book outdoor services — we come to you.
+                  Used when you book outdoor services — we come to you. Map coordinates are
+                  generated automatically for freelance technicians.
                 </p>
               </div>
 
@@ -248,13 +249,13 @@ const Profile = () => {
                 </>
               )}
 
-              <div className="profile-form-actions">
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save changes'}
+              <div className="profile-form-actions profile-form-actions--sticky">
+                <button type="submit" className="btn btn-primary profile-submit-btn" disabled={saving}>
+                  {saving ? 'Submitting…' : 'Submit profile'}
                 </button>
                 <button
                   type="button"
-                  className="btn btn-outline-secondary"
+                  className="btn btn-outline-secondary profile-cancel-btn"
                   onClick={handleCancel}
                   disabled={saving}
                 >

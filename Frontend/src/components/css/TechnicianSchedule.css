@@ -91,6 +91,24 @@
   border: 1px solid var(--dk-border, #3a2f35);
   background: var(--dk-surface-raised, #241c22);
   min-width: 108px;
+  text-align: left;
+}
+
+.technician-schedule-slot.is-clickable {
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.technician-schedule-slot.is-clickable:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--dk-accent-soft, #e8c4cf);
+}
+
+.technician-schedule-slot:disabled {
+  cursor: not-allowed;
 }
 
 .technician-schedule-slot.is-available {
@@ -122,13 +140,8 @@
   flex-wrap: wrap;
 }
 
-.technician-schedule-footer .booking-trigger {
+.technician-schedule-footer .btn-primary {
   margin-left: auto;
-}
-
-.technician-schedule-footer .booking-btn--card {
-  font-size: 0.82rem;
-  padding: 0.45rem 0.85rem;
 }
 
 .available-worker-card__actions,

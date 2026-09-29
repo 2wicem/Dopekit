@@ -9,7 +9,7 @@ const AvailableSalons = () => {
   }
 
   return (
-    <section className="available-salons" aria-labelledby="available-salons-heading">
+    <section className="available-salons" id="salons" aria-labelledby="available-salons-heading">
       <div className="available-salons-header text-center">
         <span className="available-salons-eyebrow">Our locations</span>
         <h2 id="available-salons-heading" className="available-salons-title">

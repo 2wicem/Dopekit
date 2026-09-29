@@ -1,20 +1,28 @@
 import Bookservice from './Bookservice'
 import BrandLogo from './BrandLogo'
+import ThemeToggle from './ThemeToggle'
 import { useCallback, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ROLE_LABELS } from '../constants/roles'
 import { useAuth } from '../context/useAuth'
+import { useTheme } from '../context/useTheme'
 
 const Navbar = () => {
   const { user, logout, loading, refreshUser } = useAuth()
+  const { isDark } = useTheme()
   const location = useLocation()
 
   useEffect(() => {
     refreshUser({ silent: true })
   }, [location.pathname, refreshUser])
 
-  const navLinkClass = (path) =>
-    `nav-link site-nav-link${location.pathname === path ? ' active' : ''}`
+  const navLinkClass = (path) => {
+    const isActive =
+      path === '/Services'
+        ? location.pathname === '/Services' || location.pathname.startsWith('/Services/')
+        : location.pathname === path
+    return `nav-link site-nav-link${isActive ? ' active' : ''}`
+  }
 
   const closeMobileNav = useCallback(() => {
     if (window.matchMedia('(min-width: 992px)').matches) {
@@ -64,7 +72,10 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="navbar navbar-expand-lg navbar-dark site-navbar" data-bs-theme="dark">
+      <nav
+        className={`navbar navbar-expand-lg site-navbar ${isDark ? 'navbar-dark' : 'navbar-light'}`}
+        data-bs-theme={isDark ? 'dark' : 'light'}
+      >
         <div className="container-fluid">
           <div className="d-flex align-items-center gap-2 navbar-brand-wrap">
             <Link className="navbar-brand mb-0" to="/" onClick={handleNavClick}>
@@ -78,21 +89,26 @@ const Navbar = () => {
             )}
           </div>
 
-          <button
-            className="navbar-toggler site-nav-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarNav"
-            aria-controls="navbarNav"
-            aria-expanded="false"
-            aria-label="Toggle navigation"
-          >
-            <span className="site-nav-toggler-bars" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <div className="d-lg-none">
+              <ThemeToggle />
+            </div>
+            <button
+              className="navbar-toggler site-nav-toggler"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#navbarNav"
+              aria-controls="navbarNav"
+              aria-expanded="false"
+              aria-label="Toggle navigation"
+            >
+              <span className="site-nav-toggler-bars" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
+          </div>
 
           <div className="collapse navbar-collapse site-nav-collapse" id="navbarNav">
             <ul className="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center site-nav-list">
@@ -198,7 +214,11 @@ const Navbar = () => {
                       {ROLE_LABELS[user.role] || user.role}
                     </span>
                   </span>
-                  <button type="button" className="btn btn-sm btn-outline-light nav-logout-btn" onClick={handleLogout}>
+                  <button
+                    type="button"
+                    className={`btn btn-sm nav-logout-btn ${isDark ? 'btn-outline-light' : 'btn-outline-dark'}`}
+                    onClick={handleLogout}
+                  >
                     Log out
                   </button>
                 </li>
@@ -206,6 +226,9 @@ const Navbar = () => {
 
               <li className="nav-item nav-item-booking ms-lg-2">
                 <Bookservice />
+              </li>
+              <li className="nav-item d-none d-lg-flex ms-lg-2">
+                <ThemeToggle />
               </li>
             </ul>
           </div>

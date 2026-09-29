@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
+import { isNativeApp } from '../nativeShell'
 import './css/WorkerApp.css'
 
 const InstallPrompt = () => {
   const [promptEvent, setPromptEvent] = useState(null)
   const [dismissed, setDismissed] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
+  const nativeApp = isNativeApp()
 
   useEffect(() => {
+    if (nativeApp) {
+      return undefined
+    }
+
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       window.navigator.standalone === true
@@ -20,9 +26,9 @@ const InstallPrompt = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall)
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
-  }, [])
+  }, [nativeApp])
 
-  if (isStandalone || dismissed || !promptEvent) {
+  if (nativeApp || isStandalone || dismissed || !promptEvent) {
     return null
   }
 

@@ -116,7 +116,7 @@
 
 .site-footer__link {
   display: inline-block;
-  color: rgba(255, 248, 250, 0.82);
+  color: var(--dk-footer-text);
   font-size: 1rem;
   font-weight: 500;
   text-decoration: none;
@@ -137,7 +137,7 @@
   font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.45;
-  color: rgba(255, 248, 250, 0.88);
+  color: var(--dk-footer-text);
   text-align: left;
 }
 
@@ -150,7 +150,7 @@
 }
 
 .site-footer__contact-list a {
-  color: rgba(255, 248, 250, 0.88);
+  color: var(--dk-footer-text);
   text-decoration: none;
   word-break: break-word;
 }
@@ -164,12 +164,12 @@
 }
 
 .site-footer__bar {
-  background: linear-gradient(90deg, #1f1019 0%, #3a1f33 50%, #1f1019 100%);
+  background: var(--dk-last-footer-bg);
   text-align: center;
   padding: 0.85rem max(1rem, env(safe-area-inset-right, 0px))
     max(0.85rem, env(safe-area-inset-bottom, 0px))
     max(1rem, env(safe-area-inset-left, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--dk-border);
 }
 
 .site-footer__bar p {

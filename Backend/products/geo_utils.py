@@ -62,3 +62,33 @@ def coordinate_pair_to_dict(latitude, longitude) -> dict | None:
         'latitude': float(latitude),
         'longitude': float(longitude),
     }
+
+
+def resolve_coordinates(
+    *,
+    location: str,
+    latitude,
+    longitude,
+    latitude_provided: bool = False,
+    longitude_provided: bool = False,
+) -> tuple:
+    """Use manual coordinates when supplied; otherwise geocode the location text."""
+    if (
+        latitude_provided
+        and longitude_provided
+        and latitude is not None
+        and longitude is not None
+    ):
+        return latitude, longitude, None
+
+    if not (location or '').strip():
+        return latitude, longitude, None
+
+    from .geocoding import geocode_location
+
+    coords, error = geocode_location(location)
+    if error:
+        return latitude, longitude, error
+    if coords:
+        return coords[0], coords[1], None
+    return latitude, longitude, None

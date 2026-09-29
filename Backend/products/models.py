@@ -12,6 +12,8 @@ class UserRole(models.TextChoices):
 class TechnicianApprovalStatus(models.TextChoices):
     NOT_APPLICABLE = 'na', 'Not applicable'
     PENDING = 'pending', 'Pending approval'
+    PENDING_OWNER = 'pending_owner', 'Pending salon review'
+    PENDING_ADMIN = 'pending_admin', 'Pending admin review'
     APPROVED = 'approved', 'Approved'
     REJECTED = 'rejected', 'Rejected'
 
@@ -126,10 +128,12 @@ class UserProfile(models.Model):
         default=UserRole.CLIENT,
     )
     technician_approval = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=TechnicianApprovalStatus.choices,
         default=TechnicianApprovalStatus.NOT_APPLICABLE,
     )
+    technician_is_freelance = models.BooleanField(default=False)
+    technician_phone_verified = models.BooleanField(default=False)
     default_location = models.CharField(max_length=200, blank=True, default='')
     technician_specialty = models.CharField(max_length=100, blank=True, default='')
     technician_experience_years = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -137,6 +141,14 @@ class UserProfile(models.Model):
     technician_reference_phone = models.CharField(max_length=20, blank=True, default='')
     technician_application_note = models.TextField(blank=True, default='')
     technician_invite_verified = models.BooleanField(default=False)
+    technician_application_salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='technician_applications',
+        help_text='Salon branch the technician applied to join.',
+    )
     technician_work_summary = models.TextField(
         blank=True,
         default='',
@@ -219,6 +231,13 @@ class Salon(models.Model):
         related_name='owned_salons',
         help_text='Salon owner who manages this branch.',
     )
+    technician_invite_code = models.CharField(
+        max_length=32,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text='Per-branch code technicians use when applying to join this salon.',
+    )
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=120, unique=True)
     phone_primary = models.CharField(max_length=20)
@@ -263,21 +282,12 @@ class Salon(models.Model):
 class SalonContactInfo(models.Model):
     """Singleton row (pk=1) — salon details shown on the Contact page."""
 
-    phone_primary = models.CharField(max_length=20, default='0790331108')
-    phone_secondary = models.CharField(max_length=20, blank=True, default='0727083181')
-    email = models.EmailField(default='dopekit@gmail.com')
-    location = models.CharField(max_length=200, default='Wangige Mall')
-    services_summary = models.CharField(
-        max_length=300,
-        default='Indoor and outdoor manicure & pedicure',
-    )
-    page_lead = models.TextField(
-        blank=True,
-        default=(
-            'Have a question or want to book an appointment? '
-            'Reach out — we would love to hear from you.'
-        ),
-    )
+    phone_primary = models.CharField(max_length=20, blank=True, default='')
+    phone_secondary = models.CharField(max_length=20, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    location = models.CharField(max_length=200, blank=True, default='')
+    services_summary = models.CharField(max_length=300, blank=True, default='')
+    page_lead = models.TextField(blank=True, default='')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

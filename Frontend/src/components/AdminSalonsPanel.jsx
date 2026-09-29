@@ -7,8 +7,6 @@ const emptySalon = {
   phone_secondary: '',
   email: '',
   location: '',
-  latitude: '',
-  longitude: '',
   services_summary: '',
   page_lead: '',
   instagram_url: '',
@@ -35,8 +33,6 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
           phone_secondary: salon.phone_secondary || '',
           email: salon.email || '',
           location: salon.location || '',
-          latitude: salon.latitude ?? '',
-          longitude: salon.longitude ?? '',
           services_summary: salon.services_summary || '',
           page_lead: salon.page_lead || '',
           instagram_url: salon.instagram_url || '',
@@ -104,7 +100,10 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
       <div className="admin-panel-toolbar">
         <div>
           <h2 className="admin-panel-title">Salon locations</h2>
-          <p className="admin-panel-lead">Manage each branch, contact details, and social links.</p>
+          <p className="admin-panel-lead">
+            Manage each branch and contact details. Map coordinates are generated automatically when
+            you save.
+          </p>
         </div>
         {!editingId && (
           <button type="button" className="btn btn-primary btn-sm" onClick={startCreate}>
@@ -120,33 +119,13 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
               <label htmlFor="salon-name">Salon name</label>
               <input id="salon-name" name="name" value={form.name} onChange={handleChange} required />
             </div>
-            <div className="admin-form-field">
+            <div className="admin-form-field admin-form-field--wide">
               <label htmlFor="salon-location">Location</label>
               <input id="salon-location" name="location" value={form.location} onChange={handleChange} required />
-            </div>
-            <div className="admin-form-field">
-              <label htmlFor="salon-latitude">Latitude</label>
-              <input
-                id="salon-latitude"
-                name="latitude"
-                type="number"
-                step="any"
-                value={form.latitude}
-                onChange={handleChange}
-                placeholder="-1.246600"
-              />
-            </div>
-            <div className="admin-form-field">
-              <label htmlFor="salon-longitude">Longitude</label>
-              <input
-                id="salon-longitude"
-                name="longitude"
-                type="number"
-                step="any"
-                value={form.longitude}
-                onChange={handleChange}
-                placeholder="36.664700"
-              />
+              <p className="admin-form-hint">
+                Include area or town (e.g. Wangige, Kikuyu). Latitude and longitude are filled in
+                automatically on save.
+              </p>
             </div>
             <div className="admin-form-field">
               <label htmlFor="salon-phone-primary">Primary phone</label>
@@ -220,6 +199,11 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
                     {!salon.is_active && <span className="admin-salon-badge admin-salon-badge--muted">Inactive</span>}
                   </h3>
                   <p className="admin-salon-card__meta">{salon.location}</p>
+                  {salon.latitude != null && salon.longitude != null && (
+                    <p className="admin-salon-card__meta">
+                      Map: {Number(salon.latitude).toFixed(5)}, {Number(salon.longitude).toFixed(5)}
+                    </p>
+                  )}
                   <p className="admin-salon-card__meta">
                     {salon.phone_primary} · {salon.email}
                   </p>

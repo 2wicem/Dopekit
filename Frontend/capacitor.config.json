@@ -1,0 +1,23 @@
+{
+  "appId": "ke.co.dopekit.app",
+  "appName": "Dopekit",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#141014"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#6d3557",
+      "overlaysWebView": false
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#141014"
+  }
+}

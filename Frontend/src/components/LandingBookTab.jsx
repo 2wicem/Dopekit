@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom'
+import AvailableSalons from './AvailableSalons'
 import Bookservice from './Bookservice'
 import BrandLogo from './BrandLogo'
 import LandingHeroCarousel from './LandingHeroCarousel'
 import LandingNearbyMap from './LandingNearbyMap'
 import LandingTechniciansSection from './LandingTechniciansSection'
 import { BOOK_SLIDES } from './landingData'
+
+const scrollToDiscovery = (event) => {
+  event.preventDefault()
+  document.getElementById('book-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 const LandingBookTab = () => (
   <>
@@ -31,18 +37,24 @@ const LandingBookTab = () => (
         <Link to="/Services" className="btn btn-outline-light btn-sm rounded-pill px-3 landing-btn-secondary">
           View services
         </Link>
-        <Link
-          to="/Services#technicians"
+        <a
+          href="#book-discovery"
           className="btn btn-outline-light btn-sm rounded-pill px-3 landing-btn-secondary"
+          onClick={scrollToDiscovery}
         >
           View technicians
-        </Link>
+        </a>
         <Bookservice />
       </div>
     </LandingHeroCarousel>
 
-    <LandingNearbyMap />
-    <LandingTechniciansSection />
+    <div id="book-discovery" className="landing-book-discovery">
+      <LandingNearbyMap />
+      <div className="landing-book-discovery-salons">
+        <AvailableSalons />
+      </div>
+      <LandingTechniciansSection />
+    </div>
   </>
 )
 

@@ -51,7 +51,7 @@
   border-radius: 999px;
   padding: 0.55rem 0.65rem;
   background: transparent;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--dk-text-muted);
   font-size: 0.82rem;
   font-weight: 600;
   transition:

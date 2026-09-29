@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useContactInfo } from '../hooks/useContactInfo'
 import './css/About.css'
 
 const highlights = [
@@ -23,6 +24,8 @@ const highlights = [
 ]
 
 const AboutPage = () => {
+  const { contactInfo, hasContactDetails } = useContactInfo()
+
   return (
     <section className="section-band section-band--alt about-page">
       <div className="container page-section about-section">
@@ -69,24 +72,38 @@ const AboutPage = () => {
 
         <div className="about-contact">
           <h2 className="about-contact-title">Contact us</h2>
-          <ul className="about-contact-list">
-            <li>
-              <i className="fa-solid fa-envelope" aria-hidden="true" />
-              <span>
-                <strong>Email</strong>
-                <a href="mailto:dopekit@gmail.com">dopekit@gmail.com</a>
-              </span>
-            </li>
-            <li>
-              <i className="fa-solid fa-phone" aria-hidden="true" />
-              <span>
-                <strong>Phone</strong>
-                <a href="tel:+254790331108">0790 331 108</a>
-                <span className="about-contact-sep"> / </span>
-                <a href="tel:+254743548780">0743 548 780</a>
-              </span>
-            </li>
-          </ul>
+          {hasContactDetails ? (
+            <ul className="about-contact-list">
+              {contactInfo.email && (
+                <li>
+                  <i className="fa-solid fa-envelope" aria-hidden="true" />
+                  <span>
+                    <strong>Email</strong>
+                    <a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a>
+                  </span>
+                </li>
+              )}
+              {contactInfo.phones.length > 0 && (
+                <li>
+                  <i className="fa-solid fa-phone" aria-hidden="true" />
+                  <span>
+                    <strong>Phone</strong>
+                    {contactInfo.phones.map((phone, index) => (
+                      <span key={phone}>
+                        {index > 0 && <span className="about-contact-sep"> / </span>}
+                        <a href={`tel:${phone}`}>{phone}</a>
+                      </span>
+                    ))}
+                  </span>
+                </li>
+              )}
+            </ul>
+          ) : (
+            <p className="about-contact-empty text-muted mb-0">
+              Contact details will appear here once configured.{' '}
+              <Link to="/Contact">Send us a message</Link>.
+            </p>
+          )}
         </div>
       </div>
     </section>

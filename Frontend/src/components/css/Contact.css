@@ -3,7 +3,7 @@
   overflow-x: clip;
   min-height: auto;
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, #261f28 0%, #2e2433 45%, #322636 100%);
+  background: var(--dk-body-bg);
 }
 
 .contact-page__inner {

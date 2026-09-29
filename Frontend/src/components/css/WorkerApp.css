@@ -13,9 +13,9 @@
   align-items: center;
   gap: 0.75rem;
   padding: calc(0.85rem + env(safe-area-inset-top)) 1rem 0.85rem;
-  background: linear-gradient(120deg, #6d3557 0%, #b84d72 55%, var(--dk-accent) 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 4px 20px rgba(58, 31, 51, 0.35);
+  background: var(--dk-gradient-nav);
+  border-bottom: 1px solid var(--dk-border);
+  box-shadow: 0 4px 20px rgba(58, 31, 51, 0.18);
 }
 
 .worker-app-header .brand-logo {
@@ -33,14 +33,14 @@
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--dk-text);
   line-height: 1.2;
 }
 
 .worker-app-date {
   margin: 0.15rem 0 0;
   font-size: 0.78rem;
-  color: rgba(255, 248, 250, 0.82);
+  color: var(--dk-text-muted);
 }
 
 .worker-app-header-actions {
@@ -146,6 +146,16 @@
   min-width: 180px;
 }
 
+.worker-notify-banner--muted {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--dk-border, rgba(255, 255, 255, 0.12));
+}
+
+.worker-notify-banner .btn {
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+
 .worker-tab-badge {
   display: inline-flex;
   align-items: center;
@@ -208,6 +218,40 @@
   border-color: rgba(245, 217, 168, 0.55);
   background: rgba(245, 217, 168, 0.14);
   cursor: not-allowed;
+}
+
+.worker-slot-card--dirty {
+  outline: 2px solid rgba(245, 217, 168, 0.75);
+  outline-offset: 1px;
+}
+
+.worker-schedule-submit-bar {
+  position: sticky;
+  bottom: calc(0.35rem + env(safe-area-inset-bottom));
+  z-index: 6;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border-radius: 0.85rem;
+  background: rgba(20, 16, 20, 0.96);
+  border: 1px solid rgba(245, 217, 168, 0.35);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.worker-schedule-submit-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.worker-schedule-submit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.worker-schedule-submit-actions .btn-primary {
+  flex: 1 1 180px;
+  min-height: 2.75rem;
 }
 
 @keyframes workerPulse {
@@ -367,4 +411,10 @@
     align-items: center;
     justify-content: space-between;
   }
+}
+
+[data-theme='light'] .worker-app-icon-btn {
+  border-color: rgba(92, 45, 74, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--dk-plum);
 }
