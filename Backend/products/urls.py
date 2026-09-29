@@ -20,6 +20,7 @@ urlpatterns = [
     path('owner/salons/<int:salon_id>/', salon_owner_views.update_owner_salon, name='owner_update_salon'),
     path('owner/salons/<int:salon_id>/staff/', salon_owner_views.list_owner_salon_staff, name='owner_salon_staff'),
     path('owner/technicians/', salon_owner_views.list_assignable_technicians, name='owner_assignable_technicians'),
+    path('owner/technicians/<int:user_id>/salon/', salon_owner_views.assign_technician_salon, name='owner_assign_technician_salon'),
     path('owner/applications/', salon_owner_views.list_owner_applications, name='owner_list_applications'),
     path('owner/applications/<int:user_id>/approve/', salon_owner_views.approve_owner_application, name='owner_approve_application'),
     path('owner/applications/<int:user_id>/reject/', salon_owner_views.reject_owner_application, name='owner_reject_application'),
