@@ -6,6 +6,16 @@ def env_bool(name, default='False'):
     return os.getenv(name, default).strip().lower() in ('1', 'true', 'yes', 'on')
 
 
+def env_int(name, default):
+    raw = os.getenv(name, '').strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 def env_list(name, default=''):
     raw = os.getenv(name, default)
     return [item.strip() for item in raw.split(',') if item.strip()]

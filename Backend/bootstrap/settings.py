@@ -12,6 +12,7 @@ from .env import (
     deployment_hosts,
     deployment_origins,
     env_bool,
+    env_int,
     env_list,
     host_from_url,
     origin_from_url,
@@ -318,13 +319,13 @@ RATE_LIMITS = {
 BOOKING_NOTIFY_EMAIL = os.getenv('BOOKING_NOTIFY_EMAIL', 'mungaimichael638@gmail.com')
 BOOKING_NOTIFY_PHONE = os.getenv('BOOKING_NOTIFY_PHONE', '+254790331108')
 
-PASSWORD_RESET_OTP_LENGTH = int(os.getenv('PASSWORD_RESET_OTP_LENGTH', '6'))
-PASSWORD_RESET_OTP_TTL = int(os.getenv('PASSWORD_RESET_OTP_TTL', '600'))
-PASSWORD_RESET_OTP_MAX_ATTEMPTS = int(os.getenv('PASSWORD_RESET_OTP_MAX_ATTEMPTS', '5'))
+PASSWORD_RESET_OTP_LENGTH = env_int('PASSWORD_RESET_OTP_LENGTH', 6)
+PASSWORD_RESET_OTP_TTL = env_int('PASSWORD_RESET_OTP_TTL', 600)
+PASSWORD_RESET_OTP_MAX_ATTEMPTS = env_int('PASSWORD_RESET_OTP_MAX_ATTEMPTS', 5)
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_PORT = env_int('EMAIL_PORT', 587)
 EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', 'True')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').replace(' ', '')
