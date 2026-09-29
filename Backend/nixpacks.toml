@@ -3,12 +3,13 @@ nixPkgs = ["python312", "postgresql"]
 
 [phases.install]
 cmds = [
-  "PIP_BREAK_SYSTEM_PACKAGES=1 python -m ensurepip --upgrade",
-  "PIP_BREAK_SYSTEM_PACKAGES=1 python -m pip install -r requirements.txt",
+  "python -m venv .venv",
+  ".venv/bin/pip install --upgrade pip",
+  ".venv/bin/pip install -r requirements.txt",
 ]
 
 [phases.build]
-cmds = ["python manage.py collectstatic --noinput"]
+cmds = [".venv/bin/python manage.py collectstatic --noinput"]
 
 [start]
-cmd = "python manage.py migrate --noinput && gunicorn bootstrap.wsgi:application --config gunicorn.conf.py"
+cmd = ".venv/bin/python manage.py migrate --noinput && .venv/bin/gunicorn bootstrap.wsgi:application --config gunicorn.conf.py"
