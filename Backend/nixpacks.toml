@@ -3,8 +3,8 @@ nixPkgs = ["python312", "postgresql"]
 
 [phases.install]
 cmds = [
-  "python -m ensurepip --upgrade",
-  "python -m pip install -r requirements.txt",
+  "PIP_BREAK_SYSTEM_PACKAGES=1 python -m ensurepip --upgrade",
+  "PIP_BREAK_SYSTEM_PACKAGES=1 python -m pip install -r requirements.txt",
 ]
 
 [phases.build]

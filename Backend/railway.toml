@@ -1,7 +1,7 @@
 # https://docs.railway.com/reference/config-as-code
 [build]
 builder = "nixpacks"
-buildCommand = "python -m ensurepip --upgrade && python -m pip install -r requirements.txt && python manage.py collectstatic --noinput"
+buildCommand = "PIP_BREAK_SYSTEM_PACKAGES=1 python -m ensurepip --upgrade && PIP_BREAK_SYSTEM_PACKAGES=1 python -m pip install -r requirements.txt && python manage.py collectstatic --noinput"
 
 [deploy]
 startCommand = "python manage.py migrate --noinput && gunicorn bootstrap.wsgi:application --config gunicorn.conf.py"
