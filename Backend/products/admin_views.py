@@ -25,7 +25,7 @@ from .models import (
     UserProfile,
     UserRole,
 )
-from .notifications import notify_booking_created
+from .notifications import schedule_booking_created_notification
 from .contact_views import _salon_contact_to_dict
 from .geo_utils import parse_coordinate, resolve_coordinates, validate_latitude, validate_longitude
 from .salon_utils import (
@@ -406,10 +406,7 @@ def create_walk_in_booking(request):
         status=BookingStatus.ACCEPTED,
     )
 
-    try:
-        notify_booking_created(booking)
-    except Exception:
-        logger.exception('Notification failed for walk-in booking #%s', booking.id)
+    schedule_booking_created_notification(booking.id)
 
     return JsonResponse(
         {

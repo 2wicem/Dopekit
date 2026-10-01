@@ -10,7 +10,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, SlotStatus, TechnicianApprovalStatus, TimeSlot, UserRole
-from .notifications import notify_booking_cancelled, notify_booking_rescheduled
+from .notifications import (
+    schedule_booking_cancelled_notification,
+    schedule_booking_rescheduled_notification,
+)
 from .slot_utils import parse_date
 from .slot_views import book_time_slot
 from .views import _booking_to_dict, _forbidden, _unauthorized
@@ -117,10 +120,7 @@ def cancel_my_booking(request, booking_id):
 
     booking = Booking.objects.select_related('time_slot__worker', 'preferred_worker').get(pk=booking.pk)
 
-    try:
-        notify_booking_cancelled(booking)
-    except Exception:
-        logger.exception('Notification failed for cancelled booking #%s', booking.id)
+    schedule_booking_cancelled_notification(booking.id)
 
     return JsonResponse(
         {
@@ -205,10 +205,7 @@ def reschedule_my_booking(request, booking_id):
 
     booking = Booking.objects.select_related('time_slot__worker', 'preferred_worker').get(pk=booking.pk)
 
-    try:
-        notify_booking_rescheduled(booking)
-    except Exception:
-        logger.exception('Notification failed for rescheduled booking #%s', booking.id)
+    schedule_booking_rescheduled_notification(booking.id)
 
     message = (
         'Appointment rescheduled. We will confirm your new time soon.'

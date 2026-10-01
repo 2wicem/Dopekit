@@ -1,8 +1,10 @@
 import logging
 import re
+import threading
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +121,69 @@ def notify_booking_created(booking) -> dict:
         'email_sent': send_booking_email(booking),
         'sms_sent': send_booking_sms(booking),
     }
+
+
+def _booking_for_notification(booking_id: int):
+    from .models import Booking
+
+    return Booking.objects.select_related('time_slot__worker', 'preferred_worker', 'salon').get(
+        pk=booking_id
+    )
+
+
+def _run_notification_in_background(task_name: str, callback) -> None:
+    def runner():
+        close_old_connections()
+        try:
+            callback()
+        except Exception:
+            logger.exception('Background notification failed: %s', task_name)
+        finally:
+            close_old_connections()
+
+    threading.Thread(target=runner, name=task_name, daemon=True).start()
+
+
+def schedule_booking_created_notification(booking_id: int) -> None:
+    def deliver():
+        from .models import Booking
+
+        try:
+            booking = _booking_for_notification(booking_id)
+        except Booking.DoesNotExist:
+            logger.warning('Booking #%s not found for create notification', booking_id)
+            return
+        notify_booking_created(booking)
+
+    _run_notification_in_background(f'notify-booking-created-{booking_id}', deliver)
+
+
+def schedule_booking_cancelled_notification(booking_id: int) -> None:
+    def deliver():
+        from .models import Booking
+
+        try:
+            booking = _booking_for_notification(booking_id)
+        except Booking.DoesNotExist:
+            logger.warning('Booking #%s not found for cancel notification', booking_id)
+            return
+        notify_booking_cancelled(booking)
+
+    _run_notification_in_background(f'notify-booking-cancelled-{booking_id}', deliver)
+
+
+def schedule_booking_rescheduled_notification(booking_id: int) -> None:
+    def deliver():
+        from .models import Booking
+
+        try:
+            booking = _booking_for_notification(booking_id)
+        except Booking.DoesNotExist:
+            logger.warning('Booking #%s not found for reschedule notification', booking_id)
+            return
+        notify_booking_rescheduled(booking)
+
+    _run_notification_in_background(f'notify-booking-rescheduled-{booking_id}', deliver)
 
 
 def _booking_update_email_body(booking, action: str) -> str:

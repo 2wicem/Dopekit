@@ -80,6 +80,7 @@ const Bookservice = forwardRef(function Bookservice(
   const [isOpen, setIsOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [status, setStatus] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [appointmentDate, setAppointmentDate] = useState(todayIso())
   const [availableSlots, setAvailableSlots] = useState([])
@@ -132,6 +133,7 @@ const Bookservice = forwardRef(function Bookservice(
 
   const closeModal = useCallback(() => {
     pendingPrefillRef.current = null
+    setSuccessMessage(null)
     setIsOpen(false)
   }, [])
 
@@ -233,6 +235,21 @@ const Bookservice = forwardRef(function Bookservice(
     }
   }, [])
 
+  const resetBookingForm = useCallback(() => {
+    const today = todayIso()
+    setForm(formFromUser(user, prefilledService))
+    setAppointmentDate(today)
+    setSelectedSlotId(null)
+    setStatus(null)
+    setSuccessMessage(null)
+    setSelectedWorkerId(prefilledWorkerId)
+    loadAvailableSlots(today, prefilledWorkerId)
+  }, [user, prefilledService, prefilledWorkerId, loadAvailableSlots])
+
+  const handleSuccessOk = () => {
+    resetBookingForm()
+  }
+
   useEffect(() => {
     if (!isOpen || !canBook) {
       return undefined
@@ -241,6 +258,7 @@ const Bookservice = forwardRef(function Bookservice(
     const prefill = pendingPrefillRef.current
 
     setStatus(null)
+    setSuccessMessage(null)
     setForm(formFromUser(user, prefilledService))
     setAppointmentDate(prefill?.date || todayIso())
     setSelectedSlotId(null)
@@ -449,12 +467,15 @@ const Bookservice = forwardRef(function Bookservice(
         throw new Error(data.error || 'Booking failed.')
       }
 
-      setStatus({ type: 'success', message: data.message })
-      setForm(formFromUser(user, prefilledService))
-      setSelectedSlotId(null)
-      loadAvailableSlots(appointmentDate, selectedWorkerId)
+      setSuccessMessage(
+        data.message || 'Request received. We will confirm your appointment time soon.'
+      )
     } catch (error) {
-      setStatus({ type: 'error', message: error.message })
+      const message =
+        error.message === 'Failed to fetch'
+          ? 'Connection timed out. Your booking may still have been saved — check My Bookings before trying again.'
+          : error.message
+      setStatus({ type: 'error', message })
     } finally {
       setLoading(false)
     }
@@ -501,6 +522,28 @@ const Bookservice = forwardRef(function Bookservice(
       >
         <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable booking-modal-dialog">
           <div className="modal-content booking-modal-content">
+            {successMessage && (
+              <div
+                className="booking-success-overlay"
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby={`${modalId}-success-title`}
+                aria-describedby={`${modalId}-success-desc`}
+              >
+                <div className="booking-success-dialog">
+                  <i className="fa-solid fa-circle-check booking-success-dialog__icon" aria-hidden="true" />
+                  <h3 className="booking-success-dialog__title" id={`${modalId}-success-title`}>
+                    Request received
+                  </h3>
+                  <p className="booking-success-dialog__message" id={`${modalId}-success-desc`}>
+                    {successMessage}
+                  </p>
+                  <button type="button" className="btn btn-primary booking-success-dialog__ok" onClick={handleSuccessOk}>
+                    OK
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="modal-header booking-modal-header">
               <div className="booking-modal-header-main">
                 <BrandLogo size="sm" />
@@ -545,10 +588,8 @@ const Bookservice = forwardRef(function Bookservice(
               </p>
             )}
 
-            {status && (
-              <div className={`alert alert-${status.type === 'success' ? 'success' : 'danger'}`}>
-                {status.message}
-              </div>
+            {status?.type === 'error' && (
+              <div className="alert alert-danger">{status.message}</div>
             )}
 
             <form onSubmit={handleSubmit}>

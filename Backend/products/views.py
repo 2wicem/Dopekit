@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 from .http_responses import forbidden, unauthorized
 from .models import Booking, BookingStatus, ServiceVenue, TechnicianApprovalStatus, TimeSlot, UserRole
 from .salon_utils import filter_bookings_by_salon, get_primary_salon, parse_admin_salon_id, resolve_salon_id
-from .notifications import notify_booking_created
+from .notifications import schedule_booking_created_notification
 from .rate_limit import rate_limit
 from .slot_utils import parse_date
 from .worker_permissions import require_approved_worker
@@ -247,10 +247,7 @@ def create_booking(request):
         profile.default_location = location
         profile.save(update_fields=['default_location'])
 
-    try:
-        notify_booking_created(booking)
-    except Exception:
-        logger.exception('Notification failed for booking #%s', booking.id)
+    schedule_booking_created_notification(booking.id)
 
     return JsonResponse(
         {

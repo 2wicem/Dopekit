@@ -329,6 +329,7 @@ EMAIL_PORT = env_int('EMAIL_PORT', 587)
 EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', 'True')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').replace(' ', '')
+EMAIL_TIMEOUT = env_int('EMAIL_TIMEOUT', 10)
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@dopekit.local').strip()
 
 AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
