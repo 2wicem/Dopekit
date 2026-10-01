@@ -148,6 +148,7 @@ Session cookies + CSRF work across split domains when `SITE_URL`, `FRONTEND_URL`
 | Issue | Fix |
 |-------|-----|
 | Frontend shows HTML instead of JSON | Wrong `VITE_API_BASE` — must be backend URL, then **redeploy frontend** |
+| Login loop (always sent back to login) | Split domains need cross-site cookies: set `FRONTEND_URL` + `SITE_URL` with `https://`, `USE_HTTPS=True`, **delete** `SESSION_COOKIE_SAMESITE` / `CSRF_COOKIE_SAMESITE` if set to `Lax`, redeploy backend |
 | Login doesn’t stick | Set `FRONTEND_URL` on backend; both URLs must use `https://` |
 | 502 on backend | Check deploy logs; confirm `DATABASE_URL` and migrations ran |
 | CORS / 403 on POST | Redeploy backend after updating `FRONTEND_URL` |

@@ -33,13 +33,21 @@ def build_cookie_settings(
 
     session_secure = env_bool('SESSION_COOKIE_SECURE', 'True' if secure_default else 'False')
     csrf_secure = env_bool('CSRF_COOKIE_SECURE', 'True' if secure_default else 'False')
-    session_samesite = os.getenv('SESSION_COOKIE_SAMESITE', samesite_default).strip() or 'Lax'
-    csrf_samesite = os.getenv('CSRF_COOKIE_SAMESITE', samesite_default).strip() or 'Lax'
+    session_samesite = os.getenv('SESSION_COOKIE_SAMESITE', samesite_default).strip() or samesite_default
+    csrf_samesite = os.getenv('CSRF_COOKIE_SAMESITE', samesite_default).strip() or samesite_default
 
     if session_samesite not in ('Lax', 'Strict', 'None'):
-        session_samesite = 'Lax'
+        session_samesite = samesite_default
     if csrf_samesite not in ('Lax', 'Strict', 'None'):
-        csrf_samesite = 'Lax'
+        csrf_samesite = samesite_default
+
+    # Split frontend + API (e.g. dopekit.co.ke → *.railway.app): Lax cookies are not
+    # sent on cross-site fetch(..., credentials: 'include'), which causes login loops.
+    if cross_origin and use_https:
+        if session_samesite == 'Lax':
+            session_samesite = 'None'
+        if csrf_samesite == 'Lax':
+            csrf_samesite = 'None'
 
     if session_samesite == 'None' and not session_secure:
         session_secure = True
