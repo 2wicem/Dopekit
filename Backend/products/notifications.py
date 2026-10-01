@@ -74,7 +74,19 @@ def _booking_sms_body(booking) -> str:
 
 def send_booking_email(booking) -> bool:
     if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-        logger.warning('Email notifications skipped: EMAIL_HOST_USER/PASSWORD not set.')
+        logger.warning(
+            'Email notifications skipped for booking #%s: set EMAIL_HOST_USER and '
+            'EMAIL_HOST_PASSWORD on the backend service.',
+            booking.id,
+        )
+        return False
+
+    recipient = (settings.BOOKING_NOTIFY_EMAIL or '').strip()
+    if not recipient:
+        logger.warning(
+            'Email notifications skipped for booking #%s: BOOKING_NOTIFY_EMAIL is empty.',
+            booking.id,
+        )
         return False
 
     try:
@@ -82,13 +94,18 @@ def send_booking_email(booking) -> bool:
             subject=f'New Dopekit booking #{booking.id}',
             message=_booking_email_body(booking),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.BOOKING_NOTIFY_EMAIL],
+            recipient_list=[recipient],
             fail_silently=False,
         )
-        logger.info('Booking email sent for #%s', booking.id)
+        logger.info('Booking email sent for #%s to %s', booking.id, recipient)
         return True
     except Exception:
-        logger.exception('Failed to send booking email for #%s', booking.id)
+        logger.exception(
+            'Failed to send booking email for #%s (from=%s to=%s)',
+            booking.id,
+            settings.DEFAULT_FROM_EMAIL,
+            recipient,
+        )
         return False
 
 

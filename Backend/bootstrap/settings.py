@@ -49,11 +49,20 @@ if not SECRET_KEY:
     else:
         raise ImproperlyConfigured('Set the SECRET_KEY environment variable in production.')
 
-SITE_URL = os.getenv('SITE_URL', '').strip().rstrip('/')
-FRONTEND_URL = os.getenv(
-    'FRONTEND_URL',
-    SITE_URL or 'http://localhost:5173',
-).strip().rstrip('/')
+def _normalize_public_url(url: str, *, default: str = '') -> str:
+    value = (url or default).strip().rstrip('/')
+    if not value:
+        return ''
+    if '://' not in value:
+        value = f'https://{value}'
+    return value
+
+
+SITE_URL = _normalize_public_url(os.getenv('SITE_URL', ''))
+FRONTEND_URL = _normalize_public_url(
+    os.getenv('FRONTEND_URL', ''),
+    default=SITE_URL or 'http://localhost:5173',
+)
 
 _extra_hosts = env_list('ALLOWED_HOSTS')
 ALLOWED_HOSTS = deployment_hosts(
@@ -90,6 +99,7 @@ MIDDLEWARE.extend(
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.middleware.common.CommonMiddleware',
         'bootstrap.tunnel_csrf.TrustTunnelCsrfOriginMiddleware',
+        'bootstrap.csrf_trust.TrustRequestHostCsrfMiddleware',
         'django.middleware.csrf.CsrfViewMiddleware',
         'django.contrib.auth.middleware.AuthenticationMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
