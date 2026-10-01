@@ -15,7 +15,12 @@ TECHNICIAN_APPROVAL_LABELS = {
 
 def user_to_dict(user):
     profile = getattr(user, 'profile', None)
-    role = profile.role if profile else UserRole.CLIENT
+    if profile and profile.role:
+        role = profile.role
+    elif user.is_superuser:
+        role = UserRole.ADMIN
+    else:
+        role = UserRole.CLIENT
     technician_approval = (
         profile.technician_approval if profile else TechnicianApprovalStatus.NOT_APPLICABLE
     )
