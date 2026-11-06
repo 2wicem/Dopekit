@@ -3,6 +3,7 @@ import contactEnvelope from './images/contact-envelope.svg'
 import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
 import { useContactInfo } from '../hooks/useContactInfo'
+import SuccessPopup from './SuccessPopup'
 import './css/Contact.css'
 
 const CONTACT_PATH = '/products/contact/'
@@ -46,6 +47,7 @@ const Contact = () => {
   const { contactInfo, loading: infoLoading, hasContactDetails } = useContactInfo()
   const [note, setNote] = useState(emptyNote)
   const [noteStatus, setNoteStatus] = useState(null)
+  const [successPopup, setSuccessPopup] = useState(null)
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
@@ -90,7 +92,10 @@ const Contact = () => {
       }
 
       setNote(noteFromUser(user))
-      setNoteStatus({ type: 'success', text: data.message || 'Note sent — we will reply soon.' })
+      setSuccessPopup({
+        title: 'Message sent successfully',
+        message: data.message || 'We received your note and will get back to you soon.',
+      })
     } catch (error) {
       setNoteStatus({ type: 'error', text: error.message })
     } finally {
@@ -263,6 +268,14 @@ const Contact = () => {
             </div>
           </div>
         </div>
+
+        {successPopup && (
+          <SuccessPopup
+            title={successPopup.title}
+            message={successPopup.message}
+            onClose={() => setSuccessPopup(null)}
+          />
+        )}
 
         {!hasContactDetails && !infoLoading && (
           <p className="contact-footnote text-muted text-center">

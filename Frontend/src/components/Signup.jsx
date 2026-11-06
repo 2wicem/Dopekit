@@ -9,6 +9,7 @@ import { validateUsername } from '../utils/usernameRules'
 import { apiFetch } from '../config/api'
 import BrandLogo from './BrandLogo'
 import PasswordInput from './PasswordInput'
+import SuccessPopup from './SuccessPopup'
 import './css/Signup.css'
 
 const SIGNUP_CONFIG_PATH = '/products/auth/signup-config/'
@@ -46,6 +47,7 @@ const Signup = () => {
     ...emptyTechnicianFields,
   })
   const [status, setStatus] = useState(null)
+  const [successPopup, setSuccessPopup] = useState(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -194,6 +196,21 @@ const Signup = () => {
 
     try {
       const data = await register(payload)
+      const isFreelanceApproval =
+        isTechnicianSignup && form.technician_type === 'freelance' && data.user?.technician_pending
+
+      if (isFreelanceApproval) {
+        const email = data.user?.email || form.email.trim()
+        setSuccessPopup({
+          title: 'Approval request sent',
+          message: data.followup_email_sent
+            ? `A follow-up email is on its way to ${email}.`
+            : 'Your freelance approval request is with the platform admin. We could not send the follow-up email just now.',
+          destination: resolvePostAuthDestination(data.user, redirectTo),
+        })
+        return
+      }
+
       setStatus({ type: 'success', message: data.message })
       setTimeout(() => navigate(resolvePostAuthDestination(data.user, redirectTo)), 1200)
     } catch (error) {
@@ -550,6 +567,13 @@ const Signup = () => {
           </div>
         </div>
       </div>
+      {successPopup && (
+        <SuccessPopup
+          title={successPopup.title}
+          message={successPopup.message}
+          onClose={() => navigate(successPopup.destination)}
+        />
+      )}
     </section>
   )
 }

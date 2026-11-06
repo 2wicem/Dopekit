@@ -88,6 +88,7 @@
 }
 
 .booking-modal-content {
+  position: relative;
   border-radius: 1rem;
   overflow: hidden;
   max-height: calc(100dvh - 1.5rem);
@@ -793,3 +794,4 @@
     width: 100%;
   }
 }
+

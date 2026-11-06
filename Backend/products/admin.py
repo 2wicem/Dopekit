@@ -1,11 +1,18 @@
 from django.contrib import admin
 
-from .models import Booking, ContactMessage, Salon, SalonContactInfo, TimeSlot, UserProfile
+from .models import Booking, ContactMessage, DailyExpense, Salon, SalonContactInfo, TimeSlot, UserProfile
+
+
+@admin.register(DailyExpense)
+class DailyExpenseAdmin(admin.ModelAdmin):
+    list_display = ('business_date', 'label', 'category', 'amount_kes', 'salon', 'recorded_by', 'created_at')
+    list_filter = ('business_date', 'category', 'salon')
+    search_fields = ('label', 'notes')
 
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'service', 'location', 'user', 'created_at')
+    list_display = ('name', 'phone', 'service', 'service_price_kes', 'location', 'user', 'created_at')
     list_filter = ('service', 'created_at')
     search_fields = ('name', 'phone', 'location')
 
@@ -19,8 +26,16 @@ class TimeSlotAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'phone', 'role', 'salon', 'technician_rating_average', 'default_location')
-    list_filter = ('role',)
+    list_display = (
+        'user',
+        'phone',
+        'role',
+        'salon',
+        'premium_inventory_access',
+        'technician_rating_average',
+        'default_location',
+    )
+    list_filter = ('role', 'premium_inventory_access')
     search_fields = ('user__username', 'user__email', 'phone')
 
 

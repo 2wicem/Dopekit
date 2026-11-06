@@ -13,6 +13,7 @@ from .http_responses import forbidden, unauthorized
 from .models import Booking, BookingStatus, ServiceVenue, TechnicianApprovalStatus, TimeSlot, UserRole
 from .salon_utils import filter_bookings_by_salon, get_primary_salon, parse_admin_salon_id, resolve_salon_id
 from .notifications import schedule_booking_created_notification
+from .service_prices import resolve_service_price_kes
 from .rate_limit import rate_limit
 from .slot_utils import parse_date
 from .worker_permissions import require_approved_worker
@@ -43,6 +44,7 @@ def _booking_to_dict(booking):
         'venue': booking.venue,
         'venue_label': booking.get_venue_display(),
         'status': booking.status,
+        'service_price_kes': booking.service_price_kes,
         'created_at': booking.created_at.isoformat(),
     }
     if booking.salon_id:
@@ -170,6 +172,11 @@ def create_booking(request):
             status=400,
         )
 
+    service_price_kes = resolve_service_price_kes(
+        service,
+        data.get('service_price_kes'),
+    )
+
     if venue not in (ServiceVenue.INDOOR, ServiceVenue.OUTDOOR):
         return JsonResponse(
             {'error': 'Please choose indoor or outdoor service.'},
@@ -213,14 +220,13 @@ def create_booking(request):
             phone=phone,
             location=location,
             service=service,
+            service_price_kes=service_price_kes,
             venue=venue,
             requested_date=requested_date,
             preferred_worker=preferred_worker,
             salon=salon,
         )
-        success_message = (
-            'Request received. We will confirm your appointment time soon.'
-        )
+        success_message = 'We will confirm your appointment time soon.'
     else:
         try:
             from .slot_views import book_time_slot
@@ -231,6 +237,7 @@ def create_booking(request):
                 phone=phone,
                 location=location,
                 service=service,
+                service_price_kes=service_price_kes,
                 venue=venue,
                 salon=salon,
             )
@@ -241,7 +248,7 @@ def create_booking(request):
             if 'booking' in locals():
                 booking.delete()
             return JsonResponse({'error': str(exc)}, status=400)
-        success_message = 'Booking received successfully.'
+        success_message = 'Your appointment details were saved. We will follow up shortly.'
 
     if venue == ServiceVenue.OUTDOOR:
         profile.default_location = location

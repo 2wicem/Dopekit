@@ -23,11 +23,17 @@ import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
 import { withRedirect } from '../utils/redirect'
 import BrandLogo from './BrandLogo'
+import SuccessPopup from './SuccessPopup'
 import TechnicianPicker from './TechnicianPicker'
 import { priceList } from './servicesData'
 import './css/Bookservice.css'
 
 const emptyForm = { name: '', phone: '', location: '', service: '', venue: 'indoor' }
+
+const resolveServicePriceKes = (serviceName) => {
+  const match = priceList.find((item) => item.name === serviceName)
+  return match?.price ?? null
+}
 
 const parseWorkerId = (value) => {
   if (value == null || value === '') {
@@ -438,6 +444,11 @@ const Bookservice = forwardRef(function Bookservice(
       payload.preferred_worker_id = selectedWorkerId
     }
 
+    const servicePriceKes = resolveServicePriceKes(service)
+    if (servicePriceKes != null) {
+      payload.service_price_kes = servicePriceKes
+    }
+
     try {
       const response = await apiFetch('/products/bookings/', {
         method: 'POST',
@@ -468,7 +479,7 @@ const Bookservice = forwardRef(function Bookservice(
       }
 
       setSuccessMessage(
-        data.message || 'Request received. We will confirm your appointment time soon.'
+        data.message || 'We will confirm your appointment time soon.'
       )
     } catch (error) {
       const message =
@@ -523,26 +534,12 @@ const Bookservice = forwardRef(function Bookservice(
         <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable booking-modal-dialog">
           <div className="modal-content booking-modal-content">
             {successMessage && (
-              <div
-                className="booking-success-overlay"
-                role="alertdialog"
-                aria-modal="true"
-                aria-labelledby={`${modalId}-success-title`}
-                aria-describedby={`${modalId}-success-desc`}
-              >
-                <div className="booking-success-dialog">
-                  <i className="fa-solid fa-circle-check booking-success-dialog__icon" aria-hidden="true" />
-                  <h3 className="booking-success-dialog__title" id={`${modalId}-success-title`}>
-                    Request received
-                  </h3>
-                  <p className="booking-success-dialog__message" id={`${modalId}-success-desc`}>
-                    {successMessage}
-                  </p>
-                  <button type="button" className="btn btn-primary booking-success-dialog__ok" onClick={handleSuccessOk}>
-                    OK
-                  </button>
-                </div>
-              </div>
+              <SuccessPopup
+                embedded
+                title="Booking sent successfully"
+                message={successMessage}
+                onClose={handleSuccessOk}
+              />
             )}
             <div className="modal-header booking-modal-header">
               <div className="booking-modal-header-main">

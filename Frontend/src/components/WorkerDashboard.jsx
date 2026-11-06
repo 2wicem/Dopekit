@@ -349,7 +349,10 @@ const WorkerDashboard = () => {
           </div>
         ) : activeTab === 'reports' ? (
           <div className="worker-app-panel" role="tabpanel">
-            <ReportsPanel scope={user?.role === 'admin' ? 'admin' : 'technician'} />
+            <ReportsPanel
+              scope={user?.role === 'admin' ? 'admin' : 'technician'}
+              canViewInventory={Boolean(user?.premium_inventory_access)}
+            />
           </div>
         ) : (
           <div className="worker-app-panel" role="tabpanel">

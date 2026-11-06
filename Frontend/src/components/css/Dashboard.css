@@ -619,6 +619,115 @@
   font-size: 0.88rem;
 }
 
+.reports-inventory-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.reports-expense-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px dashed var(--dk-border);
+  border-radius: 0.75rem;
+  background: var(--dk-surface-muted, rgba(0, 0, 0, 0.02));
+}
+
+.reports-expense-form-notes {
+  grid-column: 1 / -1;
+}
+
+.reports-inventory-days {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reports-inventory-day {
+  border: 1px solid var(--dk-border);
+  border-radius: 0.65rem;
+  overflow: hidden;
+}
+
+.reports-inventory-day-toggle {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  background: var(--dk-surface);
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.reports-inventory-day-toggle:hover {
+  background: var(--dk-surface-muted, rgba(0, 0, 0, 0.03));
+}
+
+.reports-inventory-day-meta {
+  font-size: 0.88rem;
+  color: var(--dk-text-muted, #6c757d);
+}
+
+.reports-inventory-day-body {
+  padding: 0.75rem 0.85rem 1rem;
+  border-top: 1px solid var(--dk-border);
+  background: var(--dk-surface);
+}
+
+.reports-inventory-subtitle {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.reports-premium-upsell {
+  padding: 1rem 1.1rem;
+  border: 1px dashed var(--dk-border);
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    rgba(224, 107, 138, 0.06),
+    rgba(255, 255, 255, 0.02)
+  );
+}
+
+.reports-premium-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  background: rgba(224, 107, 138, 0.15);
+  color: var(--dk-accent, #e06b8a);
+}
+
+.dashboard-premium-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.dashboard-premium-toggle input {
+  margin: 0;
+}
+
 .technician-review-list {
   display: flex;
   flex-direction: column;

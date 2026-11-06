@@ -1,6 +1,18 @@
 from django.urls import path
 
-from . import admin_views, auth_views, client_booking_views, contact_views, map_views, report_views, salon_owner_views, slot_views, views, worker_views
+from . import (
+    admin_views,
+    auth_views,
+    client_booking_views,
+    contact_views,
+    inventory_views,
+    map_views,
+    report_views,
+    salon_owner_views,
+    slot_views,
+    views,
+    worker_views,
+)
 
 urlpatterns = [
     path('', views.index),
@@ -54,6 +66,11 @@ urlpatterns = [
     path('admin/users/', admin_views.list_users, name='admin_list_users'),
     path('admin/users/<int:user_id>/role/', admin_views.update_user_role, name='admin_update_role'),
     path('admin/users/<int:user_id>/salon/', admin_views.update_user_salon, name='admin_update_user_salon'),
+    path(
+        'admin/users/<int:user_id>/premium-inventory/',
+        admin_views.update_user_premium_inventory,
+        name='admin_update_premium_inventory',
+    ),
     path('admin/users/<int:user_id>/showcase/', admin_views.update_technician_showcase, name='admin_update_technician_showcase'),
     path('admin/bookings/create/', admin_views.create_walk_in_booking, name='admin_create_walk_in_booking'),
     path('admin/technicians/pending/', admin_views.list_pending_technicians, name='admin_pending_technicians'),
@@ -66,5 +83,12 @@ urlpatterns = [
     path('reports/by-worker/', report_views.report_by_worker, name='report_by_worker'),
     path('reports/timeline/', report_views.report_timeline, name='report_timeline'),
     path('reports/export/', report_views.export_bookings_csv, name='report_export'),
+    path('reports/daily-inventory/', inventory_views.report_daily_inventory, name='report_daily_inventory'),
+    path('reports/daily-expenses/', inventory_views.create_daily_expense, name='create_daily_expense'),
+    path(
+        'reports/daily-expenses/<int:expense_id>/',
+        inventory_views.delete_daily_expense,
+        name='delete_daily_expense',
+    ),
 ]
    

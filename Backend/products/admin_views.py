@@ -40,6 +40,7 @@ from .salon_utils import (
 from .technician_utils import auto_approve_technician, is_pending_admin_review, reject_technician
 from .technician_verification import technician_application_to_dict
 from .technician_showcase import normalize_rating_average, parse_portfolio_urls, portfolio_urls_to_text
+from .service_prices import resolve_service_price_kes
 from .views import _booking_to_dict, _forbidden, _unauthorized
 
 User = get_user_model()
@@ -62,6 +63,7 @@ def _admin_user_to_dict(user):
     profile = getattr(user, 'profile', None)
     if profile:
         data['salon_id'] = profile.salon_id
+        data['premium_inventory_access'] = bool(profile.premium_inventory_access)
         salon = getattr(profile, 'salon', None)
         data['salon_name'] = salon.name if salon else None
         if profile and is_pending_admin_review(profile):
@@ -315,6 +317,48 @@ def update_technician_showcase(request, user_id):
 
 @csrf_exempt
 @require_http_methods(['PATCH'])
+def update_user_premium_inventory(request, user_id):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    if 'premium_inventory_access' not in data:
+        return JsonResponse({'error': 'premium_inventory_access is required.'}, status=400)
+
+    enabled = data.get('premium_inventory_access')
+    if not isinstance(enabled, bool):
+        return JsonResponse({'error': 'premium_inventory_access must be true or false.'}, status=400)
+
+    target = get_object_or_404(User.objects.select_related('profile', 'profile__salon'), pk=user_id)
+    profile, _ = UserProfile.objects.get_or_create(
+        user=target,
+        defaults={'phone': '', 'role': UserRole.CLIENT},
+    )
+
+    if profile.role not in (UserRole.WORKER, UserRole.ADMIN):
+        return JsonResponse(
+            {'error': 'Premium inventory is only for technician accounts.'},
+            status=400,
+        )
+
+    profile.premium_inventory_access = enabled
+    profile.save(update_fields=['premium_inventory_access'])
+
+    return JsonResponse(
+        {
+            'message': 'Premium inventory access updated.',
+            'user': _admin_user_to_dict(target),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(['PATCH'])
 def update_user_salon(request, user_id):
     denied = _require_admin(request)
     if denied:
@@ -394,12 +438,18 @@ def create_walk_in_booking(request):
     if requested_date < timezone.localdate():
         return JsonResponse({'error': 'Cannot create a walk-in in the past.'}, status=400)
 
+    service_price_kes = resolve_service_price_kes(
+        service,
+        data.get('service_price_kes'),
+    )
+
     booking = Booking.objects.create(
         user=None,
         name=name,
         phone=phone,
         location=location,
         service=service,
+        service_price_kes=service_price_kes,
         venue=venue,
         requested_date=requested_date,
         salon=salon,

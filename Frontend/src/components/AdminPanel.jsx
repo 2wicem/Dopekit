@@ -62,6 +62,7 @@ const AdminPanel = () => {
   const [walkInSalonId, setWalkInSalonId] = useState('')
   const [walkInSaving, setWalkInSaving] = useState(false)
   const [updatingSalonUserId, setUpdatingSalonUserId] = useState(null)
+  const [updatingPremiumUserId, setUpdatingPremiumUserId] = useState(null)
   const { salonId, setSalonId, salonQuery, withSalonQuery, activeSalon } = useAdminSalon(salons)
 
   const loadSalons = useCallback(async () => {
@@ -303,6 +304,30 @@ const AdminPanel = () => {
       setStatus({ type: 'error', message: error.message })
     } finally {
       setWalkInSaving(false)
+    }
+  }
+
+  const handlePremiumInventoryChange = async (userId, enabled) => {
+    setUpdatingPremiumUserId(userId)
+    setStatus(null)
+    try {
+      const response = await apiFetch(`/products/admin/users/${userId}/premium-inventory/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ premium_inventory_access: enabled }),
+      })
+      const text = await response.text()
+      const data = text ? JSON.parse(text) : {}
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not update premium access.')
+      }
+      setUsers((current) =>
+        current.map((entry) => (entry.id === userId ? data.user : entry))
+      )
+      setStatus({ type: 'success', message: data.message })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setUpdatingPremiumUserId(null)
     }
   }
 
@@ -804,6 +829,7 @@ const AdminPanel = () => {
                         <th>Phone</th>
                         <th>Role</th>
                         <th>Home salon</th>
+                        <th>Premium inventory</th>
                         <th>Status</th>
                         <th>Joined</th>
                         <th aria-label="Actions" />
@@ -858,6 +884,26 @@ const AdminPanel = () => {
                                   </option>
                                 ))}
                               </select>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td>
+                            {entry.role === 'worker' ? (
+                              <label className="dashboard-premium-toggle">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(entry.premium_inventory_access)}
+                                  disabled={updatingPremiumUserId === entry.id}
+                                  onChange={(event) =>
+                                    handlePremiumInventoryChange(entry.id, event.target.checked)
+                                  }
+                                  aria-label={`Premium daily inventory for ${entry.name}`}
+                                />
+                                <span className="dashboard-premium-toggle-label">
+                                  {entry.premium_inventory_access ? 'Enabled' : 'Off'}
+                                </span>
+                              </label>
                             ) : (
                               '—'
                             )}

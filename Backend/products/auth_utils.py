@@ -50,6 +50,9 @@ def user_to_dict(user):
             data['technician_application'] = application
 
     if profile and profile.role in (UserRole.WORKER, UserRole.ADMIN):
+        data['premium_inventory_access'] = (
+            profile.role == UserRole.ADMIN or bool(profile.premium_inventory_access)
+        )
         data['technician_work_summary'] = profile.technician_work_summary or ''
         data['technician_portfolio_urls'] = parse_portfolio_urls(profile.technician_portfolio_urls)
         if profile.technician_rating_average is not None:

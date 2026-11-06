@@ -361,6 +361,46 @@ def notify_technician_application(user) -> dict:
     return {'email_sent': email_sent, 'sms_sent': sms_sent}
 
 
+def _freelancer_followup_email_body(user) -> str:
+    name = user.first_name or user.username
+    return (
+        f'Hi {name},\n\n'
+        'Your freelance approval request was sent successfully.\n\n'
+        'A platform admin will review your application. '
+        'We will email you again when a decision is made.\n\n'
+        'You can sign in anytime to check your application status.\n\n'
+        '— Dopekit\n'
+    )
+
+
+def send_freelancer_application_followup_email(user) -> bool:
+    """Confirmation email to the freelancer after they submit an approval request."""
+    if not user.email:
+        logger.warning('Freelancer follow-up skipped: user %s has no email.', user.username)
+        return False
+
+    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+        logger.warning(
+            'Freelancer follow-up skipped for %s: set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.',
+            user.email,
+        )
+        return False
+
+    try:
+        send_mail(
+            subject='Your Dopekit approval request was sent',
+            message=_freelancer_followup_email_body(user),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        logger.info('Freelancer approval follow-up email sent to %s', user.email)
+        return True
+    except Exception:
+        logger.exception('Failed to send freelancer follow-up email to %s', user.email)
+        return False
+
+
 def notify_owner_technician_application(user) -> dict:
     from .technician_verification import technician_application_to_dict
 

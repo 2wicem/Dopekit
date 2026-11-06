@@ -41,6 +41,11 @@ class Booking(models.Model):
     phone = models.CharField(max_length=20)
     location = models.CharField(max_length=200)
     service = models.CharField(max_length=100, blank=True, default='')
+    service_price_kes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Menu price in KES when the booking was created.',
+    )
     venue = models.CharField(
         max_length=10,
         choices=ServiceVenue.choices,
@@ -188,6 +193,10 @@ class UserProfile(models.Model):
         related_name='staff_profiles',
         help_text='Home salon for technicians; admins may leave blank for all salons.',
     )
+    premium_inventory_access = models.BooleanField(
+        default=False,
+        help_text='Premium: daily inventory (services, prices, expenses) for this technician.',
+    )
 
     def __str__(self):
         return f'{self.user.get_full_name() or self.user.username} ({self.get_role_display()})'
@@ -220,6 +229,47 @@ class ContactMessage(models.Model):
     def __str__(self):
         label = self.name or 'Anonymous'
         return f'{label}: {self.message[:40]}'
+
+
+class DailyExpense(models.Model):
+    class Category(models.TextChoices):
+        SUPPLIES = 'supplies', 'Supplies'
+        TRANSPORT = 'transport', 'Transport'
+        UTILITIES = 'utilities', 'Utilities'
+        RENT = 'rent', 'Rent'
+        WAGES = 'wages', 'Wages'
+        OTHER = 'other', 'Other'
+
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='daily_expenses',
+    )
+    business_date = models.DateField()
+    label = models.CharField(max_length=120)
+    category = models.CharField(
+        max_length=20,
+        choices=Category.choices,
+        default=Category.OTHER,
+    )
+    amount_kes = models.PositiveIntegerField()
+    notes = models.TextField(blank=True, default='')
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_expenses',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-business_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.business_date} {self.label} KES {self.amount_kes}'
 
 
 class Salon(models.Model):

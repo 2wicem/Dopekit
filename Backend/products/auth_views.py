@@ -20,6 +20,7 @@ from .models import TechnicianApprovalStatus, UserProfile, UserRole
 from .notifications import (
     notify_owner_technician_application,
     notify_technician_application,
+    send_freelancer_application_followup_email,
     send_password_reset_email,
     send_password_reset_otp_sms,
     send_technician_signup_otp_sms,
@@ -180,15 +181,18 @@ def register(request):
             )
             clear_signup_phone_verification(phone)
             auth_login(request, user)
+            followup_email_sent = False
             try:
                 if is_freelance:
                     notify_technician_application(user)
                 else:
                     notify_owner_technician_application(user)
             except Exception:
-                pass
+                logger.exception('Failed to notify staff about technician application for %s', user.email)
+            if is_freelance:
+                followup_email_sent = send_freelancer_application_followup_email(user)
             success_message = (
-                'Application received. A platform admin will review your freelance profile soon.'
+                'Approval request sent. A follow-up email is on its way.'
                 if is_freelance
                 else 'Application received. Your salon manager will review it first, then platform admin.'
             )
@@ -196,6 +200,7 @@ def register(request):
                 {
                     'message': success_message,
                     'user': user_to_dict(user),
+                    'followup_email_sent': followup_email_sent,
                 },
                 status=201,
             )
