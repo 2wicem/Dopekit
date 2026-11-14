@@ -22,6 +22,7 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState(emptySalon)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     if (editingId && editingId !== 'new') {
@@ -58,6 +59,37 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
     setCreating(true)
     setEditingId('new')
     setForm({ ...emptySalon, is_primary: salons.length === 0 })
+  }
+
+  const handleDelete = async (salon) => {
+    const confirmed = window.confirm(
+      `Delete ${salon.name}? Bookings stay in reports, but this location is removed from the public list.`
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingId(salon.id)
+    onStatus?.(null)
+    try {
+      const response = await apiFetch(`/products/admin/salons/${salon.id}/`, {
+        method: 'DELETE',
+      })
+      const data = await parseApiResponse(response, 'Delete salon')
+      onStatus?.({
+        type: 'success',
+        title: 'Salon deleted',
+        message: data.message || `${salon.name} was deleted.`,
+      })
+      if (editingId === salon.id) {
+        cancelEdit()
+      }
+      await onChanged?.()
+    } catch (error) {
+      onStatus?.({ type: 'error', message: error.message })
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const cancelEdit = () => {
@@ -212,9 +244,19 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
                     <p className="admin-salon-card__meta">Owner: {salon.owner_name}</p>
                   )}
                 </div>
-                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setEditingId(salon.id)}>
-                  Edit
-                </button>
+                <div className="admin-salon-card__actions">
+                  <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setEditingId(salon.id)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger"
+                    disabled={deletingId === salon.id}
+                    onClick={() => handleDelete(salon)}
+                  >
+                    {deletingId === salon.id ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
               </article>
             ))
           )}

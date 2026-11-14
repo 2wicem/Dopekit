@@ -715,13 +715,26 @@ def create_salon(request):
 
 
 @csrf_exempt
-@require_http_methods(['PATCH'])
+@require_http_methods(['PATCH', 'DELETE'])
 def update_salon(request, salon_id):
     denied = _require_admin(request)
     if denied:
         return denied
 
     salon = get_object_or_404(Salon, pk=salon_id)
+
+    if request.method == 'DELETE':
+        was_primary = salon.is_primary
+        name = salon.name
+        salon.delete()
+        if was_primary:
+            replacement = (
+                Salon.objects.filter(is_active=True).order_by('id').first()
+                or Salon.objects.order_by('id').first()
+            )
+            if replacement:
+                assign_primary_salon(replacement)
+        return JsonResponse({'message': f'{name} was deleted.'})
 
     try:
         data = json.loads(request.body)
