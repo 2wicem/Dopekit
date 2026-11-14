@@ -64,7 +64,7 @@ def _public_worker_role_label(profile) -> str:
 
 def _public_worker_queryset(salon_id=None, freelance_only=False):
     staff = (
-        User.objects.filter(profile__role__in=(UserRole.WORKER, UserRole.ADMIN))
+        User.objects.filter(profile__role=UserRole.WORKER)
         .select_related('profile', 'profile__salon')
         .order_by('first_name', 'username')
     )
@@ -180,9 +180,9 @@ def _public_day_slots(existing_slots):
 def _public_worker_or_404(worker_id):
     user = get_object_or_404(User, pk=worker_id)
     profile = getattr(user, 'profile', None)
-    if not profile or profile.role not in (UserRole.WORKER, UserRole.ADMIN):
+    if not profile or profile.role != UserRole.WORKER:
         return None, JsonResponse({'error': 'Technician not found.'}, status=404)
-    if profile.role == UserRole.WORKER and not is_approved_technician(profile):
+    if not is_approved_technician(profile):
         return None, JsonResponse({'error': 'Technician not found.'}, status=404)
     return user, None
 
