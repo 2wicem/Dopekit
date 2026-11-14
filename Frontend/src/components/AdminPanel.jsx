@@ -10,6 +10,7 @@ import AdminSalonsPanel from './AdminSalonsPanel'
 import AdminStaffRoster from './AdminStaffRoster'
 import BookingsTable, { RoleBadge } from './BookingsTable'
 import ReportsPanel from './ReportsPanel'
+import SuccessPopup from './SuccessPopup'
 import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
 import './css/AdminShell.css'
@@ -291,16 +292,16 @@ const AdminPanel = () => {
           salon_id: Number(resolvedWalkInSalonId),
         }),
       })
-      const text = await response.text()
-      const data = text ? JSON.parse(text) : {}
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not add walk-in.')
-      }
+      const data = await parseApiResponse(response, 'Walk-in')
 
       setWalkInForm({ ...emptyWalkIn, requested_date: todayIso() })
       setShowWalkIn(false)
       await loadData()
-      setStatus({ type: 'success', message: data.message })
+      setStatus({
+        type: 'success',
+        title: 'Walk-in saved',
+        message: data.message || 'The walk-in booking was recorded.',
+      })
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
@@ -473,6 +474,13 @@ const AdminPanel = () => {
       </aside>
 
       <main className="admin-app-main dashboard-page">
+        {status?.type === 'success' && (
+          <SuccessPopup
+            title={status.title || 'Saved'}
+            message={status.message}
+            onClose={() => setStatus(null)}
+          />
+        )}
         <div className="admin-panel-toolbar">
           <div>
             <h1 className="admin-panel-title">
@@ -488,10 +496,8 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {status && (
-          <div className={`alert alert-${status.type === 'error' ? 'danger' : 'success'} mb-4`}>
-            {status.message}
-          </div>
+        {status?.type === 'error' && (
+          <div className="alert alert-danger mb-4">{status.message}</div>
         )}
 
         {loading ? (

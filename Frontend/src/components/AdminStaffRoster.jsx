@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SLOT_HOURS, formatSlotLabel, todayIso } from '../constants/slots'
-import { apiFetch } from '../config/api'
+import { apiFetch, parseApiResponse } from '../config/api'
 
 const emptyForm = {
   name: '',
@@ -29,10 +29,7 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
     setLoading(true)
     try {
       const response = await apiFetch(`/products/admin/technicians/staff/${staffQuery}`)
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not load technicians.')
-      }
+      const data = await parseApiResponse(response, 'Technicians')
       const next = data.technicians || []
       setStaff(next)
       setSelectedId((current) => {
@@ -63,10 +60,7 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
       const response = await apiFetch(
         `/products/admin/technicians/${selectedId}/slots/?date=${slotDate}`
       )
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not load availability.')
-      }
+      const data = await parseApiResponse(response, 'Availability')
       setSlots(data.slots || [])
     } catch (error) {
       onStatus?.({ type: 'error', message: error.message })
@@ -105,13 +99,14 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
           salon_id: Number.isFinite(salon_id) ? salon_id : null,
         }),
       })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not add technician.')
-      }
+      const data = await parseApiResponse(response, 'Add technician')
       setForm(emptyForm)
       setShowForm(false)
-      onStatus?.({ type: 'success', message: data.message })
+      onStatus?.({
+        type: 'success',
+        title: 'Technician added',
+        message: data.message || 'The technician was saved to your list.',
+      })
       await loadStaff()
       onChanged?.()
     } catch (error) {
@@ -152,12 +147,13 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
         method: 'POST',
         body: JSON.stringify({ date: slotDate, available_hours }),
       })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not save availability.')
-      }
+      const data = await parseApiResponse(response, 'Save hours')
       setSlots(data.slots || [])
-      onStatus?.({ type: 'success', message: data.message })
+      onStatus?.({
+        type: 'success',
+        title: 'Hours saved',
+        message: data.message || 'Availability was updated.',
+      })
     } catch (error) {
       onStatus?.({ type: 'error', message: error.message })
     } finally {

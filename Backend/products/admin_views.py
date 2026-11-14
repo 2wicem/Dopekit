@@ -31,6 +31,7 @@ from .contact_views import _salon_contact_to_dict
 from .geo_utils import parse_coordinate, resolve_coordinates, validate_latitude, validate_longitude
 from .salon_utils import (
     assign_primary_salon,
+    ensure_salon_invite_code,
     filter_bookings_by_salon,
     get_primary_salon,
     parse_admin_salon_id,
@@ -620,13 +621,17 @@ def _apply_salon_fields(salon: Salon, data: dict) -> str | None:
         )
     )
     if needs_coordinates:
-        salon.latitude, salon.longitude, geo_error = resolve_coordinates(
-            location=salon.location,
-            latitude=salon.latitude,
-            longitude=salon.longitude,
-        )
+        try:
+            salon.latitude, salon.longitude, geo_error = resolve_coordinates(
+                location=salon.location,
+                latitude=salon.latitude,
+                longitude=salon.longitude,
+            )
+        except Exception:
+            logger.exception('Geocoding failed while saving salon %s', salon.name)
+            geo_error = None
         if geo_error:
-            return geo_error
+            logger.warning('Geocoding skipped for %s: %s', salon.name, geo_error)
 
     return None
 
@@ -674,15 +679,19 @@ def create_salon(request):
         is_primary=not Salon.objects.filter(is_primary=True).exists(),
     )
 
-    error = _apply_salon_fields(salon, data)
-    if error:
-        return JsonResponse({'error': error}, status=400)
+    try:
+        error = _apply_salon_fields(salon, data)
+        if error:
+            return JsonResponse({'error': error}, status=400)
 
-    salon.save()
-    if data.get('is_primary'):
-        assign_primary_salon(salon)
+        salon.save()
+        if data.get('is_primary'):
+            assign_primary_salon(salon)
 
-    ensure_salon_invite_code(salon)
+        ensure_salon_invite_code(salon)
+    except Exception:
+        logger.exception('Failed to create salon')
+        return JsonResponse({'error': 'Could not save salon. Try again.'}, status=500)
 
     raw_owner_id = data.get('owner_id')
     if raw_owner_id not in (None, '', 'null'):
@@ -719,28 +728,32 @@ def update_salon(request, salon_id):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON.'}, status=400)
 
-    error = _apply_salon_fields(salon, data)
-    if error:
-        return JsonResponse({'error': error}, status=400)
+    try:
+        error = _apply_salon_fields(salon, data)
+        if error:
+            return JsonResponse({'error': error}, status=400)
 
-    if data.get('is_primary'):
-        assign_primary_salon(salon)
+        if data.get('is_primary'):
+            assign_primary_salon(salon)
 
-    if 'owner_id' in data:
-        raw_owner_id = data.get('owner_id')
-        if raw_owner_id in (None, '', 'null'):
-            salon.owner = None
-        else:
-            try:
-                owner = User.objects.select_related('profile').get(pk=int(raw_owner_id))
-            except (User.DoesNotExist, TypeError, ValueError):
-                return JsonResponse({'error': 'Invalid salon owner.'}, status=400)
-            owner_profile = getattr(owner, 'profile', None)
-            if not owner_profile or owner_profile.role != UserRole.SALON_OWNER:
-                return JsonResponse({'error': 'Selected user is not a salon owner.'}, status=400)
-            salon.owner = owner
+        if 'owner_id' in data:
+            raw_owner_id = data.get('owner_id')
+            if raw_owner_id in (None, '', 'null'):
+                salon.owner = None
+            else:
+                try:
+                    owner = User.objects.select_related('profile').get(pk=int(raw_owner_id))
+                except (User.DoesNotExist, TypeError, ValueError):
+                    return JsonResponse({'error': 'Invalid salon owner.'}, status=400)
+                owner_profile = getattr(owner, 'profile', None)
+                if not owner_profile or owner_profile.role != UserRole.SALON_OWNER:
+                    return JsonResponse({'error': 'Selected user is not a salon owner.'}, status=400)
+                salon.owner = owner
 
-    salon.save()
+        salon.save()
+    except Exception:
+        logger.exception('Failed to update salon %s', salon_id)
+        return JsonResponse({'error': 'Could not save salon. Try again.'}, status=500)
 
     return JsonResponse(
         {

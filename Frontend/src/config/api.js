@@ -63,7 +63,7 @@ export const parseApiResponse = async (response, label = 'Request') => {
     (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html'))
   ) {
     throw new Error(
-      `${label} returned HTML instead of JSON. Start or restart the Django backend on port 8000, then refresh this page.`
+      `${label} failed (the server sent a web page instead of data). Refresh, then try again. If it continues, wait for Railway to finish deploying the backend.`
     )
   }
 

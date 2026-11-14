@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../config/api'
+import { apiFetch, parseApiResponse } from '../config/api'
 
 const emptySalon = {
   name: '',
@@ -80,12 +80,13 @@ const AdminSalonsPanel = ({ salons, onChanged, onStatus }) => {
           body: JSON.stringify(form),
         }
       )
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not save salon.')
-      }
+      const data = await parseApiResponse(response, 'Salon save')
 
-      onStatus?.({ type: 'success', message: data.message })
+      onStatus?.({
+        type: 'success',
+        title: isNew ? 'Salon added' : 'Salon updated',
+        message: data.message || 'Your salon record was saved.',
+      })
       cancelEdit()
       await onChanged?.()
     } catch (error) {
