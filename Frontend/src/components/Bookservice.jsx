@@ -247,13 +247,12 @@ const Bookservice = forwardRef(function Bookservice(
     setAppointmentDate(today)
     setSelectedSlotId(null)
     setStatus(null)
-    setSuccessMessage(null)
     setSelectedWorkerId(prefilledWorkerId)
     loadAvailableSlots(today, prefilledWorkerId)
   }, [user, prefilledService, prefilledWorkerId, loadAvailableSlots])
 
   const handleSuccessOk = () => {
-    resetBookingForm()
+    setSuccessMessage(null)
   }
 
   useEffect(() => {
@@ -478,6 +477,7 @@ const Bookservice = forwardRef(function Bookservice(
         throw new Error(data.error || 'Booking failed.')
       }
 
+      resetBookingForm()
       setSuccessMessage(
         data.message || 'We will confirm your appointment time soon.'
       )
@@ -533,14 +533,6 @@ const Bookservice = forwardRef(function Bookservice(
       >
         <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable booking-modal-dialog">
           <div className="modal-content booking-modal-content">
-            {successMessage && (
-              <SuccessPopup
-                embedded
-                title="Booking sent successfully"
-                message={successMessage}
-                onClose={handleSuccessOk}
-              />
-            )}
             <div className="modal-header booking-modal-header">
               <div className="booking-modal-header-main">
                 <BrandLogo size="sm" />
@@ -878,6 +870,13 @@ const Bookservice = forwardRef(function Bookservice(
         </div>
       )}
       {isOpen && createPortal(modal, document.body)}
+      {isOpen && successMessage && (
+        <SuccessPopup
+          title="Booking sent successfully"
+          message={successMessage}
+          onClose={handleSuccessOk}
+        />
+      )}
     </>
   )
 })
