@@ -1,19 +1,16 @@
-import smtplib
-
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = 'Send a test email to verify Gmail SMTP settings'
+    help = 'Send a test email via Resend (or SMTP if Resend is not configured).'
 
     def handle(self, *args, **options):
-        if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+        if not settings.EMAIL_CONFIGURED:
             self.stderr.write(
                 self.style.ERROR(
-                    'Add EMAIL_HOST_PASSWORD to Backend/.env first '
-                    '(Gmail App Password, not your normal password).'
+                    'Set RESEND_API_KEY on the backend service (Railway Variables), then redeploy.'
                 )
             )
             return
@@ -24,27 +21,17 @@ class Command(BaseCommand):
                 subject='Dopekit — test booking alert',
                 message=(
                     'This is a test email from your Dopekit booking app.\n\n'
-                    'If you see this, Gmail notifications are set up correctly.'
+                    'If you see this, Resend notifications are set up correctly.'
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[recipient],
                 fail_silently=False,
             )
-        except smtplib.SMTPAuthenticationError:
-            self.stderr.write(
-                self.style.ERROR(
-                    'Gmail rejected the login (535 BadCredentials).\n\n'
-                    'Fix:\n'
-                    '  1. Use an App Password — NOT your normal Gmail password\n'
-                    '  2. Enable 2-Step Verification first:\n'
-                    '     https://myaccount.google.com/signinoptions/two-step-verification\n'
-                    '  3. Create App Password:\n'
-                    '     https://myaccount.google.com/apppasswords\n'
-                    '  4. Paste the 16-character password in Backend/.env as EMAIL_HOST_PASSWORD\n'
-                    '     (spaces are OK — they are stripped automatically)\n'
-                    '  5. EMAIL_HOST_USER must match the Gmail account that owns the app password'
-                )
-            )
+        except Exception as exc:
+            self.stderr.write(self.style.ERROR(f'Email send failed: {exc}'))
             return
 
-        self.stdout.write(self.style.SUCCESS(f'Test email sent to {recipient}'))
+        provider = 'Resend' if settings.RESEND_API_KEY else 'SMTP'
+        self.stdout.write(
+            self.style.SUCCESS(f'Test email sent to {recipient} via {provider}')
+        )

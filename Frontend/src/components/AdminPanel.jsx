@@ -7,6 +7,7 @@ import { useAuth } from '../context/useAuth'
 import { useAdminSalon } from '../hooks/useAdminSalon'
 import { apiFetch, parseApiResponse } from '../config/api'
 import AdminSalonsPanel from './AdminSalonsPanel'
+import AdminStaffRoster from './AdminStaffRoster'
 import BookingsTable, { RoleBadge } from './BookingsTable'
 import ReportsPanel from './ReportsPanel'
 import ThemeToggle from './ThemeToggle'
@@ -673,6 +674,14 @@ const AdminPanel = () => {
 
             {activeTab === 'technicians' && (
               <div className="technician-review-list">
+                <AdminStaffRoster
+                  salons={salons}
+                  salonId={salonId}
+                  salonQuery={salonQuery}
+                  onStatus={setStatus}
+                  onChanged={loadData}
+                />
+                <h3 className="reports-card-title mt-4">Pending applications</h3>
                 {pendingTechnicians.length === 0 ? (
                   <p className="text-center text-muted dashboard-empty">
                     No pending technician applications.

@@ -333,14 +333,22 @@ PASSWORD_RESET_OTP_LENGTH = env_int('PASSWORD_RESET_OTP_LENGTH', 6)
 PASSWORD_RESET_OTP_TTL = env_int('PASSWORD_RESET_OTP_TTL', 600)
 PASSWORD_RESET_OTP_MAX_ATTEMPTS = env_int('PASSWORD_RESET_OTP_MAX_ATTEMPTS', 5)
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = env_int('EMAIL_PORT', 587)
 EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', 'True')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').replace(' ', '')
 EMAIL_TIMEOUT = env_int('EMAIL_TIMEOUT', 10)
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@dopekit.local').strip()
+DEFAULT_FROM_EMAIL = os.getenv(
+    'DEFAULT_FROM_EMAIL',
+    'Dopekit <bookings@dopekit.digital>' if RESEND_API_KEY else (EMAIL_HOST_USER or 'noreply@dopekit.local'),
+).strip()
+EMAIL_CONFIGURED = bool(RESEND_API_KEY) or bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+if RESEND_API_KEY:
+    EMAIL_BACKEND = 'bootstrap.resend_backend.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
 AT_API_KEY = os.getenv('AT_API_KEY', '')

@@ -343,6 +343,86 @@
   }
 }
 
+.admin-staff-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.admin-staff-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.12));
+  background: var(--dk-surface, #1c161a);
+  color: inherit;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  min-width: 9rem;
+}
+
+.admin-staff-chip span {
+  font-size: 0.78rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-staff-chip.is-active {
+  border-color: var(--dk-accent, #e06b8a);
+  box-shadow: 0 0 0 1px var(--dk-accent, #e06b8a);
+}
+
+.admin-staff-slots-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-staff-slots-header .form-control {
+  max-width: 11rem;
+}
+
+.admin-slot-toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-slot-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.12));
+  border-radius: 0.7rem;
+  cursor: pointer;
+}
+
+.admin-slot-toggle.is-on {
+  border-color: var(--dk-accent, #e06b8a);
+  background: rgba(224, 107, 138, 0.12);
+}
+
+.admin-slot-toggle.is-booked {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.admin-slot-toggle em {
+  font-size: 0.72rem;
+  font-style: normal;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
 @media (max-width: 767px) {
   .admin-salon-form-grid {
     grid-template-columns: 1fr;

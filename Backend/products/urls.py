@@ -74,6 +74,18 @@ urlpatterns = [
     path('admin/users/<int:user_id>/showcase/', admin_views.update_technician_showcase, name='admin_update_technician_showcase'),
     path('admin/bookings/create/', admin_views.create_walk_in_booking, name='admin_create_walk_in_booking'),
     path('admin/technicians/pending/', admin_views.list_pending_technicians, name='admin_pending_technicians'),
+    path('admin/technicians/staff/', admin_views.list_salon_technicians, name='admin_list_salon_technicians'),
+    path('admin/technicians/create/', admin_views.create_salon_technician, name='admin_create_salon_technician'),
+    path(
+        'admin/technicians/<int:user_id>/slots/',
+        admin_views.admin_technician_slots,
+        name='admin_technician_slots',
+    ),
+    path(
+        'admin/technicians/<int:user_id>/slots/save/',
+        admin_views.admin_save_technician_slots,
+        name='admin_save_technician_slots',
+    ),
     path('admin/technicians/<int:user_id>/approve/', admin_views.approve_technician, name='admin_approve_technician'),
     path('admin/technicians/<int:user_id>/reject/', admin_views.reject_technician_view, name='admin_reject_technician'),
     path('admin/bookings/<int:booking_id>/', admin_views.delete_booking, name='admin_delete_booking'),

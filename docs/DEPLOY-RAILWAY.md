@@ -57,10 +57,10 @@ Railway picks up `Backend/railway.toml` automatically.
 | `SITE_URL` | `https://YOUR-BACKEND-DOMAIN.up.railway.app` |
 | `FRONTEND_URL` | `https://YOUR-FRONTEND-DOMAIN.up.railway.app` *(set after step 5)* |
 | `WEB_CONCURRENCY` | `2` |
-| `EMAIL_HOST_USER` | *(optional)* your SMTP user |
-| `EMAIL_HOST_PASSWORD` | *(optional)* Gmail app password |
+| `RESEND_API_KEY` | Resend API key (`re_…`) — required for booking emails on Railway |
+| `DEFAULT_FROM_EMAIL` | `Dopekit <bookings@dopekit.digital>` (must be a verified Resend domain) |
 | `AT_API_KEY` | *(optional)* Africa's Talking SMS key |
-| `BOOKING_NOTIFY_EMAIL` | *(optional)* |
+| `BOOKING_NOTIFY_EMAIL` | Inbox that receives booking alerts |
 | `BOOKING_NOTIFY_PHONE` | *(optional)* |
 
 **Important:** `SITE_URL` and `FRONTEND_URL` must be full `https://` URLs. They configure CORS, CSRF, cookies, and password-reset links.

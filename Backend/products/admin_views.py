@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -37,7 +38,15 @@ from .salon_utils import (
     salon_to_dict,
     unique_slug,
 )
-from .technician_utils import auto_approve_technician, is_pending_admin_review, reject_technician
+from .password_utils import password_strength_error
+from .slot_utils import SLOT_HOURS
+from .slot_views import _merge_day_slots
+from .technician_utils import (
+    auto_approve_technician,
+    is_approved_technician,
+    is_pending_admin_review,
+    reject_technician,
+)
 from .technician_verification import technician_application_to_dict
 from .technician_showcase import normalize_rating_average, parse_portfolio_urls, portfolio_urls_to_text
 from .service_prices import resolve_service_price_kes
@@ -737,5 +746,200 @@ def update_salon(request, salon_id):
         {
             'message': 'Salon updated.',
             'salon': salon_to_dict(salon, include_owner=True),
+        }
+    )
+
+
+def _unique_username(base: str) -> str:
+    cleaned = re.sub(r'[^a-zA-Z0-9._-]', '', (base or '').strip())[:24] or 'tech'
+    candidate = cleaned
+    suffix = 1
+    while User.objects.filter(username__iexact=candidate).exists():
+        suffix += 1
+        candidate = f'{cleaned}{suffix}'
+    return candidate
+
+
+def _staff_technician_queryset(salon_id=None):
+    queryset = (
+        User.objects.filter(profile__role=UserRole.WORKER)
+        .select_related('profile', 'profile__salon')
+        .order_by('first_name', 'username')
+    )
+    if salon_id:
+        queryset = queryset.filter(profile__salon_id=salon_id)
+    return queryset
+
+
+@require_http_methods(['GET'])
+def list_salon_technicians(request):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
+    salon_id = parse_admin_salon_id(request)
+    technicians = []
+    for user in _staff_technician_queryset(salon_id):
+        profile = user.profile
+        if not is_approved_technician(profile):
+            continue
+        technicians.append(_admin_user_to_dict(user))
+    return JsonResponse({'technicians': technicians})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_salon_technician(request):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    name = (data.get('name') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+    specialty = (data.get('specialty') or '').strip()[:100]
+    salon_id = resolve_salon_id(data.get('salon_id')) or parse_admin_salon_id(request)
+
+    if not name or not phone or not email or not password:
+        return JsonResponse(
+            {'error': 'Name, phone, email, and password are required.'},
+            status=400,
+        )
+
+    password_error = password_strength_error(password)
+    if password_error:
+        return JsonResponse({'error': password_error}, status=400)
+
+    if User.objects.filter(email__iexact=email).exists():
+        return JsonResponse({'error': 'An account with that email already exists.'}, status=400)
+
+    salon = None
+    if salon_id:
+        salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+        if salon is None:
+            return JsonResponse({'error': 'Invalid salon.'}, status=400)
+    else:
+        salon = get_primary_salon()
+
+    username = _unique_username(email.split('@')[0] or name)
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password,
+        first_name=name,
+    )
+    UserProfile.objects.create(
+        user=user,
+        phone=phone,
+        role=UserRole.WORKER,
+        technician_approval=TechnicianApprovalStatus.APPROVED,
+        technician_specialty=specialty,
+        technician_is_freelance=False,
+        salon=salon,
+    )
+
+    return JsonResponse(
+        {
+            'message': f'{name} added to the technician list.',
+            'user': _admin_user_to_dict(user),
+        },
+        status=201,
+    )
+
+
+def _admin_target_technician(user_id):
+    target = get_object_or_404(User.objects.select_related('profile', 'profile__salon'), pk=user_id)
+    profile = getattr(target, 'profile', None)
+    if not profile or not is_approved_technician(profile):
+        return None, JsonResponse({'error': 'Approved technician not found.'}, status=404)
+    return target, None
+
+
+@require_http_methods(['GET'])
+def admin_technician_slots(request, user_id):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
+    target, error = _admin_target_technician(user_id)
+    if error:
+        return error
+
+    slot_date = parse_date(request.GET.get('date', '').strip())
+    if not slot_date:
+        return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
+
+    existing = TimeSlot.objects.filter(worker=target, date=slot_date).select_related('booking')
+    return JsonResponse(
+        {
+            'date': slot_date.isoformat(),
+            'technician': _admin_user_to_dict(target),
+            'slots': _merge_day_slots(target, slot_date, existing),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def admin_save_technician_slots(request, user_id):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
+    target, error = _admin_target_technician(user_id)
+    if error:
+        return error
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    slot_date = parse_date((data.get('date') or '').strip())
+    if not slot_date:
+        return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
+    if slot_date < timezone.localdate():
+        return JsonResponse({'error': 'Cannot change slots in the past.'}, status=400)
+
+    available_hours = data.get('available_hours')
+    if not isinstance(available_hours, list):
+        return JsonResponse({'error': 'available_hours must be a list of start hours.'}, status=400)
+
+    selected = set()
+    for raw in available_hours:
+        try:
+            hour = int(raw)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid hour in available_hours.'}, status=400)
+        if hour not in SLOT_HOURS:
+            return JsonResponse({'error': f'Invalid start hour: {hour}.'}, status=400)
+        selected.add(hour)
+
+    for hour in SLOT_HOURS:
+        slot, _ = TimeSlot.objects.get_or_create(
+            worker=target,
+            date=slot_date,
+            start_hour=hour,
+            defaults={'status': SlotStatus.UNAVAILABLE},
+        )
+        if slot.status == SlotStatus.BOOKED:
+            continue
+        next_status = SlotStatus.AVAILABLE if hour in selected else SlotStatus.UNAVAILABLE
+        if slot.status != next_status:
+            slot.status = next_status
+            slot.save(update_fields=['status'])
+
+    existing = TimeSlot.objects.filter(worker=target, date=slot_date).select_related('booking')
+    return JsonResponse(
+        {
+            'message': 'Availability updated.',
+            'date': slot_date.isoformat(),
+            'slots': _merge_day_slots(target, slot_date, existing),
         }
     )

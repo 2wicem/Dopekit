@@ -73,10 +73,10 @@ def _booking_sms_body(booking) -> str:
 
 
 def send_booking_email(booking) -> bool:
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+    if not settings.EMAIL_CONFIGURED:
         logger.warning(
-            'Email notifications skipped for booking #%s: set EMAIL_HOST_USER and '
-            'EMAIL_HOST_PASSWORD on the backend service.',
+            'Email notifications skipped for booking #%s: set RESEND_API_KEY '
+            'on the backend service.',
             booking.id,
         )
         return False
@@ -214,7 +214,7 @@ def _booking_update_sms_body(booking, action: str) -> str:
 
 
 def notify_booking_cancelled(booking) -> dict:
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+    if not settings.EMAIL_CONFIGURED:
         email_sent = False
     else:
         try:
@@ -250,7 +250,7 @@ def notify_booking_cancelled(booking) -> dict:
 
 
 def notify_booking_rescheduled(booking) -> dict:
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+    if not settings.EMAIL_CONFIGURED:
         email_sent = False
     else:
         try:
@@ -326,7 +326,7 @@ def _technician_application_sms_body(user) -> str:
 
 
 def notify_technician_application(user) -> dict:
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+    if not settings.EMAIL_CONFIGURED:
         email_sent = False
     else:
         try:
@@ -379,9 +379,9 @@ def send_freelancer_application_followup_email(user) -> bool:
         logger.warning('Freelancer follow-up skipped: user %s has no email.', user.username)
         return False
 
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+    if not settings.EMAIL_CONFIGURED:
         logger.warning(
-            'Freelancer follow-up skipped for %s: set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.',
+            'Freelancer follow-up skipped for %s: set RESEND_API_KEY.',
             user.email,
         )
         return False
@@ -428,7 +428,7 @@ def notify_owner_technician_application(user) -> dict:
     ]
 
     email_sent = False
-    if owner.email and settings.EMAIL_HOST_USER and settings.EMAIL_HOST_PASSWORD:
+    if owner.email and settings.EMAIL_CONFIGURED:
         try:
             send_mail(
                 subject=subject,
@@ -521,8 +521,8 @@ def _contact_sms_body(contact_message) -> str:
 
 
 def send_contact_email(contact_message) -> bool:
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-        logger.warning('Contact email skipped: EMAIL_HOST_USER/PASSWORD not set.')
+    if not settings.EMAIL_CONFIGURED:
+        logger.warning('Contact email skipped: RESEND_API_KEY is not set.')
         return False
 
     sender = contact_message.name or 'Website visitor'
@@ -577,8 +577,8 @@ def send_password_reset_email(user, reset_url: str, otp: str | None = None) -> b
         logger.warning('Password reset skipped: user %s has no email.', user.username)
         return False
 
-    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-        logger.warning('Password reset email skipped: EMAIL_HOST_USER/PASSWORD not set.')
+    if not settings.EMAIL_CONFIGURED:
+        logger.warning('Password reset email skipped: RESEND_API_KEY is not set.')
         return False
 
     name = user.first_name or user.username
