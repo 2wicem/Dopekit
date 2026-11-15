@@ -9,6 +9,10 @@ const emptyForm = {
   password: '',
   specialty: '',
   salon_id: '',
+  placement: 'salon',
+  location: '',
+  service_latitude: '',
+  service_longitude: '',
 }
 
 const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChanged }) => {
@@ -90,13 +94,36 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
     event.preventDefault()
     setSaving(true)
     onStatus?.(null)
+    const isFreelance = form.placement === 'freelance'
     const salon_id = Number(form.salon_id || defaultSalonId)
+    if (!isFreelance && !Number.isFinite(salon_id)) {
+      onStatus?.({ type: 'error', message: 'Choose a salon, or add them as a freelancer.' })
+      setSaving(false)
+      return
+    }
+    if (isFreelance && !form.location.trim() && !form.service_latitude && !form.service_longitude) {
+      onStatus?.({
+        type: 'error',
+        message: 'Add a service area or GPS so this freelancer shows on the landing map.',
+      })
+      setSaving(false)
+      return
+    }
     try {
       const response = await apiFetch('/products/admin/technicians/create/', {
         method: 'POST',
         body: JSON.stringify({
-          ...form,
-          salon_id: Number.isFinite(salon_id) ? salon_id : null,
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+          password: form.password,
+          specialty: form.specialty,
+          placement: form.placement,
+          technician_is_freelance: isFreelance,
+          salon_id: isFreelance ? null : salon_id,
+          location: isFreelance ? form.location : undefined,
+          service_latitude: isFreelance ? form.service_latitude || null : undefined,
+          service_longitude: isFreelance ? form.service_longitude || null : undefined,
         }),
       })
       const data = await parseApiResponse(response, 'Add technician')
@@ -174,7 +201,7 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
     <div className="admin-staff-roster">
       <div className="admin-walkin-toolbar">
         <p className="admin-walkin-lead mb-0">
-          Add salon technicians yourself, then tick the hours they can take bookings.
+          Add a salon team member or a freelancer, then tick the hours they can take bookings.
         </p>
         <button
           type="button"
@@ -242,22 +269,82 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
               />
             </div>
             <div>
-              <label htmlFor="staff-salon">Salon</label>
+              <label htmlFor="staff-placement">Works at</label>
               <select
-                id="staff-salon"
-                name="salon_id"
+                id="staff-placement"
+                name="placement"
                 className="form-select site-select"
-                value={form.salon_id || defaultSalonId}
+                value={form.placement}
                 onChange={handleFormChange}
-                required
               >
-                {salons.map((salon) => (
-                  <option key={salon.id} value={String(salon.id)}>
-                    {salon.name}
-                  </option>
-                ))}
+                <option value="salon">Salon team</option>
+                <option value="freelance">Freelancer</option>
               </select>
             </div>
+            {form.placement !== 'freelance' && (
+              <div>
+                <label htmlFor="staff-salon">Salon</label>
+                <select
+                  id="staff-salon"
+                  name="salon_id"
+                  className="form-select site-select"
+                  value={form.salon_id || defaultSalonId}
+                  onChange={handleFormChange}
+                  required
+                >
+                  <option value="">Choose salon</option>
+                  {salons.map((salon) => (
+                    <option key={salon.id} value={String(salon.id)}>
+                      {salon.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="admin-walkin-lead mt-2 mb-0">
+                  They use this salon’s map pin on the landing page.
+                </p>
+              </div>
+            )}
+            {form.placement === 'freelance' && (
+              <>
+                <div className="admin-walkin-form-span">
+                  <label htmlFor="staff-location">Service area</label>
+                  <input
+                    id="staff-location"
+                    name="location"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Kikuyu, Wangige"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="staff-lat">Latitude (optional)</label>
+                  <input
+                    id="staff-lat"
+                    name="service_latitude"
+                    value={form.service_latitude}
+                    onChange={handleFormChange}
+                    placeholder="-1.2466"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="staff-lng">Longitude (optional)</label>
+                  <input
+                    id="staff-lng"
+                    name="service_longitude"
+                    value={form.service_longitude}
+                    onChange={handleFormChange}
+                    placeholder="36.6647"
+                    inputMode="decimal"
+                  />
+                </div>
+                <p className="admin-walkin-lead admin-walkin-form-span mb-0">
+                  Leave GPS blank to geocode the area, or paste coordinates so they appear next to
+                  salons on the landing map.
+                </p>
+              </>
+            )}
           </div>
           <div className="admin-walkin-actions">
             <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -284,6 +371,11 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
                   onClick={() => setSelectedId(String(entry.id))}
                 >
                   <strong>{entry.name}</strong>
+                  <span>
+                    {entry.technician_is_freelance || !entry.salon_id
+                      ? 'Freelancer'
+                      : entry.salon_name || 'Salon team'}
+                  </span>
                   <span>{entry.phone || entry.email}</span>
                 </button>
               </li>

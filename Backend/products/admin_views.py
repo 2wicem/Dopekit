@@ -75,6 +75,7 @@ def _admin_user_to_dict(user):
     if profile:
         data['salon_id'] = profile.salon_id
         data['premium_inventory_access'] = bool(profile.premium_inventory_access)
+        data['technician_is_freelance'] = bool(profile.technician_is_freelance or not profile.salon_id)
         salon = getattr(profile, 'salon', None)
         data['salon_name'] = salon.name if salon else None
         if profile and is_pending_admin_review(profile):
@@ -842,6 +843,9 @@ def create_salon_technician(request):
     email = (data.get('email') or '').strip().lower()
     password = data.get('password') or ''
     specialty = (data.get('specialty') or '').strip()[:100]
+    placement = (data.get('placement') or '').strip().lower()
+    freelance_raw = data.get('technician_is_freelance')
+    is_freelance = freelance_raw in (True, 'true', 'True', '1', 1) or placement == 'freelance'
     salon_id = resolve_salon_id(data.get('salon_id')) or parse_admin_salon_id(request)
 
     if not name or not phone or not email or not password:
@@ -858,12 +862,59 @@ def create_salon_technician(request):
         return JsonResponse({'error': 'An account with that email already exists.'}, status=400)
 
     salon = None
-    if salon_id:
+    if is_freelance:
+        salon = None
+    elif salon_id:
         salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
         if salon is None:
             return JsonResponse({'error': 'Invalid salon.'}, status=400)
     else:
         salon = get_primary_salon()
+        if salon is None:
+            return JsonResponse(
+                {'error': 'Choose a salon, or add this person as a freelancer.'},
+                status=400,
+            )
+
+    default_location = (data.get('location') or data.get('default_location') or '').strip()
+    service_latitude = validate_latitude(parse_coordinate(data.get('service_latitude')))
+    service_longitude = validate_longitude(parse_coordinate(data.get('service_longitude')))
+    latitude_provided = data.get('service_latitude') not in (None, '')
+    longitude_provided = data.get('service_longitude') not in (None, '')
+
+    if is_freelance:
+        if latitude_provided and service_latitude is None:
+            return JsonResponse({'error': 'Enter a valid latitude between -90 and 90.'}, status=400)
+        if longitude_provided and service_longitude is None:
+            return JsonResponse({'error': 'Enter a valid longitude between -180 and 180.'}, status=400)
+        if not default_location and salon:
+            default_location = salon.location
+        service_latitude, service_longitude, geo_error = resolve_coordinates(
+            location=default_location,
+            latitude=service_latitude,
+            longitude=service_longitude,
+            latitude_provided=latitude_provided,
+            longitude_provided=longitude_provided,
+        )
+        if service_latitude is None or service_longitude is None:
+            return JsonResponse(
+                {
+                    'error': geo_error
+                    or 'Add this freelancer’s map pin: GPS or an area they work in (e.g. Kikuyu).',
+                },
+                status=400,
+            )
+    elif salon:
+        default_location = salon.location
+        if salon.latitude is not None and salon.longitude is not None:
+            service_latitude = salon.latitude
+            service_longitude = salon.longitude
+        else:
+            service_latitude, service_longitude, _geo_error = resolve_coordinates(
+                location=salon.location,
+                latitude=None,
+                longitude=None,
+            )
 
     username = _unique_username(email.split('@')[0] or name)
     user = User.objects.create_user(
@@ -878,13 +929,17 @@ def create_salon_technician(request):
         role=UserRole.WORKER,
         technician_approval=TechnicianApprovalStatus.APPROVED,
         technician_specialty=specialty,
-        technician_is_freelance=False,
+        technician_is_freelance=is_freelance,
         salon=salon,
+        default_location=default_location,
+        service_latitude=service_latitude,
+        service_longitude=service_longitude,
     )
 
+    added_as = 'freelancer' if is_freelance else (salon.name if salon else 'salon team')
     return JsonResponse(
         {
-            'message': f'{name} added to the technician list.',
+            'message': f'{name} added as {added_as}.',
             'user': _admin_user_to_dict(user),
         },
         status=201,

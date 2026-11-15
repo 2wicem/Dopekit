@@ -48,16 +48,15 @@ def _technician_markers(client_lat, client_lng):
         if worker_id in seen:
             continue
 
+        # Salon team members share the salon pin. Only freelancers get their own GPS pin.
+        if not worker.get('is_freelance'):
+            continue
+
         lat = None
         lng = None
         if worker.get('latitude') is not None and worker.get('longitude') is not None:
             lat = float(worker['latitude'])
             lng = float(worker['longitude'])
-        elif worker.get('salon_id'):
-            salon = Salon.objects.filter(pk=worker['salon_id']).first()
-            if salon and salon.latitude is not None and salon.longitude is not None:
-                lat = float(salon.latitude)
-                lng = float(salon.longitude)
 
         if lat is None or lng is None:
             continue

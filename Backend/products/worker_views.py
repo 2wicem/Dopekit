@@ -111,7 +111,8 @@ def _serialize_public_worker(user, today, horizon):
         'name': user.first_name or user.username.capitalize(),
         'role': profile.role,
         'role_label': _public_worker_role_label(profile),
-        'is_freelance': profile.role == UserRole.WORKER and profile.salon_id is None,
+        'is_freelance': profile.role == UserRole.WORKER
+        and (profile.technician_is_freelance or profile.salon_id is None),
         'salon_id': profile.salon_id,
         'salon_name': profile.salon.name if profile.salon_id else None,
         'latitude': latitude,
