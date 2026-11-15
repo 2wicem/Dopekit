@@ -42,6 +42,7 @@ urlpatterns = [
     path('workers/<int:worker_id>/schedule/', worker_views.public_worker_schedule, name='public_worker_schedule'),
     path('map/nearby/', map_views.nearby_map_markers, name='nearby_map_markers'),
     path('bookings/<int:booking_id>/accept/', worker_views.accept_booking, name='accept_booking'),
+    path('bookings/<int:booking_id>/complete/', worker_views.complete_booking, name='complete_booking'),
     path('bookings/<int:booking_id>/cancel/', worker_views.cancel_booking_worker, name='cancel_booking_worker'),
     path('slots/', slot_views.list_available_slots, name='list_available_slots'),
     path('slots/manage/', slot_views.manage_slots, name='manage_slots'),

@@ -48,7 +48,12 @@ const emptyExpenseForm = {
   notes: '',
 }
 
-const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory = false }) => {
+const ReportsPanel = ({
+  scope = 'technician',
+  salonQuery = '',
+  canViewInventory = false,
+  canRecordExpenses = null,
+}) => {
   const [fromDate, setFromDate] = useState(daysAgoIso(DEFAULT_RANGE_DAYS))
   const [toDate, setToDate] = useState(todayIso())
   const [loading, setLoading] = useState(true)
@@ -67,7 +72,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
 
   const isAdminScope = scope === 'admin'
   const showInventory = isAdminScope || canViewInventory
-  const canRecordExpenses = showInventory
+  const allowExpenses = canRecordExpenses == null ? isAdminScope : canRecordExpenses
 
   const loadReports = useCallback(async () => {
     setLoading(true)
@@ -168,6 +173,20 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
       setStatus({ type: 'error', message: error.message })
     } finally {
       setExpenseSaving(false)
+    }
+  }
+
+  const handleCompleteService = async (bookingId) => {
+    setStatus(null)
+    try {
+      const response = await apiFetch(`/products/bookings/${bookingId}/complete/`, {
+        method: 'POST',
+      })
+      const data = await parseJson(response)
+      await loadReports()
+      setStatus({ type: 'success', message: data.message || 'Added to daily inventory.' })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
     }
   }
 
@@ -317,22 +336,17 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
             </div>
           )}
 
-          {!showInventory && !isAdminScope && (
-            <div className="reports-premium-upsell mb-4">
-              <h3 className="reports-card-title mb-1">Daily inventory (Premium)</h3>
-              <p className="text-muted mb-0">
-                Track services, prices, technician performance, and daily expenses for your salon.
-                Ask your admin to enable <strong>Premium inventory</strong> on your account to unlock
-                this view.
-              </p>
-            </div>
+          {showInventory && !isAdminScope && !allowExpenses && (
+            <p className="text-muted small mb-3">
+              Daily services are listed here. Expense tracking stays on Premium — ask admin to enable it.
+            </p>
           )}
 
           {showInventory && inventory?.totals && (
             <div className="dashboard-stats mb-4">
               <div className="dashboard-stat-card">
                 <span className="dashboard-stat-value">{formatKes(inventory.totals.revenue_kes)}</span>
-                <span className="dashboard-stat-label">Revenue (accepted)</span>
+                <span className="dashboard-stat-label">Revenue (completed)</span>
               </div>
               <div className="dashboard-stat-card">
                 <span className="dashboard-stat-value">{formatKes(inventory.totals.expenses_kes)}</span>
@@ -356,12 +370,12 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                 <h3 className="reports-card-title mb-1">Daily inventory</h3>
                 <p className="text-muted reports-panel-subtitle mb-0">
                   Per-day services, prices, technician, and expenses for your selected range.
-                  {!isAdminScope && canViewInventory ? (
-                    <span className="reports-premium-badge"> Premium</span>
+                  {allowExpenses && !isAdminScope ? (
+                    <span className="reports-premium-badge"> Expenses</span>
                   ) : null}
                 </p>
               </div>
-              {canRecordExpenses && (
+              {allowExpenses && (
                 <button
                   type="button"
                   className="btn btn-outline-primary btn-sm"
@@ -372,7 +386,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
               )}
             </div>
 
-            {canRecordExpenses && showExpenseForm && (
+            {allowExpenses && showExpenseForm && (
               <form className="reports-expense-form" onSubmit={handleExpenseSubmit}>
                 <div>
                   <label htmlFor="expense-date" className="form-label">
@@ -527,12 +541,18 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                     <th>Technician</th>
                                     <th className="text-end">Price</th>
                                     <th>Status</th>
+                                    <th aria-label="Inventory" />
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {day.services.map((row) => (
                                     <tr key={row.booking_id}>
-                                      <td>{row.client_name}</td>
+                                      <td>
+                                        {row.client_name}
+                                        {row.is_walk_in ? (
+                                          <span className="text-muted d-block small">Walk-in</span>
+                                        ) : null}
+                                      </td>
                                       <td>
                                         {row.client_phone ? (
                                           <a href={`tel:${row.client_phone}`}>{row.client_phone}</a>
@@ -544,6 +564,17 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                       <td>{row.worker_name}</td>
                                       <td className="text-end">{formatKes(row.price_kes)}</td>
                                       <td>{row.status_label}</td>
+                                      <td className="text-end">
+                                        {row.can_complete ? (
+                                          <button
+                                            type="button"
+                                            className="btn btn-link btn-sm p-0"
+                                            onClick={() => handleCompleteService(row.booking_id)}
+                                          >
+                                            Add to inventory
+                                          </button>
+                                        ) : null}
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -559,7 +590,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                     <th>Item</th>
                                     <th>Category</th>
                                     <th className="text-end">Amount</th>
-                                    {canRecordExpenses && <th aria-label="Actions" />}
+                                    {allowExpenses && <th aria-label="Actions" />}
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -573,7 +604,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                       </td>
                                       <td>{row.category_label}</td>
                                       <td className="text-end">{formatKes(row.amount_kes)}</td>
-                                      {canRecordExpenses && (
+                                      {allowExpenses && (
                                         <td className="text-end">
                                           {row.can_delete !== false ? (
                                             <button

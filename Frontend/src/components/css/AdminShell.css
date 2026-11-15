@@ -419,8 +419,19 @@
 }
 
 .admin-slot-toggle.is-booked {
-  opacity: 0.75;
+  opacity: 0.9;
   cursor: not-allowed;
+  border-color: rgba(255, 143, 171, 0.55);
+  background: rgba(255, 143, 171, 0.12);
+}
+
+.admin-slot-toggle.is-walk-in {
+  border-color: rgba(94, 196, 196, 0.55);
+  background: rgba(94, 196, 196, 0.12);
+}
+
+.admin-slot-toggle.is-off {
+  opacity: 0.72;
 }
 
 .admin-slot-toggle em {

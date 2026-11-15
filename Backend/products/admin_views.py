@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -13,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .auth_utils import user_to_dict
-from .inventory_permissions import require_premium_inventory
+from .inventory_permissions import require_staff_inventory
 from .models import (
     Booking,
     BookingStatus,
@@ -42,7 +43,7 @@ from .salon_utils import (
 )
 from .password_utils import password_strength_error
 from .slot_utils import SLOT_HOURS
-from .slot_views import _merge_day_slots
+from .slot_views import _day_kind, _merge_day_slots, _unslotted_walk_ins
 from .technician_utils import (
     auto_approve_technician,
     is_approved_technician,
@@ -410,7 +411,7 @@ def update_user_salon(request, user_id):
 @csrf_exempt
 @require_http_methods(['POST'])
 def create_walk_in_booking(request):
-    profile, denied = require_premium_inventory(request)
+    profile, denied = require_staff_inventory(request)
     if denied:
         return denied
 
@@ -457,8 +458,11 @@ def create_walk_in_booking(request):
     requested_date = parse_date(requested_date_raw)
     if not requested_date:
         return JsonResponse({'error': 'Please choose an appointment date.'}, status=400)
-    if requested_date < timezone.localdate():
-        return JsonResponse({'error': 'Cannot create a walk-in in the past.'}, status=400)
+    today = timezone.localdate()
+    if requested_date > today:
+        return JsonResponse({'error': 'Use today or an earlier date for work already done.'}, status=400)
+    if requested_date < today - timedelta(days=30):
+        return JsonResponse({'error': 'Walk-ins can be backdated up to 30 days.'}, status=400)
 
     service_price_kes = resolve_service_price_kes(
         service,
@@ -476,7 +480,8 @@ def create_walk_in_booking(request):
         requested_date=requested_date,
         preferred_worker=preferred_worker,
         salon=salon,
-        status=BookingStatus.ACCEPTED,
+        status=BookingStatus.COMPLETED,
+        is_walk_in=True,
     )
 
     schedule_booking_created_notification(booking.id)
@@ -969,11 +974,15 @@ def admin_technician_slots(request, user_id):
         return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
 
     existing = TimeSlot.objects.filter(worker=target, date=slot_date).select_related('booking')
+    slots = _merge_day_slots(target, slot_date, existing)
+    walk_ins = _unslotted_walk_ins(target, slot_date)
     return JsonResponse(
         {
             'date': slot_date.isoformat(),
             'technician': _admin_user_to_dict(target),
-            'slots': _merge_day_slots(target, slot_date, existing),
+            'slots': slots,
+            'walk_ins': walk_ins,
+            'day': _day_kind(slots, walk_ins),
         }
     )
 

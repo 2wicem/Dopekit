@@ -9,16 +9,27 @@ const TOGGLE_PATH = '/products/slots/toggle/'
 const OFF_DAY_PATH = '/products/slots/off-day/'
 
 const STATUS_LABELS = {
-  available: 'Available',
-  booked: 'Booked',
+  available: 'Open',
+  booked: 'Booked online',
   unavailable: 'Off',
 }
 
 const bookingStatusLabel = (slot) => {
+  if (slot.status === 'booked' && slot.booking?.is_walk_in) {
+    return 'Walk-in'
+  }
   if (slot.status === 'booked' && slot.booking?.status === 'pending') {
-    return 'Pending'
+    return 'Pending online'
   }
   return STATUS_LABELS[slot.status]
+}
+
+const DAY_KIND_LABELS = {
+  off: 'Off day — no open hours',
+  online: 'Has online bookings',
+  walk_in: 'Has walk-in / manual bookings',
+  mixed: 'Online and walk-in bookings',
+  open: 'Working day',
 }
 
 const cloneSlots = (slots) => slots.map((slot) => ({ ...slot }))
@@ -31,6 +42,8 @@ const WorkerSchedule = ({ onChanged = null }) => {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null)
   const [offDayLoading, setOffDayLoading] = useState(false)
+  const [walkIns, setWalkIns] = useState([])
+  const [dayKind, setDayKind] = useState(null)
 
   const loadSlots = useCallback(async () => {
     setLoading(true)
@@ -48,10 +61,14 @@ const WorkerSchedule = ({ onChanged = null }) => {
       const nextSlots = data.slots || []
       setSavedSlots(nextSlots)
       setDraftSlots(cloneSlots(nextSlots))
+      setWalkIns(data.walk_ins || [])
+      setDayKind(data.day || null)
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
       setSavedSlots([])
       setDraftSlots([])
+      setWalkIns([])
+      setDayKind(null)
     } finally {
       setLoading(false)
     }
@@ -217,7 +234,7 @@ const WorkerSchedule = ({ onChanged = null }) => {
         <div>
           <h2 className="worker-schedule-title">Your 2-hour slots</h2>
           <p className="text-muted mb-0 worker-schedule-subtitle">
-            Tap slots to set your availability, then submit to save. Booked slots lock automatically.
+            Tap hours to open or mark off. Online and walk-in bookings stay locked.
           </p>
         </div>
         <div className="worker-schedule-nav">
@@ -238,6 +255,18 @@ const WorkerSchedule = ({ onChanged = null }) => {
       </div>
 
       <p className="worker-schedule-day text-center text-muted">{formattedDate}</p>
+      {dayKind?.kind && (
+        <p className={`worker-schedule-day-kind worker-schedule-day-kind--${dayKind.kind}`}>
+          {DAY_KIND_LABELS[dayKind.kind] || 'Working day'}
+        </p>
+      )}
+
+      <ul className="worker-schedule-legend" aria-label="Slot colours">
+        <li><span className="worker-legend-swatch worker-legend-swatch--open" /> Open</li>
+        <li><span className="worker-legend-swatch worker-legend-swatch--off" /> Off</li>
+        <li><span className="worker-legend-swatch worker-legend-swatch--online" /> Booked online</li>
+        <li><span className="worker-legend-swatch worker-legend-swatch--walkin" /> Walk-in</li>
+      </ul>
 
       <div className="worker-schedule-offday-wrap">
         <button
@@ -263,14 +292,15 @@ const WorkerSchedule = ({ onChanged = null }) => {
           {draftSlots.map((slot) => {
             const saved = savedSlots.find((item) => item.start_hour === slot.start_hour)
             const isBooked = slot.status === 'booked'
-            const isPending = isBooked && slot.booking?.status === 'pending'
+            const isWalkIn = isBooked && Boolean(slot.booking?.is_walk_in)
+            const isPending = isBooked && slot.booking?.status === 'pending' && !isWalkIn
             const isAvailable = slot.status === 'available'
             const isDirty =
               !isBooked &&
               saved &&
               saved.status !== 'booked' &&
               slot.status !== saved.status
-            const cardStatus = isPending ? 'pending' : slot.status
+            const cardStatus = isWalkIn ? 'walk_in' : isPending ? 'pending' : slot.status
 
             return (
               <button
@@ -299,7 +329,8 @@ const WorkerSchedule = ({ onChanged = null }) => {
                 <span className="worker-slot-status">{bookingStatusLabel(slot)}</span>
                 {isBooked && slot.booking && (
                   <span className="worker-slot-client">
-                    {slot.booking.name} · {slot.booking.service || 'Service'}
+                    {isWalkIn ? 'Walk-in' : 'Online'} · {slot.booking.name}
+                    {slot.booking.service ? ` · ${slot.booking.service}` : ''}
                   </span>
                 )}
                 {!isBooked && (
@@ -310,6 +341,19 @@ const WorkerSchedule = ({ onChanged = null }) => {
               </button>
             )
           })}
+        </div>
+      )}
+
+      {!loading && walkIns.length > 0 && (
+        <div className="worker-schedule-walkins">
+          <h3 className="worker-schedule-walkins-title">Walk-ins this day (no clocked hour)</h3>
+          <ul>
+            {walkIns.map((entry) => (
+              <li key={entry.id}>
+                {entry.name} · {entry.service || 'Service'} · {entry.phone}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

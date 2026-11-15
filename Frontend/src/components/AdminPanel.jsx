@@ -777,7 +777,7 @@ const AdminPanel = () => {
                         <th>Phone</th>
                         <th>Role</th>
                         <th>Home salon</th>
-                        <th>Premium inventory</th>
+                        <th>Expense tracking</th>
                         <th>Status</th>
                         <th>Joined</th>
                         <th aria-label="Actions" />
@@ -846,7 +846,7 @@ const AdminPanel = () => {
                                   onChange={(event) =>
                                     handlePremiumInventoryChange(entry.id, event.target.checked)
                                   }
-                                  aria-label={`Premium daily inventory for ${entry.name}`}
+                                  aria-label={`Expense tracking for ${entry.name}`}
                                 />
                                 <span className="dashboard-premium-toggle-label">
                                   {entry.premium_inventory_access ? 'Enabled' : 'Off'}

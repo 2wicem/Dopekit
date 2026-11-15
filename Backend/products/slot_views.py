@@ -2,12 +2,13 @@ import json
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import SlotStatus, TimeSlot, UserRole
+from .models import Booking, BookingStatus, SlotStatus, TimeSlot, UserRole
 from .slot_utils import SLOT_HOURS, format_slot_label, parse_date
 from .views import _booking_to_dict, _forbidden, _unauthorized
 from .worker_permissions import require_approved_worker
@@ -62,6 +63,51 @@ def _merge_day_slots(worker, slot_date, existing_slots):
     return merged
 
 
+def _unslotted_walk_ins(worker, slot_date):
+    bookings = (
+        Booking.objects.filter(
+            is_walk_in=True,
+            requested_date=slot_date,
+        )
+        .filter(Q(preferred_worker=worker) | Q(time_slot__worker=worker))
+        .exclude(status=BookingStatus.CANCELLED)
+        .select_related('preferred_worker', 'time_slot')
+    )
+    return [_booking_to_dict(booking) for booking in bookings if getattr(booking, 'time_slot', None) is None]
+
+
+def _day_kind(slots, walk_ins):
+    has_online = any(
+        slot['status'] == SlotStatus.BOOKED
+        and not (slot.get('booking') or {}).get('is_walk_in')
+        for slot in slots
+    )
+    has_walk_in = bool(walk_ins) or any(
+        slot['status'] == SlotStatus.BOOKED and (slot.get('booking') or {}).get('is_walk_in')
+        for slot in slots
+    )
+    open_hours = [slot for slot in slots if slot['status'] == SlotStatus.AVAILABLE]
+    booked_hours = [slot for slot in slots if slot['status'] == SlotStatus.BOOKED]
+    if not open_hours and not booked_hours and not walk_ins:
+        kind = 'off'
+    elif has_online and has_walk_in:
+        kind = 'mixed'
+    elif has_walk_in and not has_online:
+        kind = 'walk_in'
+    elif has_online:
+        kind = 'online'
+    elif open_hours:
+        kind = 'open'
+    else:
+        kind = 'off'
+    return {
+        'kind': kind,
+        'has_online_bookings': has_online,
+        'has_walk_ins': has_walk_in,
+        'is_off_day': kind == 'off',
+    }
+
+
 @require_http_methods(['GET'])
 def list_available_slots(request):
     slot_date = _parse_date(request.GET.get('date'))
@@ -103,10 +149,14 @@ def manage_slots(request):
         return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
 
     existing = TimeSlot.objects.filter(worker=worker, date=slot_date).select_related('booking')
+    slots = _merge_day_slots(worker, slot_date, existing)
+    walk_ins = _unslotted_walk_ins(worker, slot_date)
     return JsonResponse(
         {
             'date': slot_date.isoformat(),
-            'slots': _merge_day_slots(worker, slot_date, existing),
+            'slots': slots,
+            'walk_ins': walk_ins,
+            'day': _day_kind(slots, walk_ins),
         }
     )
 

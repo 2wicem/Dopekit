@@ -17,7 +17,11 @@ from .report_views import (
 )
 from .salon_utils import filter_bookings_by_salon, parse_admin_salon_id, resolve_salon_id
 from .service_prices import resolve_service_price_kes
-from .inventory_permissions import inventory_salon_scope, require_premium_inventory
+from .inventory_permissions import (
+    inventory_salon_scope,
+    require_premium_inventory,
+    require_staff_inventory,
+)
 
 
 def _booking_appointment_date(booking):
@@ -74,7 +78,7 @@ def _expenses_queryset(user, profile, salon_id, date_from, date_to):
 
 @require_http_methods(['GET'])
 def report_daily_inventory(request):
-    profile, denied = require_premium_inventory(request)
+    profile, denied = require_staff_inventory(request)
     if denied:
         return denied
 
@@ -119,12 +123,14 @@ def report_daily_inventory(request):
             'worker_name': worker_name,
             'status': booking.status,
             'status_label': booking.get_status_display(),
+            'is_walk_in': bool(booking.is_walk_in),
+            'can_complete': booking.status in (BookingStatus.PENDING, BookingStatus.ACCEPTED),
         }
         days_map[day.isoformat()]['services'].append(entry)
 
         worker_bucket = days_map[day.isoformat()]['by_worker'][worker_name]
         worker_bucket['count'] += 1
-        if booking.status == BookingStatus.ACCEPTED:
+        if booking.status in (BookingStatus.ACCEPTED, BookingStatus.COMPLETED):
             worker_bucket['revenue_kes'] += price
 
     for expense in expenses:
@@ -152,10 +158,14 @@ def report_daily_inventory(request):
         services = bucket['services']
         expense_rows = bucket['expenses']
 
-        accepted = [row for row in services if row['status'] == BookingStatus.ACCEPTED]
+        counted = [
+            row
+            for row in services
+            if row['status'] in (BookingStatus.ACCEPTED, BookingStatus.COMPLETED)
+        ]
         pending = [row for row in services if row['status'] == BookingStatus.PENDING]
 
-        revenue_kes = sum(row['price_kes'] for row in accepted)
+        revenue_kes = sum(row['price_kes'] for row in counted)
         expenses_kes = sum(row['amount_kes'] for row in expense_rows)
 
         by_worker = [
@@ -174,7 +184,7 @@ def report_daily_inventory(request):
             {
                 'date': key,
                 'services_count': len(services),
-                'accepted_count': len(accepted),
+                'accepted_count': len(counted),
                 'pending_count': len(pending),
                 'revenue_kes': revenue_kes,
                 'expenses_kes': expenses_kes,

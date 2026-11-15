@@ -26,6 +26,7 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
   const [slots, setSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [slotsSaving, setSlotsSaving] = useState(false)
+  const [dayWalkIns, setDayWalkIns] = useState([])
 
   const staffQuery = salonQuery ? `?${salonQuery.replace(/^\?/, '')}` : ''
 
@@ -57,6 +58,7 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
   const loadSlots = useCallback(async () => {
     if (!selectedId) {
       setSlots([])
+      setDayWalkIns([])
       return
     }
     setSlotsLoading(true)
@@ -66,9 +68,11 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
       )
       const data = await parseApiResponse(response, 'Availability')
       setSlots(data.slots || [])
+      setDayWalkIns(data.walk_ins || [])
     } catch (error) {
       onStatus?.({ type: 'error', message: error.message })
       setSlots([])
+      setDayWalkIns([])
     } finally {
       setSlotsLoading(false)
     }
@@ -396,7 +400,8 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
                 />
               </div>
               <p className="text-muted small mb-2">
-                Tick hours they can take bookings. Booked hours stay locked.
+                Tick hours they can take bookings. Off hours stay empty. Online and walk-in bookings stay
+                locked.
               </p>
               {slotsLoading ? (
                 <p className="text-muted">Loading hours…</p>
@@ -405,12 +410,22 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
                   {displaySlots.map((slot) => {
                     const checked = slot.status === 'available' || slot.status === 'booked'
                     const booked = slot.status === 'booked'
+                    const walkIn = booked && Boolean(slot.booking?.is_walk_in)
+                    const isOff = slot.status === 'unavailable'
+                    let lockLabel = null
+                    if (walkIn) {
+                      lockLabel = 'Walk-in'
+                    } else if (booked) {
+                      lockLabel = 'Online'
+                    } else if (isOff) {
+                      lockLabel = 'Off'
+                    }
                     return (
                       <label
                         key={slot.start_hour}
                         className={`admin-slot-toggle${booked ? ' is-booked' : ''}${
-                          checked && !booked ? ' is-on' : ''
-                        }`}
+                          walkIn ? ' is-walk-in' : ''
+                        }${isOff ? ' is-off' : ''}${checked && !booked ? ' is-on' : ''}`}
                       >
                         <input
                           type="checkbox"
@@ -419,11 +434,17 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
                           onChange={() => toggleHour(slot.start_hour, slot.status)}
                         />
                         <span>{slot.label || formatSlotLabel(slot.start_hour)}</span>
-                        {booked ? <em>Booked</em> : null}
+                        {lockLabel ? <em>{lockLabel}</em> : null}
                       </label>
                     )
                   })}
                 </div>
+              )}
+              {dayWalkIns.length > 0 && (
+                <p className="text-muted small mt-3 mb-0">
+                  Walk-ins this day without a clocked hour:{' '}
+                  {dayWalkIns.map((entry) => entry.name).join(', ')}
+                </p>
               )}
               <button
                 type="button"

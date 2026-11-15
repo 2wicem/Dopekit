@@ -1,5 +1,12 @@
+import { todayIso } from '../constants/slots'
 import { SERVICE_VENUES } from '../constants/serviceVenue'
 import './css/AdminShell.css'
+
+const daysAgoIso = (days) => {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return date.toISOString().slice(0, 10)
+}
 
 const WalkInForm = ({
   form,
@@ -64,6 +71,8 @@ const WalkInForm = ({
           type="date"
           name="requested_date"
           value={form.requested_date}
+          min={daysAgoIso(30)}
+          max={todayIso()}
           onChange={onChange}
           required
         />

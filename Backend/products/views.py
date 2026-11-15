@@ -46,6 +46,9 @@ def _booking_to_dict(booking):
         'status': booking.status,
         'service_price_kes': booking.service_price_kes,
         'created_at': booking.created_at.isoformat(),
+        'is_walk_in': bool(booking.is_walk_in),
+        'source': 'walk_in' if booking.is_walk_in else 'online',
+        'source_label': 'Walk-in' if booking.is_walk_in else 'Online',
     }
     if booking.salon_id:
         data['salon_id'] = booking.salon_id

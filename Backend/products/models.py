@@ -21,6 +21,7 @@ class TechnicianApprovalStatus(models.TextChoices):
 class BookingStatus(models.TextChoices):
     PENDING = 'pending', 'Pending'
     ACCEPTED = 'accepted', 'Accepted'
+    COMPLETED = 'completed', 'Completed'
     CANCELLED = 'cancelled', 'Cancelled'
 
 
@@ -72,6 +73,10 @@ class Booking(models.Model):
         related_name='bookings',
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    is_walk_in = models.BooleanField(
+        default=False,
+        help_text='Recorded by staff (manual), not booked by the client online.',
+    )
 
     class Meta:
         ordering = ['-created_at']
@@ -195,7 +200,7 @@ class UserProfile(models.Model):
     )
     premium_inventory_access = models.BooleanField(
         default=False,
-        help_text='Premium: daily inventory (services, prices, expenses) for this technician.',
+        help_text='Premium: daily expense tracking for this technician.',
     )
 
     def __str__(self):

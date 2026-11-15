@@ -43,7 +43,7 @@ const WorkerDashboard = () => {
   const [walkInForm, setWalkInForm] = useState(emptyWalkIn)
   const [walkInSaving, setWalkInSaving] = useState(false)
 
-  const canRecordWalkIn = Boolean(user?.premium_inventory_access)
+  const canRecordWalkIn = true
 
   const loadBookings = useCallback(async (silent = false) => {
     if (silent) {
@@ -408,7 +408,8 @@ const WorkerDashboard = () => {
           <div className="worker-app-panel" role="tabpanel">
             <ReportsPanel
               scope={user?.role === 'admin' ? 'admin' : 'technician'}
-              canViewInventory={Boolean(user?.premium_inventory_access)}
+              canViewInventory
+              canRecordExpenses={Boolean(user?.premium_inventory_access)}
             />
           </div>
         ) : (
@@ -416,7 +417,7 @@ const WorkerDashboard = () => {
             {canRecordWalkIn && (
               <div className="admin-walkin-toolbar">
                 <p className="admin-walkin-lead">
-                  Add a walk-in with name and phone, or accept booked clients so they count in daily income.
+                  Log extra walk-ins (including past days) and mark jobs complete so they show in daily inventory.
                 </p>
                 <button
                   type="button"
@@ -443,6 +444,7 @@ const WorkerDashboard = () => {
                 highlightId={highlightId}
                 busyId={busyId}
                 onAccept={(id) => handleBookingAction(id, 'accept')}
+                onComplete={(id) => handleBookingAction(id, 'complete')}
                 onCancel={(id) => handleBookingAction(id, 'cancel')}
               />
             )}

@@ -204,6 +204,82 @@
   margin-top: 0.75rem;
 }
 
+.worker-schedule-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  color: var(--dk-text-muted);
+}
+
+.worker-legend-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.35rem;
+  border-radius: 0.2rem;
+  vertical-align: -0.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.worker-legend-swatch--open {
+  background: rgba(72, 187, 120, 0.7);
+}
+
+.worker-legend-swatch--off {
+  background: rgba(80, 80, 88, 0.9);
+}
+
+.worker-legend-swatch--online {
+  background: rgba(255, 143, 171, 0.85);
+}
+
+.worker-legend-swatch--walkin {
+  background: rgba(94, 196, 196, 0.85);
+}
+
+.worker-schedule-day-kind {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0 0 0.65rem;
+}
+
+.worker-schedule-day-kind--off {
+  color: #c5c0c8;
+}
+
+.worker-schedule-day-kind--online {
+  color: #ffb3c4;
+}
+
+.worker-schedule-day-kind--walk_in {
+  color: #8fdada;
+}
+
+.worker-schedule-walkins {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(94, 196, 196, 0.35);
+  background: rgba(94, 196, 196, 0.08);
+}
+
+.worker-schedule-walkins-title {
+  font-size: 0.88rem;
+  margin: 0 0 0.4rem;
+}
+
+.worker-schedule-walkins ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+}
+
 .worker-schedule-offday-wrap {
   display: flex;
   justify-content: center;

@@ -6,6 +6,7 @@ import './css/Dashboard.css'
 const STATUS_LABELS = {
   pending: 'Awaiting you',
   accepted: 'Confirmed',
+  completed: 'In inventory',
   cancelled: 'Cancelled',
 }
 
@@ -14,6 +15,7 @@ const WorkerBookingList = ({
   highlightId = null,
   busyId = null,
   onAccept = null,
+  onComplete = null,
   onCancel = null,
 }) => {
   if (bookings.length === 0) {
@@ -22,7 +24,12 @@ const WorkerBookingList = ({
 
   return (
     <div className="worker-booking-list">
-      {bookings.map((booking) => {
+      {[...bookings]
+        .sort((a, b) => {
+          const rank = (status) => (status === 'pending' || status === 'accepted' ? 0 : 1)
+          return rank(a.status) - rank(b.status)
+        })
+        .map((booking) => {
         const isPending = booking.status === 'pending'
         const isHighlighted = highlightId === booking.id
         const busy = busyId === booking.id
@@ -65,6 +72,16 @@ const WorkerBookingList = ({
                     disabled={busy}
                   >
                     {busy ? 'Saving...' : 'Accept'}
+                  </button>
+                )}
+                {onComplete && (booking.status === 'pending' || booking.status === 'accepted') && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-success"
+                    onClick={() => onComplete(booking.id)}
+                    disabled={busy}
+                  >
+                    {busy ? 'Saving...' : 'Mark done (inventory)'}
                   </button>
                 )}
                 {booking.status !== 'cancelled' && onCancel && (

@@ -1,4 +1,4 @@
-"""Premium daily inventory access (salon marketing feature)."""
+"""Staff daily inventory vs premium expense tracking."""
 
 from django.http import JsonResponse
 
@@ -28,13 +28,30 @@ def inventory_salon_scope(request, profile):
     """
     if profile.role == UserRole.ADMIN:
         return parse_admin_salon_id(request)
-    if (
-        profile.role == UserRole.WORKER
-        and profile.premium_inventory_access
-        and profile.salon_id
-    ):
+    if profile.role == UserRole.WORKER and profile.salon_id and profile.premium_inventory_access:
         return profile.salon_id
     return None
+
+
+def require_staff_inventory(request):
+    """Any approved technician or admin can log their own daily services."""
+    if not request.user.is_authenticated:
+        return None, _unauthorized()
+
+    profile = getattr(request.user, 'profile', None)
+    if not profile:
+        return None, _forbidden('Profile required.')
+
+    if profile.role == UserRole.ADMIN:
+        return profile, None
+
+    if profile.role == UserRole.WORKER:
+        _, denied = require_approved_worker(request)
+        if denied:
+            return None, denied
+        return profile, None
+
+    return None, _forbidden('Only technicians and admins can view daily inventory.')
 
 
 def require_premium_inventory(request):
@@ -53,7 +70,7 @@ def require_premium_inventory(request):
             return None, JsonResponse(
                 {
                     'error': (
-                        'Daily inventory is a premium feature. '
+                        'Expense tracking is a premium feature. '
                         'Ask your salon admin to enable it for your account.'
                     ),
                     'code': 'premium_inventory_required',

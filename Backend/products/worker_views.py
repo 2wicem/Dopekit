@@ -292,11 +292,11 @@ def accept_booking(request, booking_id):
     )
     slot = getattr(booking, 'time_slot', None)
 
-    if not slot:
-        return JsonResponse({'error': 'Booking has no time slot.'}, status=400)
-
     profile = getattr(worker, 'profile', None)
-    if profile.role == UserRole.WORKER and slot.worker_id != worker.id:
+    if not slot:
+        if profile.role == UserRole.WORKER and booking.preferred_worker_id != worker.id:
+            return _forbidden('You can only accept your own appointments.')
+    elif profile.role == UserRole.WORKER and slot.worker_id != worker.id:
         return _forbidden('You can only accept your own appointments.')
 
     if booking.status == BookingStatus.ACCEPTED:
@@ -311,6 +311,48 @@ def accept_booking(request, booking_id):
     return JsonResponse(
         {
             'message': 'Booking accepted.',
+            'booking': _booking_to_dict(booking),
+        }
+    )
+
+
+def _worker_owns_booking(worker, booking):
+    slot = getattr(booking, 'time_slot', None)
+    profile = getattr(worker, 'profile', None)
+    if profile and profile.role != UserRole.WORKER:
+        return True
+    if slot:
+        return slot.worker_id == worker.id
+    return booking.preferred_worker_id == worker.id
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def complete_booking(request, booking_id):
+    worker, denied = require_approved_worker(request)
+    if denied:
+        return denied
+
+    booking = get_object_or_404(
+        Booking.objects.select_related('time_slot', 'preferred_worker'),
+        pk=booking_id,
+    )
+    if not _worker_owns_booking(worker, booking):
+        return _forbidden('You can only complete your own appointments.')
+
+    if booking.status == BookingStatus.CANCELLED:
+        return JsonResponse({'error': 'This booking was cancelled.'}, status=400)
+
+    if booking.status == BookingStatus.COMPLETED:
+        return JsonResponse(
+            {'message': 'Already in daily inventory.', 'booking': _booking_to_dict(booking)}
+        )
+
+    booking.status = BookingStatus.COMPLETED
+    booking.save(update_fields=['status'])
+    return JsonResponse(
+        {
+            'message': 'Marked complete and added to daily inventory.',
             'booking': _booking_to_dict(booking),
         }
     )

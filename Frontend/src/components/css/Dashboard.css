@@ -492,9 +492,16 @@
   opacity: 0.95;
 }
 
+.worker-slot-card--walk_in {
+  border-color: rgba(94, 196, 196, 0.65);
+  background: rgba(94, 196, 196, 0.16);
+  cursor: not-allowed;
+}
+
 .worker-slot-card--unavailable {
-  border-color: var(--dk-border);
-  opacity: 0.85;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  opacity: 0.9;
 }
 
 .worker-slot-time {
