@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .auth_utils import user_to_dict
+from .inventory_permissions import require_premium_inventory
 from .models import (
     Booking,
     BookingStatus,
@@ -408,7 +409,7 @@ def update_user_salon(request, user_id):
 @csrf_exempt
 @require_http_methods(['POST'])
 def create_walk_in_booking(request):
-    denied = _require_admin(request)
+    profile, denied = require_premium_inventory(request)
     if denied:
         return denied
 
@@ -431,14 +432,24 @@ def create_walk_in_booking(request):
     if venue not in (ServiceVenue.INDOOR, ServiceVenue.OUTDOOR):
         return JsonResponse({'error': 'Please choose indoor or outdoor service.'}, status=400)
 
+    preferred_worker = None
     salon = None
-    if salon_id:
-        salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
-    if salon is None:
-        salon = get_primary_salon()
+    if profile.role == UserRole.WORKER:
+        preferred_worker = request.user
+        salon = getattr(profile, 'salon', None)
+    else:
+        if salon_id:
+            salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+        if salon is None:
+            salon = get_primary_salon()
 
     if venue == ServiceVenue.INDOOR:
-        location = salon.location if salon else settings.SALON_LOCATION
+        if salon:
+            location = salon.location
+        elif (profile.default_location or '').strip():
+            location = profile.default_location.strip()
+        else:
+            location = settings.SALON_LOCATION
     elif not location:
         return JsonResponse({'error': 'Please enter an address for outdoor service.'}, status=400)
 
@@ -462,6 +473,7 @@ def create_walk_in_booking(request):
         service_price_kes=service_price_kes,
         venue=venue,
         requested_date=requested_date,
+        preferred_worker=preferred_worker,
         salon=salon,
         status=BookingStatus.ACCEPTED,
     )

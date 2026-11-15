@@ -67,6 +67,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
 
   const isAdminScope = scope === 'admin'
   const showInventory = isAdminScope || canViewInventory
+  const canRecordExpenses = showInventory
 
   const loadReports = useCallback(async () => {
     setLoading(true)
@@ -360,7 +361,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                   ) : null}
                 </p>
               </div>
-              {isAdminScope && (
+              {canRecordExpenses && (
                 <button
                   type="button"
                   className="btn btn-outline-primary btn-sm"
@@ -371,7 +372,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
               )}
             </div>
 
-            {isAdminScope && showExpenseForm && (
+            {canRecordExpenses && showExpenseForm && (
               <form className="reports-expense-form" onSubmit={handleExpenseSubmit}>
                 <div>
                   <label htmlFor="expense-date" className="form-label">
@@ -521,6 +522,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                 <thead>
                                   <tr>
                                     <th>Client</th>
+                                    <th>Phone</th>
                                     <th>Service</th>
                                     <th>Technician</th>
                                     <th className="text-end">Price</th>
@@ -531,6 +533,13 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                   {day.services.map((row) => (
                                     <tr key={row.booking_id}>
                                       <td>{row.client_name}</td>
+                                      <td>
+                                        {row.client_phone ? (
+                                          <a href={`tel:${row.client_phone}`}>{row.client_phone}</a>
+                                        ) : (
+                                          '—'
+                                        )}
+                                      </td>
                                       <td>{row.service}</td>
                                       <td>{row.worker_name}</td>
                                       <td className="text-end">{formatKes(row.price_kes)}</td>
@@ -550,7 +559,7 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                     <th>Item</th>
                                     <th>Category</th>
                                     <th className="text-end">Amount</th>
-                                    {isAdminScope && <th aria-label="Actions" />}
+                                    {canRecordExpenses && <th aria-label="Actions" />}
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -564,15 +573,17 @@ const ReportsPanel = ({ scope = 'technician', salonQuery = '', canViewInventory 
                                       </td>
                                       <td>{row.category_label}</td>
                                       <td className="text-end">{formatKes(row.amount_kes)}</td>
-                                      {isAdminScope && (
+                                      {canRecordExpenses && (
                                         <td className="text-end">
-                                          <button
-                                            type="button"
-                                            className="btn btn-link btn-sm text-danger p-0"
-                                            onClick={() => handleDeleteExpense(row.id)}
-                                          >
-                                            Remove
-                                          </button>
+                                          {row.can_delete !== false ? (
+                                            <button
+                                              type="button"
+                                              className="btn btn-link btn-sm text-danger p-0"
+                                              onClick={() => handleDeleteExpense(row.id)}
+                                            >
+                                              Remove
+                                            </button>
+                                          ) : null}
                                         </td>
                                       )}
                                     </tr>

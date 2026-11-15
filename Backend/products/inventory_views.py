@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingStatus, DailyExpense, Salon
+from .models import Booking, BookingStatus, DailyExpense, Salon, UserRole
 from .report_views import (
     _appointment_date_filter,
     _parse_date_range,
@@ -16,7 +16,6 @@ from .report_views import (
     _worker_name,
 )
 from .salon_utils import filter_bookings_by_salon, parse_admin_salon_id, resolve_salon_id
-from .admin_views import _require_admin
 from .service_prices import resolve_service_price_kes
 from .inventory_permissions import inventory_salon_scope, require_premium_inventory
 
@@ -56,14 +55,19 @@ def _inventory_bookings_queryset(user, profile, date_from, date_to, salon_id):
     return _report_bookings_queryset(user, date_from, date_to, None)
 
 
-def _expenses_queryset(salon_id, date_from, date_to):
+def _expenses_queryset(user, profile, salon_id, date_from, date_to):
     queryset = DailyExpense.objects.filter(
         business_date__gte=date_from,
         business_date__lte=date_to,
     ).select_related('recorded_by', 'salon')
 
-    if salon_id:
-        queryset = queryset.filter(salon_id=salon_id)
+    if profile.role == UserRole.ADMIN:
+        if salon_id:
+            queryset = queryset.filter(salon_id=salon_id)
+    elif profile.salon_id:
+        queryset = queryset.filter(salon_id=profile.salon_id)
+    else:
+        queryset = queryset.filter(recorded_by=user)
 
     return queryset.order_by('business_date', 'id')
 
@@ -86,7 +90,7 @@ def report_daily_inventory(request):
         )
     )
 
-    expenses = list(_expenses_queryset(salon_id, date_from, date_to))
+    expenses = list(_expenses_queryset(request.user, profile, salon_id, date_from, date_to))
 
     days_map = defaultdict(
         lambda: {
@@ -109,6 +113,7 @@ def report_daily_inventory(request):
         entry = {
             'booking_id': booking.id,
             'client_name': booking.name,
+            'client_phone': booking.phone or '',
             'service': booking.service or '—',
             'price_kes': price,
             'worker_name': worker_name,
@@ -132,6 +137,10 @@ def report_daily_inventory(request):
                 'category_label': expense.get_category_display(),
                 'amount_kes': expense.amount_kes,
                 'notes': expense.notes,
+                'can_delete': (
+                    profile.role == UserRole.ADMIN
+                    or expense.recorded_by_id == request.user.id
+                ),
             }
         )
 
@@ -202,7 +211,7 @@ def report_daily_inventory(request):
 @csrf_exempt
 @require_http_methods(['POST'])
 def create_daily_expense(request):
-    denied = _require_admin(request)
+    profile, denied = require_premium_inventory(request)
     if denied:
         return denied
 
@@ -239,9 +248,12 @@ def create_daily_expense(request):
         return JsonResponse({'error': 'Invalid expense category.'}, status=400)
 
     salon = None
-    salon_id = resolve_salon_id(data.get('salon_id'))
-    if salon_id:
-        salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+    if profile.role == UserRole.WORKER:
+        salon = getattr(profile, 'salon', None)
+    else:
+        salon_id = resolve_salon_id(data.get('salon_id'))
+        if salon_id:
+            salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
 
     expense = DailyExpense.objects.create(
         salon=salon,
@@ -273,7 +285,7 @@ def create_daily_expense(request):
 @csrf_exempt
 @require_http_methods(['DELETE'])
 def delete_daily_expense(request, expense_id):
-    denied = _require_admin(request)
+    profile, denied = require_premium_inventory(request)
     if denied:
         return denied
 
@@ -281,9 +293,12 @@ def delete_daily_expense(request, expense_id):
     if expense is None:
         return JsonResponse({'error': 'Expense not found.'}, status=404)
 
-    salon_id = parse_admin_salon_id(request)
-    if salon_id and expense.salon_id not in (None, salon_id):
-        return JsonResponse({'error': 'Expense not found for this salon.'}, status=404)
+    if profile.role == UserRole.ADMIN:
+        salon_id = parse_admin_salon_id(request)
+        if salon_id and expense.salon_id not in (None, salon_id):
+            return JsonResponse({'error': 'Expense not found for this salon.'}, status=404)
+    elif expense.recorded_by_id != request.user.id:
+        return JsonResponse({'error': 'You can only remove expenses you recorded.'}, status=403)
 
     expense.delete()
     return JsonResponse({'message': 'Expense removed.'})

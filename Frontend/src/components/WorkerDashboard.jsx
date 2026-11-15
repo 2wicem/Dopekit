@@ -9,8 +9,21 @@ import ThemeToggle from './ThemeToggle'
 import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
 import ReportsPanel from './ReportsPanel'
-import { apiFetch } from '../config/api'
+import { apiFetch, parseApiResponse } from '../config/api'
+import WalkInForm from './WalkInForm'
 import './css/WorkerApp.css'
+
+const WALK_IN_PATH = '/products/bookings/walk-in/'
+
+const emptyWalkIn = {
+  name: '',
+  phone: '',
+  service: '',
+  service_price_kes: '',
+  venue: 'indoor',
+  location: '',
+  requested_date: todayIso(),
+}
 
 const WORKER_BOOKINGS_PATH = '/products/bookings/worker/'
 
@@ -26,6 +39,11 @@ const WorkerDashboard = () => {
   const [highlightId, setHighlightId] = useState(null)
   const [notifyPermission, setNotifyPermission] = useState(getNotificationPermission)
   const [enablingAlerts, setEnablingAlerts] = useState(false)
+  const [showWalkIn, setShowWalkIn] = useState(false)
+  const [walkInForm, setWalkInForm] = useState(emptyWalkIn)
+  const [walkInSaving, setWalkInSaving] = useState(false)
+
+  const canRecordWalkIn = Boolean(user?.premium_inventory_access)
 
   const loadBookings = useCallback(async (silent = false) => {
     if (silent) {
@@ -185,6 +203,45 @@ const WorkerDashboard = () => {
       setStatus({ type: 'error', message: error.message })
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const handleWalkInChange = (event) => {
+    const { name, value } = event.target
+    setWalkInForm((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleWalkInSubmit = async (event) => {
+    event.preventDefault()
+    if (walkInForm.venue === 'outdoor' && !walkInForm.location.trim()) {
+      setStatus({ type: 'error', message: 'Enter an address for outdoor walk-ins.' })
+      return
+    }
+
+    setWalkInSaving(true)
+    setStatus(null)
+    try {
+      const response = await apiFetch(WALK_IN_PATH, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...walkInForm,
+          service_price_kes: walkInForm.service_price_kes
+            ? Number(walkInForm.service_price_kes)
+            : null,
+        }),
+      })
+      const data = await parseApiResponse(response, 'Walk-in')
+      setWalkInForm({ ...emptyWalkIn, requested_date: todayIso() })
+      setShowWalkIn(false)
+      await loadBookings(true)
+      setStatus({
+        type: 'success',
+        message: data.message || 'Walk-in saved. It counts in today’s income.',
+      })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setWalkInSaving(false)
     }
   }
 
@@ -356,6 +413,28 @@ const WorkerDashboard = () => {
           </div>
         ) : (
           <div className="worker-app-panel" role="tabpanel">
+            {canRecordWalkIn && (
+              <div className="admin-walkin-toolbar">
+                <p className="admin-walkin-lead">
+                  Add a walk-in with name and phone, or accept booked clients so they count in daily income.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => setShowWalkIn((current) => !current)}
+                >
+                  {showWalkIn ? 'Close walk-in form' : 'Add walk-in'}
+                </button>
+              </div>
+            )}
+            {canRecordWalkIn && showWalkIn && (
+              <WalkInForm
+                form={walkInForm}
+                onChange={handleWalkInChange}
+                onSubmit={handleWalkInSubmit}
+                saving={walkInSaving}
+              />
+            )}
             {loading ? (
               <p className="worker-app-loading">Loading bookings...</p>
             ) : (

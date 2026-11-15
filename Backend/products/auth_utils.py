@@ -53,6 +53,7 @@ def user_to_dict(user):
         data['premium_inventory_access'] = (
             profile.role == UserRole.ADMIN or bool(profile.premium_inventory_access)
         )
+        data['salon_id'] = profile.salon_id
         data['technician_work_summary'] = profile.technician_work_summary or ''
         data['technician_portfolio_urls'] = parse_portfolio_urls(profile.technician_portfolio_urls)
         if profile.technician_rating_average is not None:

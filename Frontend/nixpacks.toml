@@ -1,8 +1,13 @@
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+NPM_CONFIG_CACHE = "/tmp/npm-cache"
+NPM_CONFIG_UPDATE_NOTIFIER = "false"
+
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["mkdir -p /tmp/npm-cache", "npm ci --include=dev --cache /tmp/npm-cache"]
 
 [phases.build]
 cmds = ["npm run build"]

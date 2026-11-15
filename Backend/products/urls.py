@@ -26,6 +26,7 @@ urlpatterns = [
     path('bookings/mine/<int:booking_id>/reschedule/', client_booking_views.reschedule_my_booking, name='reschedule_my_booking'),
     path('bookings/list/', views.list_bookings, name='list_bookings'),
     path('bookings/worker/', worker_views.worker_bookings, name='worker_bookings'),
+    path('bookings/walk-in/', admin_views.create_walk_in_booking, name='create_walk_in_booking'),
     path('owner/me/', salon_owner_views.owner_me, name='owner_me'),
     path('owner/salons/', salon_owner_views.list_owner_salons, name='owner_list_salons'),
     path('owner/salons/create/', salon_owner_views.create_owner_salon, name='owner_create_salon'),

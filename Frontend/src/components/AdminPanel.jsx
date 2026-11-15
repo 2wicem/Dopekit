@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { todayIso } from '../constants/slots'
 import { ROLE_LABELS } from '../constants/roles'
-import { SERVICE_VENUES } from '../constants/serviceVenue'
 import { useAuth } from '../context/useAuth'
 import { useAdminSalon } from '../hooks/useAdminSalon'
 import { apiFetch, parseApiResponse } from '../config/api'
@@ -10,6 +9,7 @@ import AdminSalonsPanel from './AdminSalonsPanel'
 import AdminStaffRoster from './AdminStaffRoster'
 import BookingsTable, { RoleBadge } from './BookingsTable'
 import ReportsPanel from './ReportsPanel'
+import WalkInForm from './WalkInForm'
 import SuccessPopup from './SuccessPopup'
 import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
@@ -27,6 +27,7 @@ const emptyWalkIn = {
   name: '',
   phone: '',
   service: '',
+  service_price_kes: '',
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),
@@ -289,6 +290,9 @@ const AdminPanel = () => {
         method: 'POST',
         body: JSON.stringify({
           ...walkInForm,
+          service_price_kes: walkInForm.service_price_kes
+            ? Number(walkInForm.service_price_kes)
+            : null,
           salon_id: Number(resolvedWalkInSalonId),
         }),
       })
@@ -558,51 +562,13 @@ const AdminPanel = () => {
                 </div>
 
                 {showWalkIn && (
-                  <form className="admin-walkin-form" onSubmit={handleWalkInSubmit}>
-                    <div className="admin-walkin-form-grid">
-                      <div>
-                        <label htmlFor="walkin-name">Client name</label>
-                        <input
-                          id="walkin-name"
-                          name="name"
-                          value={walkInForm.name}
-                          onChange={handleWalkInChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="walkin-phone">Phone</label>
-                        <input
-                          id="walkin-phone"
-                          name="phone"
-                          value={walkInForm.phone}
-                          onChange={handleWalkInChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="walkin-service">Service</label>
-                        <input
-                          id="walkin-service"
-                          name="service"
-                          value={walkInForm.service}
-                          onChange={handleWalkInChange}
-                          placeholder="Optional"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="walkin-date">Date</label>
-                        <input
-                          id="walkin-date"
-                          type="date"
-                          name="requested_date"
-                          value={walkInForm.requested_date}
-                          min={todayIso()}
-                          onChange={handleWalkInChange}
-                          required
-                        />
-                      </div>
-                      {salonId === 'all' && (
+                  <WalkInForm
+                    form={walkInForm}
+                    onChange={handleWalkInChange}
+                    onSubmit={handleWalkInSubmit}
+                    saving={walkInSaving}
+                    extraFields={
+                      salonId === 'all' ? (
                         <div>
                           <label htmlFor="walkin-salon">Salon</label>
                           <select
@@ -620,42 +586,9 @@ const AdminPanel = () => {
                             ))}
                           </select>
                         </div>
-                      )}
-                      <div>
-                        <label htmlFor="walkin-venue">Venue</label>
-                        <select
-                          id="walkin-venue"
-                          className="form-select site-select"
-                          name="venue"
-                          value={walkInForm.venue}
-                          onChange={handleWalkInChange}
-                        >
-                          {SERVICE_VENUES.map((entry) => (
-                            <option key={entry.value} value={entry.value}>
-                              {entry.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      {walkInForm.venue === 'outdoor' && (
-                        <div className="admin-walkin-form-span">
-                          <label htmlFor="walkin-location">Address</label>
-                          <input
-                            id="walkin-location"
-                            name="location"
-                            value={walkInForm.location}
-                            onChange={handleWalkInChange}
-                            required
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="admin-walkin-actions">
-                      <button type="submit" className="btn btn-sm btn-success" disabled={walkInSaving}>
-                        {walkInSaving ? 'Saving…' : 'Save walk-in'}
-                      </button>
-                    </div>
-                  </form>
+                      ) : null
+                    }
+                  />
                 )}
 
                 <BookingsTable
