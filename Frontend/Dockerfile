@@ -11,7 +11,16 @@ RUN mkdir -p /tmp/npm-cache \
   && npm ci --include=dev --cache /tmp/npm-cache --no-audit --no-fund
 
 COPY . .
-RUN npm run build \
+
+# Vite inlines this at build time. Without it the site calls /api on dopekit.digital
+# (the static host) instead of the Django service, so login cannot reach the backend.
+ARG VITE_API_BASE
+ENV VITE_API_BASE=$VITE_API_BASE
+RUN if [ -z "$VITE_API_BASE" ]; then \
+      echo "Set VITE_API_BASE on angelic-learning to the Dopekit API URL (https://....railway.app, no trailing slash)."; \
+      exit 1; \
+    fi \
+  && npm run build \
   && npm install -g serve@14.2.4
 
 ENV NODE_ENV=production
