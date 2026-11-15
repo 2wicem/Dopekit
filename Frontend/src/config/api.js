@@ -1,4 +1,12 @@
-const configured = (import.meta.env.VITE_API_BASE || '/api').replace(/\/$/, '')
+const runtimeBase =
+  typeof window !== 'undefined' && typeof window.__DOPEKIT_API_BASE__ === 'string'
+    ? window.__DOPEKIT_API_BASE__.trim()
+    : ''
+
+const configured = (runtimeBase || import.meta.env.VITE_API_BASE || '/api').replace(
+  /\/$/,
+  ''
+)
 
 // Bundled hybrid builds must set VITE_API_BASE to the public API origin.
 // Live-wrap (CAPACITOR_SERVER_URL) keeps using the hosted site's /api proxy.

@@ -6,6 +6,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "serve dist -l tcp://0.0.0.0:$PORT -s"
+startCommand = "/app/docker-entrypoint.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10

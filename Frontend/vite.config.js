@@ -36,9 +36,13 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
-        globIgnores: ['**/assets/dope*.*'],
+        globIgnores: ['**/assets/dope*.*', '**/config.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
+          {
+            urlPattern: /\/config\.js$/i,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^\/api\/.*/i,
             handler: 'NetworkOnly',
