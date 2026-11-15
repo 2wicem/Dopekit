@@ -2,10 +2,10 @@
 # https://docs.railway.com/reference/config-as-code
 
 [build]
-builder = "nixpacks"
-buildCommand = "npm ci --include=dev --cache /tmp/npm-cache && npm run build"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npx --yes serve dist -l tcp://0.0.0.0:$PORT -s"
+startCommand = "serve dist -l tcp://0.0.0.0:$PORT -s"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
