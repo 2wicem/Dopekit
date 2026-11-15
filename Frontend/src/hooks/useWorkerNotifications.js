@@ -44,21 +44,25 @@ const notifyNewBooking = (booking, onOpen) => {
     return
   }
 
-  const when = booking.slot?.label ? ` · ${booking.slot.label}` : ''
-  const notification = new Notification('New booking request', {
-    body: `${booking.name} — ${booking.service || 'Service'}${when}`,
-    tag: `booking-${booking.id}`,
-    icon: '/icon.svg',
-  })
+  try {
+    const when = booking.slot?.label ? ` · ${booking.slot.label}` : ''
+    const notification = new Notification('New booking request', {
+      body: `${booking.name} — ${booking.service || 'Service'}${when}`,
+      tag: `booking-${booking.id}`,
+      icon: '/icon.svg',
+    })
 
-  notification.onclick = () => {
-    window.focus()
-    onOpen?.(booking.id)
-    notification.close()
+    notification.onclick = () => {
+      window.focus()
+      onOpen?.(booking.id)
+      notification.close()
+    }
+  } catch {
+    // iOS and some in-app browsers reject Notification after permission checks.
   }
 }
 
-export const useWorkerNotifications = ({ bookings, enabled, onOpenBooking }) => {
+export const useWorkerNotifications = ({ pendingIds = [], enabled, onOpenBooking }) => {
   const seenPendingRef = useRef(new Set())
   const initializedRef = useRef(false)
 
@@ -66,10 +70,6 @@ export const useWorkerNotifications = ({ bookings, enabled, onOpenBooking }) => 
     if (!enabled) {
       return undefined
     }
-
-    const pendingIds = bookings
-      .filter((booking) => booking.status === 'pending')
-      .map((booking) => booking.id)
 
     if (!initializedRef.current) {
       pendingIds.forEach((id) => seenPendingRef.current.add(id))
@@ -80,15 +80,15 @@ export const useWorkerNotifications = ({ bookings, enabled, onOpenBooking }) => 
     pendingIds.forEach((id) => {
       if (!seenPendingRef.current.has(id)) {
         seenPendingRef.current.add(id)
-        const booking = bookings.find((item) => item.id === id)
-        if (booking) {
-          notifyNewBooking(booking, onOpenBooking)
-        }
+        notifyNewBooking(
+          { id, name: 'New client', service: 'Open Bookings to review' },
+          onOpenBooking
+        )
       }
     })
 
     return undefined
-  }, [bookings, enabled, onOpenBooking])
+  }, [pendingIds, enabled, onOpenBooking])
 
   useEffect(() => {
     if (!enabled || !canNotify()) {
@@ -97,17 +97,20 @@ export const useWorkerNotifications = ({ bookings, enabled, onOpenBooking }) => 
 
     const poll = async () => {
       try {
-        const response = await apiFetch('/products/bookings/worker/')
+        const response = await apiFetch('/products/bookings/worker/?light=1')
         if (!response.ok) {
           return
         }
         const data = await response.json()
-        const pending = (data.bookings || []).filter((booking) => booking.status === 'pending')
+        const pendingIds = data.pending_ids || []
 
-        pending.forEach((booking) => {
-          if (!seenPendingRef.current.has(booking.id)) {
-            seenPendingRef.current.add(booking.id)
-            notifyNewBooking(booking, onOpenBooking)
+        pendingIds.forEach((id) => {
+          if (!seenPendingRef.current.has(id)) {
+            seenPendingRef.current.add(id)
+            notifyNewBooking(
+              { id, name: 'New client', service: 'Open Bookings to review' },
+              onOpenBooking
+            )
           }
         })
       } catch {

@@ -25,29 +25,50 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+WORKER_BOOKING_LOOKBACK_DAYS = 45
+WORKER_BOOKING_LOOKAHEAD_DAYS = 90
+UNASSIGNED_PENDING_DAYS = 14
+WORKER_BOOKING_LIST_LIMIT = 40
+
+
 def _worker_bookings_queryset(user):
     queryset = (
         Booking.objects.exclude(status=BookingStatus.CANCELLED)
-        .select_related('time_slot__worker', 'preferred_worker')
-        .annotate(
-            sort_date=Coalesce('time_slot__date', 'requested_date'),
-            sort_hour=Coalesce('time_slot__start_hour', Value(99)),
-        )
+        .select_related('time_slot__worker', 'preferred_worker', 'salon')
     )
 
     profile = getattr(user, 'profile', None)
     if profile and profile.role == UserRole.WORKER:
-        queryset = queryset.filter(
-            Q(time_slot__worker=user)
-            | Q(time_slot__isnull=True, preferred_worker=user)
-            | Q(time_slot__isnull=True, preferred_worker__isnull=True)
+        own = Q(time_slot__worker=user) | Q(preferred_worker=user)
+        unassigned = Q(
+            time_slot__isnull=True,
+            preferred_worker__isnull=True,
+            is_walk_in=False,
+            status=BookingStatus.PENDING,
+            created_at__gte=timezone.now() - timedelta(days=UNASSIGNED_PENDING_DAYS),
         )
         if profile.salon_id:
-            queryset = queryset.filter(
-                Q(salon_id=profile.salon_id) | Q(salon__isnull=True)
-            )
+            unassigned &= Q(salon_id=profile.salon_id) | Q(salon__isnull=True)
+        queryset = queryset.filter(own | unassigned)
 
-    return queryset.order_by(
+    today = timezone.localdate()
+    queryset = queryset.filter(
+        Q(status=BookingStatus.PENDING)
+        | Q(
+            time_slot__date__gte=today - timedelta(days=WORKER_BOOKING_LOOKBACK_DAYS),
+            time_slot__date__lte=today + timedelta(days=WORKER_BOOKING_LOOKAHEAD_DAYS),
+        )
+        | Q(
+            time_slot__isnull=True,
+            requested_date__gte=today - timedelta(days=WORKER_BOOKING_LOOKBACK_DAYS),
+            requested_date__lte=today + timedelta(days=WORKER_BOOKING_LOOKAHEAD_DAYS),
+        )
+    )
+
+    return queryset.annotate(
+        sort_date=Coalesce('time_slot__date', 'requested_date'),
+        sort_hour=Coalesce('time_slot__start_hour', Value(99)),
+    ).order_by(
         F('sort_date').asc(nulls_last=True),
         F('sort_hour').asc(nulls_last=True),
         '-created_at',
@@ -268,13 +289,32 @@ def worker_bookings(request):
     if denied:
         return denied
 
-    bookings = _worker_bookings_queryset(request.user)[:100]
-    pending_count = sum(1 for booking in bookings if booking.status == BookingStatus.PENDING)
+    queryset = _worker_bookings_queryset(request.user)
+    pending_qs = queryset.filter(status=BookingStatus.PENDING)
+    pending_count = pending_qs.count()
+    today = timezone.localdate()
+    today_q = Q(time_slot__date=today) | Q(time_slot__isnull=True, requested_date=today)
+    upcoming_q = Q(time_slot__date__gte=today) | Q(
+        time_slot__isnull=True, requested_date__gte=today
+    )
 
+    if request.GET.get('light') == '1':
+        return JsonResponse(
+            {
+                'pending_count': pending_count,
+                'today_count': queryset.filter(today_q).count(),
+                'upcoming_count': queryset.filter(upcoming_q).count(),
+                'pending_ids': list(pending_qs.order_by('id').values_list('id', flat=True)[:30]),
+            }
+        )
+
+    bookings = list(queryset[:WORKER_BOOKING_LIST_LIMIT])
     return JsonResponse(
         {
             'bookings': [_booking_to_dict(booking) for booking in bookings],
             'pending_count': pending_count,
+            'today_count': queryset.filter(today_q).count(),
+            'upcoming_count': queryset.filter(upcoming_q).count(),
         }
     )
 

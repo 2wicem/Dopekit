@@ -27,20 +27,41 @@ const readCsrfToken = () => {
   return match ? decodeURIComponent(match[1]) : ''
 }
 
+const DEFAULT_TIMEOUT_MS = 18000
+
+const timeoutError = () => {
+  const error = new Error('The request timed out. Try again on a stronger connection.')
+  error.name = 'AbortError'
+  return error
+}
+
 export const ensureCsrfCookie = async () => {
-  await fetch(apiUrl('/products/auth/csrf/'), {
-    method: 'GET',
-    credentials: 'include',
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
+  try {
+    await fetch(apiUrl('/products/auth/csrf/'), {
+      method: 'GET',
+      credentials: 'include',
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw timeoutError()
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export const apiFetch = (path, options = {}) => {
-  const method = (options.method || 'GET').toUpperCase()
-  const headers = new Headers(options.headers || {})
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: outerSignal, ...fetchOptions } = options
+  const method = (fetchOptions.method || 'GET').toUpperCase()
+  const headers = new Headers(fetchOptions.headers || {})
 
   if (
-    options.body &&
-    typeof options.body === 'string' &&
+    fetchOptions.body &&
+    typeof fetchOptions.body === 'string' &&
     !headers.has('Content-Type')
   ) {
     headers.set('Content-Type', 'application/json')
@@ -53,12 +74,38 @@ export const apiFetch = (path, options = {}) => {
     }
   }
 
+  const controller = new AbortController()
+  const timer =
+    timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null
+  if (outerSignal) {
+    if (outerSignal.aborted) {
+      controller.abort()
+    } else {
+      outerSignal.addEventListener('abort', () => controller.abort(), { once: true })
+    }
+  }
+
   return fetch(apiUrl(path), {
-    ...options,
+    ...fetchOptions,
     method,
     headers,
     credentials: 'include',
+    signal: controller.signal,
   })
+    .catch((error) => {
+      if (error?.name === 'AbortError') {
+        if (outerSignal?.aborted) {
+          throw error
+        }
+        throw timeoutError()
+      }
+      throw error
+    })
+    .finally(() => {
+      if (timer) {
+        clearTimeout(timer)
+      }
+    })
 }
 
 export const parseApiResponse = async (response, label = 'Request') => {

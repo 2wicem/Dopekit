@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { todayIso } from '../constants/slots'
 import { useAuth } from '../context/useAuth'
@@ -8,10 +8,11 @@ import InstallPrompt from './InstallPrompt'
 import ThemeToggle from './ThemeToggle'
 import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
-import ReportsPanel from './ReportsPanel'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
 import './css/WorkerApp.css'
+
+const ReportsPanel = lazy(() => import('./ReportsPanel'))
 
 const WALK_IN_PATH = '/products/bookings/walk-in/'
 
@@ -31,8 +32,12 @@ const WorkerDashboard = () => {
   const { user, logout } = useAuth()
   const [bookings, setBookings] = useState([])
   const [pendingCount, setPendingCount] = useState(0)
+  const [pendingIds, setPendingIds] = useState([])
+  const [inboxReady, setInboxReady] = useState(false)
+  const [todayCount, setTodayCount] = useState(0)
+  const [upcomingCount, setUpcomingCount] = useState(0)
   const [status, setStatus] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('schedule')
   const [refreshing, setRefreshing] = useState(false)
   const [busyId, setBusyId] = useState(null)
@@ -45,6 +50,39 @@ const WorkerDashboard = () => {
 
   const canRecordWalkIn = true
 
+  const applyCounts = (data) => {
+    if (typeof data.pending_count === 'number') {
+      setPendingCount(data.pending_count)
+    }
+    if (typeof data.today_count === 'number') {
+      setTodayCount(data.today_count)
+    }
+    if (typeof data.upcoming_count === 'number') {
+      setUpcomingCount(data.upcoming_count)
+    }
+    if (Array.isArray(data.pending_ids)) {
+      setPendingIds(data.pending_ids)
+    }
+  }
+
+  const loadSummary = useCallback(async (silent = false) => {
+    if (!silent) {
+      setRefreshing(true)
+    }
+    try {
+      const response = await apiFetch(`${WORKER_BOOKINGS_PATH}?light=1`)
+      const data = await parseApiResponse(response, 'Staff summary')
+      applyCounts(data)
+    } catch (error) {
+      if (!silent) {
+        setStatus({ type: 'error', message: error.message })
+      }
+    } finally {
+      setInboxReady(true)
+      setRefreshing(false)
+    }
+  }, [])
+
   const loadBookings = useCallback(async (silent = false) => {
     if (silent) {
       setRefreshing(true)
@@ -55,15 +93,9 @@ const WorkerDashboard = () => {
 
     try {
       const response = await apiFetch(WORKER_BOOKINGS_PATH)
-      const text = await response.text()
-      const data = text ? JSON.parse(text) : {}
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not load bookings.')
-      }
-
+      const data = await parseApiResponse(response, 'Bookings')
       setBookings(data.bookings || [])
-      setPendingCount(data.pending_count || 0)
+      applyCounts(data)
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
@@ -81,14 +113,20 @@ const WorkerDashboard = () => {
   }, [])
 
   useWorkerNotifications({
-    bookings,
-    enabled: true,
+    pendingIds,
+    enabled: inboxReady,
     onOpenBooking: openBookingFromAlert,
   })
 
   useEffect(() => {
-    loadBookings()
-  }, [loadBookings])
+    loadSummary()
+  }, [loadSummary])
+
+  useEffect(() => {
+    if (activeTab === 'bookings') {
+      loadBookings()
+    }
+  }, [activeTab, loadBookings])
 
   useEffect(() => {
     if (!('permissions' in navigator) || typeof navigator.permissions.query !== 'function') {
@@ -199,6 +237,7 @@ const WorkerDashboard = () => {
 
       setStatus({ type: 'success', message: data.message })
       await loadBookings(true)
+      await loadSummary(true)
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
@@ -233,7 +272,10 @@ const WorkerDashboard = () => {
       const data = await parseApiResponse(response, 'Walk-in')
       setWalkInForm({ ...emptyWalkIn, requested_date: todayIso() })
       setShowWalkIn(false)
-      await loadBookings(true)
+      await loadSummary(true)
+      if (activeTab === 'bookings') {
+        await loadBookings(true)
+      }
       setStatus({
         type: 'success',
         message: data.message || 'Walk-in saved. It counts in today’s income.',
@@ -247,28 +289,6 @@ const WorkerDashboard = () => {
 
   const firstName = (user?.name || 'Staff').split(' ')[0]
   const today = todayIso()
-
-  const bookingDate = (booking) => booking.slot?.date || booking.requested_date
-
-  const todayBookings = useMemo(
-    () =>
-      bookings.filter(
-        (booking) => bookingDate(booking) === today && booking.status !== 'cancelled'
-      ),
-    [bookings, today]
-  )
-
-  const upcomingBookings = useMemo(
-    () =>
-      bookings.filter((booking) => {
-        const date = bookingDate(booking)
-        if (!date || booking.status === 'cancelled') {
-          return false
-        }
-        return date >= today
-      }),
-    [bookings, today]
-  )
 
   const formattedToday = new Date(`${today}T12:00:00`).toLocaleDateString(undefined, {
     weekday: 'long',
@@ -297,7 +317,12 @@ const WorkerDashboard = () => {
           <button
             type="button"
             className="worker-app-icon-btn"
-            onClick={() => loadBookings(true)}
+            onClick={() => {
+              loadSummary()
+              if (activeTab === 'bookings') {
+                loadBookings(true)
+              }
+            }}
             aria-label="Refresh"
             disabled={refreshing}
           >
@@ -354,11 +379,11 @@ const WorkerDashboard = () => {
 
         <div className="worker-app-stats">
           <div className="worker-app-stat">
-            <span className="worker-app-stat-value">{todayBookings.length}</span>
+            <span className="worker-app-stat-value">{todayCount}</span>
             <span className="worker-app-stat-label">Today</span>
           </div>
           <div className="worker-app-stat">
-            <span className="worker-app-stat-value">{upcomingBookings.length}</span>
+            <span className="worker-app-stat-value">{upcomingCount}</span>
             <span className="worker-app-stat-label">Upcoming</span>
           </div>
           {pendingCount > 0 && (
@@ -402,15 +427,17 @@ const WorkerDashboard = () => {
 
         {activeTab === 'schedule' ? (
           <div className="worker-app-panel" role="tabpanel">
-            <WorkerSchedule onChanged={() => loadBookings(true)} />
+            <WorkerSchedule onChanged={() => loadSummary(true)} />
           </div>
         ) : activeTab === 'reports' ? (
           <div className="worker-app-panel" role="tabpanel">
-            <ReportsPanel
-              scope={user?.role === 'admin' ? 'admin' : 'technician'}
-              canViewInventory
-              canRecordExpenses={Boolean(user?.premium_inventory_access)}
-            />
+            <Suspense fallback={<p className="worker-app-loading">Loading reports…</p>}>
+              <ReportsPanel
+                scope={user?.role === 'admin' ? 'admin' : 'technician'}
+                canViewInventory
+                canRecordExpenses={Boolean(user?.premium_inventory_access)}
+              />
+            </Suspense>
           </div>
         ) : (
           <div className="worker-app-panel" role="tabpanel">

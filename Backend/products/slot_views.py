@@ -148,7 +148,12 @@ def manage_slots(request):
     if not slot_date:
         return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
 
-    existing = TimeSlot.objects.filter(worker=worker, date=slot_date).select_related('booking')
+    existing = TimeSlot.objects.filter(worker=worker, date=slot_date).select_related(
+        'worker',
+        'booking',
+        'booking__preferred_worker',
+        'booking__salon',
+    )
     slots = _merge_day_slots(worker, slot_date, existing)
     walk_ins = _unslotted_walk_ins(worker, slot_date)
     return JsonResponse(

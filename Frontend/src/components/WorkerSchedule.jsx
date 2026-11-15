@@ -45,12 +45,12 @@ const WorkerSchedule = ({ onChanged = null }) => {
   const [walkIns, setWalkIns] = useState([])
   const [dayKind, setDayKind] = useState(null)
 
-  const loadSlots = useCallback(async () => {
+  const loadSlots = useCallback(async (signal) => {
     setLoading(true)
     setStatus(null)
 
     try {
-      const response = await apiFetch(`${MANAGE_PATH}?date=${date}`)
+      const response = await apiFetch(`${MANAGE_PATH}?date=${date}`, { signal })
       const text = await response.text()
       const data = text ? JSON.parse(text) : {}
 
@@ -64,18 +64,25 @@ const WorkerSchedule = ({ onChanged = null }) => {
       setWalkIns(data.walk_ins || [])
       setDayKind(data.day || null)
     } catch (error) {
+      if (signal?.aborted) {
+        return
+      }
       setStatus({ type: 'error', message: error.message })
       setSavedSlots([])
       setDraftSlots([])
       setWalkIns([])
       setDayKind(null)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [date])
 
   useEffect(() => {
-    loadSlots()
+    const controller = new AbortController()
+    loadSlots(controller.signal)
+    return () => controller.abort()
   }, [loadSlots])
 
   const hasChanges = useMemo(() => {
