@@ -11,6 +11,7 @@ import WorkerSchedule from './WorkerSchedule'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
 import PaymentCollectForm from './PaymentCollectForm'
+import WorkerPayoutsPanel from './WorkerPayoutsPanel'
 import './css/WorkerApp.css'
 
 const ReportsPanel = lazy(() => import('./ReportsPanel'))
@@ -453,6 +454,15 @@ const WorkerDashboard = () => {
           >
             Reports
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'payouts'}
+            className={`worker-app-tab${activeTab === 'payouts' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('payouts')}
+          >
+            My pay
+          </button>
         </div>
 
         {activeTab === 'schedule' ? (
@@ -468,6 +478,10 @@ const WorkerDashboard = () => {
                 canRecordExpenses={Boolean(user?.premium_inventory_access)}
               />
             </Suspense>
+          </div>
+        ) : activeTab === 'payouts' ? (
+          <div className="worker-app-panel" role="tabpanel">
+            <WorkerPayoutsPanel />
           </div>
         ) : (
           <div className="worker-app-panel" role="tabpanel">

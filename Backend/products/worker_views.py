@@ -156,7 +156,8 @@ def _serialize_public_worker(user, today, horizon):
 def build_public_workers(salon_id=None, freelance_only=False):
     today = timezone.localdate()
     horizon = today + timedelta(days=PUBLIC_SCHEDULE_DAYS - 1)
-    staff = _public_worker_queryset(salon_id=salon_id, freelance_only=freelance_only)
+    staff = list(_public_worker_queryset(salon_id=salon_id, freelance_only=freelance_only))
+    ensure_default_available_slots(staff, today, horizon)
 
     workers = []
     for user in staff:

@@ -6,6 +6,7 @@ import OwnerApplicationsPanel from './OwnerApplicationsPanel'
 import OwnerSalonsPanel from './OwnerSalonsPanel'
 import OwnerTechniciansPanel from './OwnerTechniciansPanel'
 import OwnerPaymentsPanel from './OwnerPaymentsPanel'
+import OwnerPayoutsPanel from './OwnerPayoutsPanel'
 import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
 import './css/AdminShell.css'
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'applications', label: 'Applications' },
   { id: 'technicians', label: 'Technicians' },
   { id: 'payments', label: 'Payments' },
+  { id: 'payouts', label: 'Staff pay' },
 ]
 
 const OwnerPanel = () => {
@@ -116,8 +118,10 @@ const OwnerPanel = () => {
           <OwnerApplicationsPanel onStatus={setStatus} onChanged={handleApplicationsChanged} />
         ) : activeTab === 'technicians' ? (
           <OwnerTechniciansPanel salons={salons} onStatus={setStatus} />
-        ) : (
+        ) : activeTab === 'payments' ? (
           <OwnerPaymentsPanel salons={salons} onStatus={setStatus} />
+        ) : (
+          <OwnerPayoutsPanel salons={salons} onStatus={setStatus} />
         )}
       </main>
     </div>

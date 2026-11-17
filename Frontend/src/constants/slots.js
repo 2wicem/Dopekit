@@ -14,3 +14,11 @@ export const formatSlotLabel = (startHour) => {
 }
 
 export const todayIso = () => new Date().toISOString().slice(0, 10)
+
+export const weekStartIso = (isoDate = todayIso()) => {
+  const date = new Date(`${isoDate}T12:00:00`)
+  const weekday = date.getDay()
+  const mondayOffset = weekday === 0 ? 6 : weekday - 1
+  date.setDate(date.getDate() - mondayOffset)
+  return date.toISOString().slice(0, 10)
+}

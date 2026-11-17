@@ -170,6 +170,7 @@ def manage_slots(request):
     if not slot_date:
         return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
 
+    ensure_default_available_slots([worker], slot_date, slot_date)
     existing = TimeSlot.objects.filter(worker=worker, date=slot_date).select_related(
         'worker',
         'booking',
@@ -220,7 +221,7 @@ def toggle_slot(request):
         worker=worker,
         date=slot_date,
         start_hour=start_hour,
-        defaults={'status': SlotStatus.UNAVAILABLE},
+        defaults={'status': SlotStatus.AVAILABLE},
     )
 
     if slot.status == SlotStatus.BOOKED:

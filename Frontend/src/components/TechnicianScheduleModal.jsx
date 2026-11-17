@@ -142,7 +142,7 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
                   <p className="technician-schedule-summary">
                     {scheduleData.open_slots > 0
                       ? `${scheduleData.open_slots} open slot${scheduleData.open_slots === 1 ? '' : 's'} this week`
-                      : 'No open slots this week — they may be booked or marked off'}
+                      : 'No open slots this week — they are booked or the technician marked them off'}
                   </p>
 
                   {visibleDays.length === 0 ? (

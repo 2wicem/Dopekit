@@ -42,7 +42,7 @@ from .salon_utils import (
     unique_slug,
 )
 from .password_utils import password_strength_error
-from .slot_utils import SLOT_HOURS
+from .slot_utils import SLOT_HOURS, ensure_default_available_slots
 from .slot_views import _day_kind, _merge_day_slots, _unslotted_walk_ins
 from .technician_utils import (
     auto_approve_technician,
@@ -985,6 +985,7 @@ def admin_technician_slots(request, user_id):
     if not slot_date:
         return JsonResponse({'error': 'A valid date is required (YYYY-MM-DD).'}, status=400)
 
+    ensure_default_available_slots([target], slot_date, slot_date)
     existing = TimeSlot.objects.filter(worker=target, date=slot_date).select_related('booking')
     slots = _merge_day_slots(target, slot_date, existing)
     walk_ins = _unslotted_walk_ins(target, slot_date)
@@ -1040,7 +1041,7 @@ def admin_save_technician_slots(request, user_id):
             worker=target,
             date=slot_date,
             start_hour=hour,
-            defaults={'status': SlotStatus.UNAVAILABLE},
+            defaults={'status': SlotStatus.AVAILABLE},
         )
         if slot.status == SlotStatus.BOOKED:
             continue

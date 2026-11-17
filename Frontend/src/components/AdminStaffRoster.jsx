@@ -197,7 +197,7 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
     ? slots
     : SLOT_HOURS.map((hour) => ({
         start_hour: hour,
-        status: 'unavailable',
+        status: 'available',
         label: formatSlotLabel(hour),
       }))
 
@@ -205,7 +205,8 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
     <div className="admin-staff-roster">
       <div className="admin-walkin-toolbar">
         <p className="admin-walkin-lead mb-0">
-          Add a salon team member or a freelancer, then tick the hours they can take bookings.
+          Add a salon team member or a freelancer. Hours stay open for clients unless you mark them
+          off or they are booked.
         </p>
         <button
           type="button"
@@ -400,8 +401,8 @@ const AdminStaffRoster = ({ salons, salonId, salonQuery = '', onStatus, onChange
                 />
               </div>
               <p className="text-muted small mb-2">
-                Tick hours they can take bookings. Off hours stay empty. Online and walk-in bookings stay
-                locked.
+                Hours are open by default. Uncheck an hour to mark it off. Booked online and walk-in
+                hours stay locked.
               </p>
               {slotsLoading ? (
                 <p className="text-muted">Loading hours…</p>

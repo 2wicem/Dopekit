@@ -352,6 +352,79 @@ class Salon(models.Model):
         return self.name
 
 
+class WageType(models.TextChoices):
+    NONE = 'none', 'No wage'
+    DAILY = 'daily', 'Daily wage'
+    WEEKLY = 'weekly', 'Weekly wage'
+
+
+class WorkerCompensation(models.Model):
+    worker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='compensations',
+    )
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.CASCADE,
+        related_name='worker_compensations',
+    )
+    wage_type = models.CharField(
+        max_length=10,
+        choices=WageType.choices,
+        default=WageType.NONE,
+    )
+    wage_kes = models.PositiveIntegerField(default=0)
+    commission_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text='Percent of collected client payments for this technician.',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['worker', 'salon'],
+                name='unique_worker_salon_compensation',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.worker_id} @ {self.salon_id}'
+
+
+class WorkerAdvance(models.Model):
+    worker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='advances',
+    )
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.CASCADE,
+        related_name='worker_advances',
+    )
+    business_date = models.DateField()
+    amount_kes = models.PositiveIntegerField()
+    notes = models.CharField(max_length=200, blank=True, default='')
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_advances',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-business_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.worker_id} {self.business_date} KES {self.amount_kes}'
+
+
 class SalonContactInfo(models.Model):
     """Singleton row (pk=1) — salon details shown on the Contact page."""
 
