@@ -2,7 +2,6 @@ import json
 import logging
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import ContactMessage, Salon, SalonContactInfo
@@ -75,7 +74,6 @@ def get_contact_info(request):
     return JsonResponse({'contact_info': _salon_contact_to_dict(SalonContactInfo.load())})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('contact_create')
 def create_contact_message(request):

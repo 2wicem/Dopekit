@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /worker
+Disallow: /admin
+Disallow: /owner
+Disallow: /profile
+Disallow: /my-bookings
+Disallow: /technician-pending
+
+Sitemap: https://dopekit.digital/sitemap.xml

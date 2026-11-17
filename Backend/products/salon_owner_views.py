@@ -3,7 +3,6 @@ import json
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .admin_views import _apply_salon_fields
@@ -24,7 +23,7 @@ User = get_user_model()
 
 
 def _owner_salon_to_dict(salon: Salon) -> dict:
-    data = salon_to_dict(salon)
+    data = salon_to_dict(salon, include_invite_code=True)
     staff = salon.staff_profiles.filter(role=UserRole.WORKER).select_related('user')
     data['technician_count'] = staff.count()
     data['technicians'] = [
@@ -67,7 +66,6 @@ def list_owner_salons(request):
     return JsonResponse({'salons': [_owner_salon_to_dict(salon) for salon in salons]})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def create_owner_salon(request):
     owner, denied = require_salon_owner(request)
@@ -117,7 +115,6 @@ def create_owner_salon(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def update_owner_salon(request, salon_id):
     owner, denied = require_salon_owner(request)
@@ -193,7 +190,6 @@ def list_assignable_technicians(request):
     return JsonResponse({'technicians': assignable})
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def assign_technician_salon(request, user_id):
     owner, denied = require_salon_owner(request)
@@ -301,7 +297,6 @@ def list_owner_applications(request):
     return JsonResponse({'applications': [_application_to_dict(user) for user in users]})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def approve_owner_application(request, user_id):
     owner, denied = require_salon_owner(request)
@@ -335,7 +330,6 @@ def approve_owner_application(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def reject_owner_application(request, user_id):
     owner, denied = require_salon_owner(request)
@@ -356,7 +350,6 @@ def reject_owner_application(request, user_id):
     return JsonResponse({'message': 'Application rejected.', 'application': _application_to_dict(target)})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def regenerate_salon_invite_code(request, salon_id):
     owner, denied = require_salon_owner(request)

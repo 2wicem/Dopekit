@@ -3,6 +3,7 @@ import contactEnvelope from './images/contact-envelope.svg'
 import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
 import { useContactInfo } from '../hooks/useContactInfo'
+import { usePageSeo } from '../hooks/usePageSeo'
 import SuccessPopup from './SuccessPopup'
 import './css/Contact.css'
 
@@ -43,6 +44,11 @@ const noteFromUser = (user) => {
 }
 
 const Contact = () => {
+  usePageSeo({
+    title: 'Contact Dopekit | Nail salon Kikuyu Town',
+    description:
+      'Call, WhatsApp or message Dopekit in Kikuyu Town to book a manicure, pedicure or gel set.',
+  })
   const { user } = useAuth()
   const { contactInfo, loading: infoLoading, hasContactDetails } = useContactInfo()
   const [note, setNote] = useState(emptyNote)

@@ -4,7 +4,6 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import UserRole, WageType, WorkerAdvance, WorkerCompensation
@@ -98,7 +97,6 @@ def owner_payouts(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PUT', 'PATCH'])
 def update_worker_pay_plan(request, user_id):
     owner, denied = require_salon_owner(request)
@@ -154,7 +152,6 @@ def update_worker_pay_plan(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def create_worker_advance(request):
     owner, denied = require_salon_owner(request)
@@ -207,7 +204,6 @@ def create_worker_advance(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['DELETE'])
 def delete_worker_advance(request, advance_id):
     owner, denied = require_salon_owner(request)

@@ -6,7 +6,6 @@ from django.contrib.auth import get_user_model
 from django.db.models import F, Q
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .http_responses import forbidden, unauthorized
@@ -137,7 +136,6 @@ def list_bookings(request):
     return JsonResponse({'bookings': [_booking_to_dict(b) for b in bookings]})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('booking_create')
 def create_booking(request):

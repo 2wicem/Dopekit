@@ -53,7 +53,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f'Found {salons.count()} salon branch(es):\n')
         for salon in salons:
-            data = salon_to_dict(salon, include_owner=True)
+            data = salon_to_dict(salon, include_owner=True, include_invite_code=True)
             staff_count = UserProfile.objects.filter(role=UserRole.WORKER, salon_id=salon.id).count()
             flags = []
             if data['is_primary']:

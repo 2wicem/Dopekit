@@ -9,7 +9,6 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, Salon, SlotStatus, TimeSlot, UserRole
@@ -331,7 +330,6 @@ def worker_bookings(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def accept_booking(request, booking_id):
     worker, denied = require_approved_worker(request)
@@ -380,7 +378,6 @@ def _worker_owns_booking(worker, booking):
     return booking.preferred_worker_id == worker.id
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def complete_booking(request, booking_id):
     from .inventory_permissions import require_staff_inventory
@@ -444,7 +441,6 @@ def complete_booking(request, booking_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def cancel_booking_worker(request, booking_id):
     worker, denied = require_approved_worker(request)
@@ -482,7 +478,6 @@ def cancel_booking_worker(request, booking_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def off_day(request):
     worker, denied = require_approved_worker(request)

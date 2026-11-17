@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import TechnicianCard from './TechnicianCard'
 import Bookservice from './Bookservice'
 import { apiFetch } from '../config/api'
+import { usePageSeo } from '../hooks/usePageSeo'
 import './css/SalonDetail.css'
 
 const salonSocialLinks = (salon) =>
@@ -19,6 +20,14 @@ const SalonDetail = () => {
   const [technicians, setTechnicians] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  usePageSeo({
+    title: salon
+      ? `${salon.name} | Nail salon ${salon.location || 'Kenya'} | Dopekit`
+      : 'Salon | Dopekit',
+    description: salon
+      ? `Book manicure and pedicure at ${salon.name} in ${salon.location || 'Kenya'}.`
+      : 'Book a Dopekit nail salon in Kenya.',
+  })
 
   useEffect(() => {
     let cancelled = false

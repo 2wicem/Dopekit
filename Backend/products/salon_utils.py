@@ -20,7 +20,7 @@ def ensure_salon_invite_code(salon: Salon) -> str:
     salon.save(update_fields=['technician_invite_code'])
     return salon.technician_invite_code
 
-def salon_to_dict(salon: Salon, *, include_owner: bool = False) -> dict:
+def salon_to_dict(salon: Salon, *, include_owner: bool = False, include_invite_code: bool = False) -> dict:
     phones = [salon.phone_primary]
     if salon.phone_secondary:
         phones.append(salon.phone_secondary)
@@ -45,9 +45,10 @@ def salon_to_dict(salon: Salon, *, include_owner: bool = False) -> dict:
         'whatsapp_url': salon.whatsapp_url,
         'is_active': salon.is_active,
         'is_primary': salon.is_primary,
-        'technician_invite_code': salon.technician_invite_code,
         'updated_at': salon.updated_at.isoformat(),
     }
+    if include_invite_code:
+        data['technician_invite_code'] = salon.technician_invite_code
 
     if include_owner:
         if salon.owner_id:

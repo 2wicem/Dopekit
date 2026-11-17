@@ -35,7 +35,9 @@ const Footer = () => {
               <Link className="site-footer__logo-link" to="/">
                 <BrandLogo size="md" />
               </Link>
-              <p className="site-footer__tagline">Fashion oriented and curious about results</p>
+              <p className="site-footer__tagline">
+                Nail salon in Kikuyu Town — manicure, pedicure, gel and acrylics, in-salon or mobile.
+              </p>
               {socialLinks.length > 0 && (
                 <div className="site-footer__social" aria-label="Social links">
                   {socialLinks.map(({ id, label, icon, url }) => (

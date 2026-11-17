@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import LandingBookTab from './LandingBookTab'
 import LandingFreelancersTab from './LandingFreelancersTab'
 import LandingSalonsTab from './LandingSalonsTab'
+import { usePageSeo } from '../hooks/usePageSeo'
 import { useSwipeTabs } from '../hooks/useSwipeTabs'
 import { LANDING_TABS } from './landingData'
 import './css/Landing.css'
@@ -14,6 +15,7 @@ const TAB_PANELS = {
 }
 
 const Landing = () => {
+  usePageSeo()
   const [activeTab, setActiveTab] = useState('book')
   const tabIds = useMemo(() => LANDING_TABS.map((tab) => tab.id), [])
   const { onTouchStart, onTouchEnd, onTouchCancel } = useSwipeTabs(tabIds, activeTab, setActiveTab)

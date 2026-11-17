@@ -14,6 +14,7 @@ from .env import (
     env_bool,
     env_int,
     env_list,
+    expand_site_origins,
     host_from_url,
     origin_from_url,
     origins_are_cross_site,
@@ -100,6 +101,7 @@ MIDDLEWARE.extend(
         'django.middleware.common.CommonMiddleware',
         'bootstrap.tunnel_csrf.TrustTunnelCsrfOriginMiddleware',
         'bootstrap.csrf_trust.TrustRequestHostCsrfMiddleware',
+        'bootstrap.admin_protect.RestrictDjangoAdminMiddleware',
         'django.middleware.csrf.CsrfViewMiddleware',
         'django.contrib.auth.middleware.AuthenticationMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
@@ -174,22 +176,29 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 _explicit_origins = env_list('CORS_ALLOWED_ORIGINS')
 _explicit_csrf = env_list('CSRF_TRUSTED_ORIGINS')
 
-CORS_ALLOWED_ORIGINS = deployment_origins(
-    site_url=SITE_URL,
-    frontend_url=FRONTEND_URL,
-    extra_origins=_explicit_origins,
-    allowed_hosts=_extra_hosts,
-    debug=DEBUG,
-)
-CSRF_TRUSTED_ORIGINS = unique_nonempty(
-    deployment_origins(
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = deployment_origins(
         site_url=SITE_URL,
         frontend_url=FRONTEND_URL,
-        extra_origins=_explicit_csrf or _explicit_origins,
+        extra_origins=_explicit_origins,
         allowed_hosts=_extra_hosts,
-        debug=DEBUG,
+        debug=True,
     )
-    + CORS_ALLOWED_ORIGINS
+else:
+    CORS_ALLOWED_ORIGINS = unique_nonempty(
+        expand_site_origins(FRONTEND_URL)
+        + [origin_from_url(item) or item for item in _explicit_origins]
+    )
+    if not CORS_ALLOWED_ORIGINS:
+        raise ImproperlyConfigured(
+            'Set FRONTEND_URL (e.g. https://dopekit.digital) so production CORS is not open.'
+        )
+
+CSRF_TRUSTED_ORIGINS = unique_nonempty(
+    CORS_ALLOWED_ORIGINS
+    + expand_site_origins(FRONTEND_URL)
+    + expand_site_origins(SITE_URL)
+    + [origin_from_url(item) or item for item in (_explicit_csrf or [])]
 )
 
 CORS_ALLOW_CREDENTIALS = True
@@ -216,12 +225,7 @@ if DEBUG:
         r'^capacitor://localhost$',
     ]
 else:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r'^https://[\w-]+\.onrender\.com$',
-        r'^https://[\w-]+\.railway\.app$',
-        r'^https://[\w-]+\.vercel\.app$',
-        r'^https://[\w-]+\.fly\.dev$',
-    ]
+    CORS_ALLOWED_ORIGIN_REGEXES = []
 
 _cross_origin_frontend = origins_are_cross_site(SITE_URL, FRONTEND_URL)
 
@@ -314,6 +318,16 @@ if _redis_url:
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': _redis_url,
     }
+elif not DEBUG:
+    import logging
+
+    logging.getLogger(__name__).warning(
+        'REDIS_URL is not set; login rate limits are per-process only. Add a Redis service on Railway.'
+    )
+
+_admin_path = os.getenv('DJANGO_ADMIN_PATH', 'admin/' if DEBUG else 'dk-manage/').strip().strip('/')
+DJANGO_ADMIN_PATH = f'{_admin_path or ("admin" if DEBUG else "dk-manage")}/'
+ADMIN_ALLOWED_IPS = env_list('ADMIN_ALLOWED_IPS')
 
 # (max requests, window seconds)
 RATE_LIMITS = {

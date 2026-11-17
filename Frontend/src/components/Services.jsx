@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import AvailableSalons from './AvailableSalons'
 import AvailableWorkers from './AvailableWorkers'
 import Bookservice from './Bookservice'
+import { usePageSeo } from '../hooks/usePageSeo'
 import { carouselSlides, priceList, serviceCards } from './servicesData'
 import './css/Services.css'
 
@@ -11,6 +12,11 @@ const SLIDE_INTERVAL_MS = 2500
 const formatPrice = (amount) => `KSh ${amount.toLocaleString()}`
 
 const Services = () => {
+  usePageSeo({
+    title: 'Manicure, pedicure & gel nails | Dopekit Kikuyu',
+    description:
+      'See Dopekit prices and book manicure, pedicure, gel, tips and acrylics in Kikuyu Town or at your location.',
+  })
   const [activeIndex, setActiveIndex] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()

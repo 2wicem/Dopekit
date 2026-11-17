@@ -5,7 +5,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, SlotStatus, TechnicianApprovalStatus, TimeSlot, UserRole
@@ -189,7 +188,6 @@ def manage_slots(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def toggle_slot(request):
     worker, denied = _require_worker(request)

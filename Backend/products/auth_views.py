@@ -12,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from .auth_utils import signup_role_from_account_type, user_to_dict
@@ -96,7 +96,6 @@ def _validate_username(username: str):
     return None
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('auth_register')
 def register(request):
@@ -247,7 +246,6 @@ def register(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('auth_login')
 def login_view(request):
@@ -280,7 +278,6 @@ def login_view(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def logout_view(request):
     auth_logout(request)
@@ -303,7 +300,6 @@ def _find_user_for_password_reset(identifier: str, channel: str):
     return _find_user_by_email(email)
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('auth_forgot_password')
 def forgot_password(request):
@@ -404,7 +400,6 @@ def _reset_password_with_otp(data):
     return JsonResponse({'message': 'Password updated. You can log in now.'})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('auth_reset_password')
 def reset_password(request):
@@ -449,10 +444,11 @@ def reset_password(request):
 @require_http_methods(['GET'])
 @ensure_csrf_cookie
 def csrf_bootstrap(request):
-    return JsonResponse({'ok': True})
+    from django.middleware.csrf import get_token
+
+    return JsonResponse({'ok': True, 'csrfToken': get_token(request)})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 @rate_limit('auth_technician_signup_otp')
 def send_technician_signup_otp(request):
@@ -498,7 +494,6 @@ def me(request):
     return JsonResponse({'user': user_to_dict(request.user)})
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 @rate_limit('auth_register')
 def update_profile(request):

@@ -18,14 +18,17 @@ export const apiUrl = (path) => {
   return `${API_BASE}${suffix}`
 }
 
-const readCsrfToken = () => {
+let csrfTokenMemory = ''
+
+const cookieCsrfToken = () => {
   if (typeof document === 'undefined') {
     return ''
   }
-
   const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)
   return match ? decodeURIComponent(match[1]) : ''
 }
+
+const readCsrfToken = () => csrfTokenMemory || cookieCsrfToken()
 
 const DEFAULT_TIMEOUT_MS = 18000
 
@@ -39,11 +42,16 @@ export const ensureCsrfCookie = async () => {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
   try {
-    await fetch(apiUrl('/products/auth/csrf/'), {
+    const response = await fetch(apiUrl('/products/auth/csrf/'), {
       method: 'GET',
       credentials: 'include',
       signal: controller.signal,
     })
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : {}
+    if (data.csrfToken) {
+      csrfTokenMemory = data.csrfToken
+    }
   } catch (error) {
     if (error?.name === 'AbortError') {
       throw timeoutError()
@@ -54,7 +62,7 @@ export const ensureCsrfCookie = async () => {
   }
 }
 
-export const apiFetch = (path, options = {}) => {
+export const apiFetch = async (path, options = {}) => {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: outerSignal, ...fetchOptions } = options
   const method = (fetchOptions.method || 'GET').toUpperCase()
   const headers = new Headers(fetchOptions.headers || {})
@@ -67,7 +75,15 @@ export const apiFetch = (path, options = {}) => {
     headers.set('Content-Type', 'application/json')
   }
 
-  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+  const mutating = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)
+  if (mutating && !readCsrfToken()) {
+    try {
+      await ensureCsrfCookie()
+    } catch {
+      /* login still sends whatever token we have */
+    }
+  }
+  if (mutating) {
     const csrfToken = readCsrfToken()
     if (csrfToken) {
       headers.set('X-CSRFToken', csrfToken)
@@ -85,27 +101,27 @@ export const apiFetch = (path, options = {}) => {
     }
   }
 
-  return fetch(apiUrl(path), {
-    ...fetchOptions,
-    method,
-    headers,
-    credentials: 'include',
-    signal: controller.signal,
-  })
-    .catch((error) => {
-      if (error?.name === 'AbortError') {
-        if (outerSignal?.aborted) {
-          throw error
-        }
-        throw timeoutError()
-      }
-      throw error
+  try {
+    return await fetch(apiUrl(path), {
+      ...fetchOptions,
+      method,
+      headers,
+      credentials: 'include',
+      signal: controller.signal,
     })
-    .finally(() => {
-      if (timer) {
-        clearTimeout(timer)
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      if (outerSignal?.aborted) {
+        throw error
       }
-    })
+      throw timeoutError()
+    }
+    throw error
+  } finally {
+    if (timer) {
+      clearTimeout(timer)
+    }
+  }
 }
 
 export const parseApiResponse = async (response, label = 'Request') => {

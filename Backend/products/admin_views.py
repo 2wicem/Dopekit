@@ -10,7 +10,6 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .auth_utils import user_to_dict
@@ -167,7 +166,6 @@ def get_salon_contact_info(request):
     return JsonResponse({'contact_info': _salon_contact_to_dict(SalonContactInfo.load())})
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def update_salon_contact_info(request):
     denied = _require_admin(request)
@@ -211,7 +209,6 @@ def update_salon_contact_info(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def update_user_role(request, user_id):
     denied = _require_admin(request)
@@ -261,7 +258,6 @@ def update_user_role(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def update_technician_showcase(request, user_id):
     denied = _require_admin(request)
@@ -328,7 +324,6 @@ def update_technician_showcase(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def update_user_premium_inventory(request, user_id):
     denied = _require_admin(request)
@@ -370,7 +365,6 @@ def update_user_premium_inventory(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def update_user_salon(request, user_id):
     denied = _require_admin(request)
@@ -416,7 +410,6 @@ def update_user_salon(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def create_walk_in_booking(request):
     profile, denied = require_staff_inventory(request)
@@ -553,7 +546,6 @@ def create_walk_in_booking(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['DELETE'])
 def delete_booking(request, booking_id):
     denied = _require_admin(request)
@@ -589,7 +581,6 @@ def list_pending_technicians(request):
     return JsonResponse({'technicians': [_admin_user_to_dict(user) for user in users]})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def approve_technician(request, user_id):
     denied = _require_admin(request)
@@ -611,7 +602,6 @@ def approve_technician(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def reject_technician_view(request, user_id):
     denied = _require_admin(request)
@@ -719,10 +709,11 @@ def list_salons(request):
         return denied
 
     salons = Salon.objects.select_related('owner').order_by('name')
-    return JsonResponse({'salons': [salon_to_dict(salon, include_owner=True) for salon in salons]})
+    return JsonResponse(
+        {'salons': [salon_to_dict(salon, include_owner=True, include_invite_code=True) for salon in salons]}
+    )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def create_salon(request):
     denied = _require_admin(request)
@@ -784,13 +775,12 @@ def create_salon(request):
     return JsonResponse(
         {
             'message': 'Salon created.',
-            'salon': salon_to_dict(salon, include_owner=True),
+            'salon': salon_to_dict(salon, include_owner=True, include_invite_code=True),
         },
         status=201,
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH', 'DELETE'])
 def update_salon(request, salon_id):
     denied = _require_admin(request)
@@ -847,7 +837,7 @@ def update_salon(request, salon_id):
     return JsonResponse(
         {
             'message': 'Salon updated.',
-            'salon': salon_to_dict(salon, include_owner=True),
+            'salon': salon_to_dict(salon, include_owner=True, include_invite_code=True),
         }
     )
 
@@ -889,7 +879,6 @@ def list_salon_technicians(request):
     return JsonResponse({'technicians': technicians})
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def create_salon_technician(request):
     denied = _require_admin(request)
@@ -1046,7 +1035,6 @@ def admin_technician_slots(request, user_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def admin_save_technician_slots(request, user_id):
     denied = _require_admin(request)

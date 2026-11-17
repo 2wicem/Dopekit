@@ -6,7 +6,6 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, SlotStatus, TechnicianApprovalStatus, TimeSlot, UserRole
@@ -94,7 +93,6 @@ def _release_booking_slot(booking):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def cancel_my_booking(request, booking_id):
     profile, denied = _require_client(request)
@@ -130,7 +128,6 @@ def cancel_my_booking(request, booking_id):
     )
 
 
-@csrf_exempt
 @require_http_methods(['PATCH'])
 def reschedule_my_booking(request, booking_id):
     profile, denied = _require_client(request)

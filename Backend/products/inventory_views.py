@@ -4,7 +4,6 @@ from datetime import timedelta
 
 from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, DailyExpense, PaymentMethod, Salon, UserRole
@@ -288,7 +287,6 @@ def report_daily_inventory(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['POST'])
 def create_daily_expense(request):
     profile, denied = require_expense_access(request)
@@ -373,7 +371,6 @@ def create_daily_expense(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(['DELETE'])
 def delete_daily_expense(request, expense_id):
     profile, denied = require_expense_access(request)

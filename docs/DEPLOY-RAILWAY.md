@@ -55,7 +55,10 @@ Railway picks up `Backend/railway.toml` automatically.
 | `SECRET_KEY` | Generate: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` *(use Railway reference to your Postgres service)* |
 | `SITE_URL` | `https://YOUR-BACKEND-DOMAIN.up.railway.app` |
-| `FRONTEND_URL` | `https://YOUR-FRONTEND-DOMAIN.up.railway.app` *(set after step 5)* |
+| `FRONTEND_URL` | `https://dopekit.digital` |
+| `REDIS_URL` | `${{Redis.REDIS_URL}}` *(add a Redis service; used for login rate limits)* |
+| `DJANGO_ADMIN_PATH` | `dk-manage` *(Django admin is then at `/dk-manage/` on the API host)* |
+| `ADMIN_ALLOWED_IPS` | *(optional)* your public IP, comma-separated |
 | `WEB_CONCURRENCY` | `2` |
 | `RESEND_API_KEY` | Resend API key (`re_…`) — required for booking emails on Railway |
 | `DEFAULT_FROM_EMAIL` | `Dopekit <bookings@dopekit.digital>` (must be a verified Resend domain) |
@@ -80,7 +83,7 @@ Backend → **Settings** → run a one-off command or use Railway shell:
 python manage.py createsuperuser
 ```
 
-Then add real salons and staff via `/admin` or owner signup. Do not run old demo seed commands (removed from the project).
+Then add real salons and staff via `/dk-manage/` on the API host (or `DJANGO_ADMIN_PATH`) or owner signup. Do not run old demo seed commands (removed from the project).
 
 ---
 

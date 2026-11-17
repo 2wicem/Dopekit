@@ -1430,3 +1430,140 @@
   border-color: rgba(92, 45, 74, 0.22);
 }
 
+.landing-trust {
+  padding: 2.2rem 0 2.8rem;
+  color: var(--dk-text, #f7eef2);
+}
+
+.landing-trust-inner {
+  max-width: 960px;
+}
+
+.landing-trust-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(245, 217, 168, 0.85);
+}
+
+.landing-trust-header h2,
+.landing-trust-areas h3,
+.landing-trust-faq h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.35rem;
+}
+
+.landing-trust-lead,
+.landing-trust-areas p {
+  margin: 0 0 1.1rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.landing-trust-quotes {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1.8rem;
+}
+
+@media (min-width: 768px) {
+  .landing-trust-quotes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.landing-trust-quote {
+  margin: 0;
+  padding: 1rem 1.05rem 0.95rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(245, 217, 168, 0.14);
+}
+
+.landing-trust-stars {
+  color: #f5d9a8;
+  letter-spacing: 0.12em;
+  font-size: 0.85rem;
+  margin-bottom: 0.45rem;
+}
+
+.landing-trust-quote blockquote {
+  margin: 0 0 0.7rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.landing-trust-quote figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.landing-trust-quote figcaption strong {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.landing-trust-area-label {
+  margin: 0.4rem 0 0.35rem !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(245, 217, 168, 0.75) !important;
+}
+
+.landing-trust-areas ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.85rem;
+}
+
+.landing-trust-areas li {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  background: rgba(224, 107, 138, 0.14);
+  border: 1px solid rgba(224, 107, 138, 0.22);
+}
+
+.landing-trust-faq details {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.7rem 0;
+}
+
+.landing-trust-faq summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.landing-trust-faq details p {
+  margin: 0.45rem 0 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.92rem;
+}
+
+[data-theme='light'] .landing-trust-lead,
+[data-theme='light'] .landing-trust-areas p,
+[data-theme='light'] .landing-trust-faq details p,
+[data-theme='light'] .landing-trust-quote figcaption {
+  color: var(--dk-text-muted, #5c4450);
+}
+
+[data-theme='light'] .landing-trust-quote {
+  background: var(--dk-surface);
+  border-color: rgba(92, 45, 74, 0.12);
+}
+
+[data-theme='light'] .landing-trust-quote figcaption strong,
+[data-theme='light'] .landing-trust-header h2,
+[data-theme='light'] .landing-trust-areas h3,
+[data-theme='light'] .landing-trust-faq h3 {
+  color: var(--dk-text);
+}
+

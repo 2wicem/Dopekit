@@ -5,6 +5,7 @@ import BrandLogo from './BrandLogo'
 import LandingHeroCarousel from './LandingHeroCarousel'
 import LandingNearbyMap from './LandingNearbyMap'
 import LandingTechniciansSection from './LandingTechniciansSection'
+import LandingLocalTrust from './LandingLocalTrust'
 import { BOOK_SLIDES } from './landingData'
 
 const scrollToDiscovery = (event) => {
@@ -19,14 +20,14 @@ const LandingBookTab = () => (
         <BrandLogo size="lg" variant="hero" />
       </div>
       <h1 className="landing-hero-title">
-        Looking for indoor or outdoor manicure and pedicure services
+        Nail salon in Kikuyu, Nairobi — manicure, pedicure and gel
       </h1>
       <h2 className="landing-hero-subtitle">
-        Discover the perfect nail care experience with Dopekit
+        Book Dopekit studio in Kikuyu Town or a mobile technician at your place
       </h2>
       <p className="landing-hero-lead">
-        From gel and builder sets to tips and acrylics, we bring professional nail care
-        to you — at Kikuyu town or at your location.
+        Gel, builder, tips and acrylics. Indoor at the salon or outdoor at your location across
+        Kiambu and Nairobi.
       </p>
       <ul className="landing-hero-pills">
         <li><i className="fa-solid fa-sparkles" aria-hidden="true" /> Gel &amp; acrylic</li>
@@ -54,6 +55,7 @@ const LandingBookTab = () => (
         <AvailableSalons />
       </div>
       <LandingTechniciansSection />
+      <LandingLocalTrust />
     </div>
   </>
 )

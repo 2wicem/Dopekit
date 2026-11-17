@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useContactInfo } from '../hooks/useContactInfo'
+import { usePageSeo } from '../hooks/usePageSeo'
+import LandingLocalTrust from './LandingLocalTrust'
 import './css/About.css'
 
 const highlights = [
@@ -24,6 +26,11 @@ const highlights = [
 ]
 
 const AboutPage = () => {
+  usePageSeo({
+    title: 'About Dopekit | Nail studio in Kikuyu, Kenya',
+    description:
+      'Dopekit is a nail studio in Kikuyu Town. Gel, builder, tips and acrylics with online booking for salon and mobile visits.',
+  })
   const { contactInfo, hasContactDetails } = useContactInfo()
 
   return (
@@ -69,6 +76,8 @@ const AboutPage = () => {
             </Link>
           </div>
         </div>
+
+        <LandingLocalTrust />
 
         <div className="about-contact">
           <h2 className="about-contact-title">Contact us</h2>
