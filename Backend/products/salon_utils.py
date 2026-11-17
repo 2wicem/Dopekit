@@ -92,6 +92,23 @@ def filter_bookings_by_salon(queryset, salon_id: int | None):
     return queryset.filter(salon_id=salon_id)
 
 
+def filter_bookings_for_owned_salons(queryset, salon_ids, salon_id=None):
+    from django.db.models import Q
+
+    ids = list(salon_ids)
+    if salon_id is not None:
+        if salon_id not in ids:
+            return queryset.none()
+        ids = [salon_id]
+    if not ids:
+        return queryset.none()
+    return queryset.filter(
+        Q(salon_id__in=ids)
+        | Q(time_slot__worker__profile__salon_id__in=ids)
+        | Q(preferred_worker__profile__salon_id__in=ids)
+    ).distinct()
+
+
 def unique_slug(name: str, salon_id: int | None = None) -> str:
     base = slugify(name) or 'salon'
     slug = base

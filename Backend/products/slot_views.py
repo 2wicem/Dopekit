@@ -249,4 +249,8 @@ def book_time_slot(slot_id, booking):
         slot.status = SlotStatus.BOOKED
         slot.booking = booking
         slot.save(update_fields=['status', 'booking'])
+        from .booking_utils import save_shared_job
+
+        booking.time_slot = slot
+        save_shared_job(booking)
         return slot

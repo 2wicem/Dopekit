@@ -358,7 +358,9 @@ def accept_booking(request, booking_id):
         return JsonResponse({'error': 'This booking was cancelled.'}, status=400)
 
     booking.status = BookingStatus.ACCEPTED
-    booking.save(update_fields=['status'])
+    from .booking_utils import save_shared_job
+
+    save_shared_job(booking, extra_fields=['status'])
 
     return JsonResponse(
         {
@@ -381,16 +383,29 @@ def _worker_owns_booking(worker, booking):
 @csrf_exempt
 @require_http_methods(['POST'])
 def complete_booking(request, booking_id):
-    worker, denied = require_approved_worker(request)
+    from .inventory_permissions import require_staff_inventory
+    from .salon_owner_permissions import booking_in_owned_salons
+
+    profile, denied = require_staff_inventory(request)
     if denied:
         return denied
 
+    worker = request.user
     booking = get_object_or_404(
-        Booking.objects.select_related('time_slot', 'preferred_worker'),
+        Booking.objects.select_related(
+            'time_slot',
+            'time_slot__worker',
+            'time_slot__worker__profile',
+            'preferred_worker',
+            'preferred_worker__profile',
+            'salon',
+        ),
         pk=booking_id,
     )
-    if not _worker_owns_booking(worker, booking):
+    if profile.role == UserRole.WORKER and not _worker_owns_booking(worker, booking):
         return _forbidden('You can only complete your own appointments.')
+    if profile.role == UserRole.SALON_OWNER and not booking_in_owned_salons(worker, booking):
+        return _forbidden('You can only complete jobs at your salon.')
 
     if booking.status == BookingStatus.CANCELLED:
         return JsonResponse({'error': 'This booking was cancelled.'}, status=400)
@@ -417,7 +432,9 @@ def complete_booking(request, booking_id):
 
     booking.status = BookingStatus.COMPLETED
     update_fields = ['status'] + apply_client_payment(booking, payment)
-    booking.save(update_fields=update_fields)
+    from .booking_utils import save_shared_job
+
+    save_shared_job(booking, extra_fields=update_fields)
     method_label = booking.get_payment_method_display()
     return JsonResponse(
         {

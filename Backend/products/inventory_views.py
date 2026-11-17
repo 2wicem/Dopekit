@@ -15,14 +15,20 @@ from .report_views import (
     _report_meta,
     _worker_name,
 )
-from .salon_utils import filter_bookings_by_salon, parse_admin_salon_id, resolve_salon_id
+from .salon_utils import (
+    filter_bookings_by_salon,
+    filter_bookings_for_owned_salons,
+    resolve_salon_id,
+)
 from .payment_utils import collected_amount
 from .service_prices import resolve_service_price_kes
 from .inventory_permissions import (
+    can_record_expenses,
     inventory_salon_scope,
-    require_premium_inventory,
+    require_expense_access,
     require_staff_inventory,
 )
+from .technician_utils import is_freelance_technician
 
 
 def _booking_appointment_date(booking):
@@ -51,6 +57,14 @@ def _price_for_booking(booking) -> int:
 
 
 def _inventory_bookings_queryset(user, profile, date_from, date_to, salon_id):
+    if profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        queryset = (
+            Booking.objects.filter(_appointment_date_filter(date_from, date_to))
+            .select_related('time_slot__worker', 'preferred_worker', 'user', 'salon')
+        )
+        return filter_bookings_for_owned_salons(queryset, owned_salon_ids(user), salon_id)
     if salon_id is not None:
         queryset = (
             Booking.objects.filter(_appointment_date_filter(date_from, date_to))
@@ -69,10 +83,18 @@ def _expenses_queryset(user, profile, salon_id, date_from, date_to):
     if profile.role == UserRole.ADMIN:
         if salon_id:
             queryset = queryset.filter(salon_id=salon_id)
-    elif profile.salon_id:
-        queryset = queryset.filter(salon_id=profile.salon_id)
-    else:
+    elif profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        ids = owned_salon_ids(user)
+        if salon_id:
+            queryset = queryset.filter(salon_id=salon_id) if salon_id in ids else queryset.none()
+        else:
+            queryset = queryset.filter(salon_id__in=ids)
+    elif is_freelance_technician(profile):
         queryset = queryset.filter(recorded_by=user)
+    else:
+        queryset = queryset.none()
 
     return queryset.order_by('business_date', 'id')
 
@@ -167,7 +189,7 @@ def report_daily_inventory(request):
                 'amount_kes': expense.amount_kes,
                 'notes': expense.notes,
                 'can_delete': (
-                    profile.role == UserRole.ADMIN
+                    profile.role == UserRole.SALON_OWNER
                     or expense.recorded_by_id == request.user.id
                 ),
             }
@@ -259,7 +281,7 @@ def report_daily_inventory(request):
     return JsonResponse(
         {
             **meta,
-            'premium_inventory': True,
+            'premium_inventory': can_record_expenses(request.user),
             'totals': totals,
             'days': days,
         }
@@ -269,7 +291,7 @@ def report_daily_inventory(request):
 @csrf_exempt
 @require_http_methods(['POST'])
 def create_daily_expense(request):
-    profile, denied = require_premium_inventory(request)
+    profile, denied = require_expense_access(request)
     if denied:
         return denied
 
@@ -307,7 +329,18 @@ def create_daily_expense(request):
 
     salon = None
     if profile.role == UserRole.WORKER:
-        salon = getattr(profile, 'salon', None)
+        salon = None
+    elif profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        owned_ids = owned_salon_ids(request.user)
+        salon_id = resolve_salon_id(data.get('salon_id'))
+        if salon_id not in owned_ids:
+            if len(owned_ids) == 1:
+                salon_id = owned_ids[0]
+            else:
+                return JsonResponse({'error': 'Choose one of your salon branches.'}, status=400)
+        salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
     else:
         salon_id = resolve_salon_id(data.get('salon_id'))
         if salon_id:
@@ -343,7 +376,7 @@ def create_daily_expense(request):
 @csrf_exempt
 @require_http_methods(['DELETE'])
 def delete_daily_expense(request, expense_id):
-    profile, denied = require_premium_inventory(request)
+    profile, denied = require_expense_access(request)
     if denied:
         return denied
 
@@ -351,9 +384,10 @@ def delete_daily_expense(request, expense_id):
     if expense is None:
         return JsonResponse({'error': 'Expense not found.'}, status=404)
 
-    if profile.role == UserRole.ADMIN:
-        salon_id = parse_admin_salon_id(request)
-        if salon_id and expense.salon_id not in (None, salon_id):
+    if profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        if expense.salon_id not in owned_salon_ids(request.user):
             return JsonResponse({'error': 'Expense not found for this salon.'}, status=404)
     elif expense.recorded_by_id != request.user.id:
         return JsonResponse({'error': 'You can only remove expenses you recorded.'}, status=403)

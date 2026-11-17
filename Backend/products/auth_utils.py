@@ -1,6 +1,6 @@
 from .models import TechnicianApprovalStatus, UserRole
 from .technician_showcase import parse_portfolio_urls
-from .technician_utils import technician_is_pending
+from .technician_utils import is_freelance_technician, technician_is_pending
 from .technician_verification import technician_application_to_dict
 
 TECHNICIAN_APPROVAL_LABELS = {
@@ -49,10 +49,19 @@ def user_to_dict(user):
         if application.get('specialty') or profile.technician_experience_years:
             data['technician_application'] = application
 
-    if profile and profile.role in (UserRole.WORKER, UserRole.ADMIN):
-        data['premium_inventory_access'] = (
-            profile.role == UserRole.ADMIN or bool(profile.premium_inventory_access)
+    data['can_record_expenses'] = bool(
+        profile
+        and (
+            profile.role == UserRole.SALON_OWNER
+            or is_freelance_technician(profile)
         )
+    )
+
+    if profile and profile.role == UserRole.WORKER:
+        data['is_freelance'] = is_freelance_technician(profile)
+
+    if profile and profile.role in (UserRole.WORKER, UserRole.ADMIN):
+        data['premium_inventory_access'] = data['can_record_expenses']
         data['salon_id'] = profile.salon_id
         data['technician_work_summary'] = profile.technician_work_summary or ''
         data['technician_portfolio_urls'] = parse_portfolio_urls(profile.technician_portfolio_urls)

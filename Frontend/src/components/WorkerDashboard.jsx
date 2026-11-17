@@ -475,7 +475,7 @@ const WorkerDashboard = () => {
               <ReportsPanel
                 scope={user?.role === 'admin' ? 'admin' : 'technician'}
                 canViewInventory
-                canRecordExpenses={Boolean(user?.premium_inventory_access)}
+                canRecordExpenses={Boolean(user?.can_record_expenses)}
               />
             </Suspense>
           </div>
@@ -488,7 +488,8 @@ const WorkerDashboard = () => {
             {canRecordWalkIn && (
               <div className="admin-walkin-toolbar">
                 <p className="admin-walkin-lead">
-                  Log extra walk-ins (including past days) and mark jobs complete so they show in daily inventory.
+                  Log extra walk-ins and mark jobs complete. The same record shows on your inventory
+                  and, if you work at a salon, on the owner&apos;s inventory.
                 </p>
                 <button
                   type="button"

@@ -7,6 +7,12 @@ PENDING_APPROVAL_STATUSES = {
 }
 
 
+def is_freelance_technician(profile) -> bool:
+    if not profile or profile.role != UserRole.WORKER:
+        return False
+    return bool(profile.technician_is_freelance or profile.salon_id is None)
+
+
 def is_approved_technician(profile) -> bool:
     if not profile:
         return False

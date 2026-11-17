@@ -7,6 +7,7 @@ import OwnerSalonsPanel from './OwnerSalonsPanel'
 import OwnerTechniciansPanel from './OwnerTechniciansPanel'
 import OwnerPaymentsPanel from './OwnerPaymentsPanel'
 import OwnerPayoutsPanel from './OwnerPayoutsPanel'
+import OwnerInventoryPanel from './OwnerInventoryPanel'
 import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
 import './css/AdminShell.css'
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'branches', label: 'Branches' },
   { id: 'applications', label: 'Applications' },
   { id: 'technicians', label: 'Technicians' },
+  { id: 'inventory', label: 'Inventory' },
   { id: 'payments', label: 'Payments' },
   { id: 'payouts', label: 'Staff pay' },
 ]
@@ -76,7 +78,7 @@ const OwnerPanel = () => {
           <p className="admin-shell-eyebrow">Salon owner</p>
           <h1 className="admin-shell-title">My salons</h1>
           <p className="admin-shell-lead">
-            Manage branches, locations, and technicians for {user?.name || 'your business'}.
+            Manage branches, technicians, and completed services for {user?.name || 'your business'}.
           </p>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -118,6 +120,8 @@ const OwnerPanel = () => {
           <OwnerApplicationsPanel onStatus={setStatus} onChanged={handleApplicationsChanged} />
         ) : activeTab === 'technicians' ? (
           <OwnerTechniciansPanel salons={salons} onStatus={setStatus} />
+        ) : activeTab === 'inventory' ? (
+          <OwnerInventoryPanel salons={salons} onStatus={setStatus} />
         ) : activeTab === 'payments' ? (
           <OwnerPaymentsPanel salons={salons} onStatus={setStatus} />
         ) : (

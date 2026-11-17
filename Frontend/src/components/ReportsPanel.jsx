@@ -73,9 +73,10 @@ const ReportsPanel = ({
   const [completingId, setCompletingId] = useState(null)
   const [completeMethod, setCompleteMethod] = useState('cash')
 
+  const isSalonWide = scope === 'admin' || scope === 'owner'
   const isAdminScope = scope === 'admin'
-  const showInventory = isAdminScope || canViewInventory
-  const allowExpenses = canRecordExpenses == null ? isAdminScope : canRecordExpenses
+  const showInventory = isSalonWide || canViewInventory
+  const allowExpenses = canRecordExpenses == null ? isSalonWide : canRecordExpenses
 
   const loadReports = useCallback(async () => {
     setLoading(true)
@@ -93,7 +94,7 @@ const ReportsPanel = ({
       requests.push(apiFetch(`/products/reports/daily-inventory/?${query}`))
     }
 
-    if (isAdminScope) {
+    if (isSalonWide) {
       requests.push(apiFetch(`/products/reports/by-worker/?${query}`))
     }
 
@@ -115,13 +116,13 @@ const ReportsPanel = ({
       } else {
         setInventory(null)
       }
-      setByWorker(isAdminScope ? parsed[index]?.items || [] : [])
+      setByWorker(isSalonWide ? parsed[index]?.items || [] : [])
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
       setLoading(false)
     }
-  }, [fromDate, toDate, isAdminScope, showInventory, salonQuery])
+  }, [fromDate, toDate, isSalonWide, showInventory, salonQuery])
 
   useEffect(() => {
     loadReports()
@@ -249,8 +250,8 @@ const ReportsPanel = ({
   }
 
   const scopeLabel = useMemo(
-    () => (isAdminScope ? 'Salon-wide reports' : 'Your technician reports'),
-    [isAdminScope]
+    () => (isSalonWide ? 'Salon-wide reports' : 'Your technician reports'),
+    [isSalonWide]
   )
 
   return (
@@ -341,9 +342,10 @@ const ReportsPanel = ({
             </div>
           )}
 
-          {showInventory && !isAdminScope && !allowExpenses && (
+          {showInventory && !allowExpenses && (
             <p className="text-muted small mb-3">
-              Daily services are listed here. Expense tracking stays on Premium — ask admin to enable it.
+              These services are the same records your salon owner sees. Branch expenses are recorded
+              by the salon owner. Freelance technicians record their own expenses.
             </p>
           )}
 
@@ -730,7 +732,7 @@ const ReportsPanel = ({
               )}
             </div>
 
-            {isAdminScope && (
+            {isSalonWide && (
               <div className="reports-card">
                 <h3 className="reports-card-title">By technician</h3>
                 {byWorker.length === 0 ? (

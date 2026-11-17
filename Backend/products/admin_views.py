@@ -391,14 +391,22 @@ def update_user_salon(request, user_id):
     raw_salon_id = data.get('salon_id')
     if raw_salon_id in (None, '', 'null'):
         profile.salon = None
+        if profile.role == UserRole.WORKER:
+            profile.technician_is_freelance = True
     else:
         try:
             salon = Salon.objects.get(pk=int(raw_salon_id), is_active=True)
         except (Salon.DoesNotExist, TypeError, ValueError):
             return JsonResponse({'error': 'Invalid salon.'}, status=400)
         profile.salon = salon
+        if profile.role == UserRole.WORKER:
+            profile.technician_is_freelance = False
 
-    profile.save(update_fields=['salon'])
+    profile.save(update_fields=['salon', 'technician_is_freelance'] if profile.role == UserRole.WORKER else ['salon'])
+    if profile.salon_id and profile.role == UserRole.WORKER:
+        from .booking_utils import attach_unsaloned_jobs_to_salon
+
+        attach_unsaloned_jobs_to_salon(target, profile.salon)
 
     return JsonResponse(
         {
@@ -439,6 +447,42 @@ def create_walk_in_booking(request):
     if profile.role == UserRole.WORKER:
         preferred_worker = request.user
         salon = getattr(profile, 'salon', None)
+    elif profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids, technician_on_owned_salon
+
+        owned_ids = owned_salon_ids(request.user)
+        if salon_id not in owned_ids:
+            if len(owned_ids) == 1:
+                salon_id = owned_ids[0]
+            else:
+                return JsonResponse(
+                    {'error': 'Choose one of your salon branches for this walk-in.'},
+                    status=400,
+                )
+        salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+        if salon is None:
+            return JsonResponse({'error': 'Salon not found.'}, status=404)
+
+        raw_worker_id = data.get('preferred_worker_id') or data.get('technician_id')
+        try:
+            worker_id = int(raw_worker_id)
+        except (TypeError, ValueError):
+            return JsonResponse(
+                {'error': 'Choose the technician who did this service.'},
+                status=400,
+            )
+        preferred_worker = (
+            User.objects.filter(pk=worker_id).select_related('profile', 'profile__salon').first()
+        )
+        if not preferred_worker or not technician_on_owned_salon(
+            request.user,
+            preferred_worker,
+            salon.id,
+        ):
+            return JsonResponse(
+                {'error': 'Choose a technician who works at this salon.'},
+                status=400,
+            )
     else:
         if salon_id:
             salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
@@ -494,7 +538,9 @@ def create_walk_in_booking(request):
         is_walk_in=True,
     )
     apply_client_payment(booking, payment)
-    booking.save(update_fields=['payment_method', 'payment_amount_kes', 'paid_at'])
+    from .booking_utils import save_shared_job
+
+    save_shared_job(booking, extra_fields=['payment_method', 'payment_amount_kes', 'paid_at'])
 
     schedule_booking_created_notification(booking.id)
 

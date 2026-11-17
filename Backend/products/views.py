@@ -172,7 +172,25 @@ def create_booking(request):
     if salon_id:
         from .models import Salon
         salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
-    if salon is None:
+
+    preferred_worker = None
+    if preferred_worker_id not in (None, '', 'null'):
+        try:
+            preferred_worker = User.objects.select_related('profile', 'profile__salon').get(
+                pk=int(preferred_worker_id),
+                profile__role__in=(UserRole.WORKER, UserRole.ADMIN),
+            )
+        except (User.DoesNotExist, TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid technician selected.'}, status=400)
+
+    from .booking_utils import salon_for_technician, save_shared_job
+
+    worker_salon = salon_for_technician(preferred_worker)
+    if worker_salon:
+        salon = worker_salon
+    elif preferred_worker and not salon_id:
+        salon = None
+    elif salon is None and not preferred_worker:
         salon = get_primary_salon()
 
     if not name or not phone:
@@ -213,16 +231,6 @@ def create_booking(request):
                 status=400,
             )
 
-        preferred_worker = None
-        if preferred_worker_id not in (None, '', 'null'):
-            try:
-                preferred_worker = User.objects.get(
-                    pk=int(preferred_worker_id),
-                    profile__role__in=(UserRole.WORKER, UserRole.ADMIN),
-                )
-            except (User.DoesNotExist, TypeError, ValueError):
-                return JsonResponse({'error': 'Invalid technician selected.'}, status=400)
-
         booking = Booking.objects.create(
             user=request.user,
             name=name,
@@ -251,6 +259,7 @@ def create_booking(request):
                 salon=salon,
             )
             book_time_slot(slot_id, booking)
+            booking.refresh_from_db()
         except TimeSlot.DoesNotExist:
             return JsonResponse({'error': 'Time slot not found.'}, status=404)
         except ValueError as exc:
@@ -258,6 +267,8 @@ def create_booking(request):
                 booking.delete()
             return JsonResponse({'error': str(exc)}, status=400)
         success_message = 'Your appointment details were saved. We will follow up shortly.'
+
+    save_shared_job(booking)
 
     if venue == ServiceVenue.OUTDOOR:
         profile.default_location = location

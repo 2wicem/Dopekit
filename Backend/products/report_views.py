@@ -10,7 +10,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, UserRole
-from .salon_utils import filter_bookings_by_salon, parse_admin_salon_id
+from .salon_utils import (
+    filter_bookings_by_salon,
+    filter_bookings_for_owned_salons,
+    parse_admin_salon_id,
+)
 from .slot_utils import parse_date
 from .views import _forbidden, _unauthorized
 from .worker_permissions import require_approved_worker
@@ -25,8 +29,8 @@ def _require_report_access(request):
         return None, _unauthorized()
 
     profile = getattr(request.user, 'profile', None)
-    if not profile or profile.role not in (UserRole.WORKER, UserRole.ADMIN):
-        return None, _forbidden('Only technicians and admins can view reports.')
+    if not profile or profile.role not in (UserRole.WORKER, UserRole.ADMIN, UserRole.SALON_OWNER):
+        return None, _forbidden('Only technicians, salon owners, and admins can view reports.')
 
     if profile.role == UserRole.WORKER:
         _, denied = require_approved_worker(request)
@@ -79,6 +83,14 @@ def _report_bookings_queryset(user, date_from, date_to, salon_id=None):
         )
     elif profile and profile.role == UserRole.ADMIN:
         queryset = filter_bookings_by_salon(queryset, salon_id)
+    elif profile and profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        queryset = filter_bookings_for_owned_salons(
+            queryset,
+            owned_salon_ids(user),
+            salon_id,
+        )
 
     return queryset
 
@@ -87,6 +99,14 @@ def _admin_salon_filter(request):
     profile = getattr(request.user, 'profile', None)
     if profile and profile.role == UserRole.ADMIN:
         return parse_admin_salon_id(request)
+    if profile and profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        requested = parse_admin_salon_id(request)
+        ids = owned_salon_ids(request.user)
+        if requested and requested not in ids:
+            return -1
+        return requested
     return None
 
 
@@ -101,7 +121,11 @@ def _report_meta(user, date_from, date_to):
     return {
         'from': date_from.isoformat(),
         'to': date_to.isoformat(),
-        'scope': 'salon' if profile and profile.role == UserRole.ADMIN else 'technician',
+        'scope': (
+            'salon'
+            if profile and profile.role in (UserRole.ADMIN, UserRole.SALON_OWNER)
+            else 'technician'
+        ),
         'generated_at': timezone.now().isoformat(),
     }
 
@@ -208,8 +232,8 @@ def report_by_worker(request):
     if denied:
         return denied
 
-    if profile.role != UserRole.ADMIN:
-        return _forbidden('Only admins can view technician breakdown reports.')
+    if profile.role not in (UserRole.ADMIN, UserRole.SALON_OWNER):
+        return _forbidden('Only salon owners and admins can view technician breakdown reports.')
 
     date_from, date_to = _parse_date_range(request)
     bookings = _report_bookings_queryset(

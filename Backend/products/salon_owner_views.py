@@ -219,6 +219,7 @@ def assign_technician_salon(request, user_id):
         if profile.salon_id not in owned_ids:
             return JsonResponse({'error': 'You can only unassign technicians from your branches.'}, status=403)
         profile.salon = None
+        profile.technician_is_freelance = True
     else:
         try:
             salon_id = int(raw_salon_id)
@@ -232,8 +233,13 @@ def assign_technician_salon(request, user_id):
                 status=403,
             )
         profile.salon = get_object_or_404(Salon, pk=salon_id, owner=owner)
+        profile.technician_is_freelance = False
 
-    profile.save(update_fields=['salon'])
+    profile.save(update_fields=['salon', 'technician_is_freelance'])
+    if profile.salon_id:
+        from .booking_utils import attach_unsaloned_jobs_to_salon
+
+        attach_unsaloned_jobs_to_salon(target, profile.salon)
 
     return JsonResponse(
         {
