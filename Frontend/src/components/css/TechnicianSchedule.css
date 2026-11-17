@@ -120,6 +120,10 @@
   opacity: 0.72;
 }
 
+.technician-schedule-slot.is-unavailable {
+  opacity: 0.45;
+}
+
 .technician-schedule-slot-time {
   font-size: 0.82rem;
   font-weight: 600;

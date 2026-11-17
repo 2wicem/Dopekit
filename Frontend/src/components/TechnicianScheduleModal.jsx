@@ -47,7 +47,7 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
     setError(null)
 
     try {
-      const response = await apiFetch(`/products/workers/${worker.id}/schedule/?days=14`)
+      const response = await apiFetch(`/products/workers/${worker.id}/schedule/?days=7`)
       const text = await response.text()
       const data = text ? JSON.parse(text) : {}
 
@@ -98,10 +98,7 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
     })
   }
 
-  const visibleDays =
-    scheduleData?.schedule?.filter((day) =>
-      day.slots.some((slot) => slot.status === 'available' || slot.status === 'booked')
-    ) ?? []
+  const visibleDays = scheduleData?.schedule ?? []
 
   const modal = (
     <>
@@ -122,7 +119,7 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
                   {worker.name}&apos;s schedule
                 </h2>
                 <p className="technician-schedule-sub">
-                  Next {scheduleData?.days ?? 14} days · no client details shown on booked slots
+                  Next {scheduleData?.days ?? 7} days · hours are open unless booked or marked off
                 </p>
               </div>
               <button type="button" className="btn-close" aria-label="Close" onClick={onClose} />
@@ -144,8 +141,8 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
                 <>
                   <p className="technician-schedule-summary">
                     {scheduleData.open_slots > 0
-                      ? `${scheduleData.open_slots} open slot${scheduleData.open_slots === 1 ? '' : 's'} in the next 2 weeks`
-                      : 'No open slots in the next 2 weeks — check back soon'}
+                      ? `${scheduleData.open_slots} open slot${scheduleData.open_slots === 1 ? '' : 's'} this week`
+                      : 'No open slots this week — they may be booked or marked off'}
                   </p>
 
                   {visibleDays.length === 0 ? (
@@ -156,9 +153,7 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
                         <section key={day.date} className="technician-schedule-day">
                           <h3 className="technician-schedule-day-title">{formatDayHeader(day.date)}</h3>
                           <div className="technician-schedule-slots">
-                            {day.slots
-                              .filter((slot) => slot.status === 'available' || slot.status === 'booked')
-                              .map((slot) => (
+                            {day.slots.map((slot) => (
                                 <button
                                   key={`${day.date}-${slot.start_hour}`}
                                   type="button"
@@ -170,7 +165,9 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
                                   title={
                                     slot.status === 'available'
                                       ? `Book ${slot.label} on ${formatDayHeader(day.date)}`
-                                      : `${slot.label} — already booked`
+                                      : slot.status === 'booked'
+                                        ? `${slot.label} — already booked`
+                                        : `${slot.label} — off`
                                   }
                                 >
                                   <span className="technician-schedule-slot-time">{slot.label}</span>

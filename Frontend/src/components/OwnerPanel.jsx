@@ -5,6 +5,7 @@ import { apiFetch } from '../config/api'
 import OwnerApplicationsPanel from './OwnerApplicationsPanel'
 import OwnerSalonsPanel from './OwnerSalonsPanel'
 import OwnerTechniciansPanel from './OwnerTechniciansPanel'
+import OwnerPaymentsPanel from './OwnerPaymentsPanel'
 import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
 import './css/AdminShell.css'
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'branches', label: 'Branches' },
   { id: 'applications', label: 'Applications' },
   { id: 'technicians', label: 'Technicians' },
+  { id: 'payments', label: 'Payments' },
 ]
 
 const OwnerPanel = () => {
@@ -112,8 +114,10 @@ const OwnerPanel = () => {
           <OwnerSalonsPanel salons={salons} onChanged={handleSalonsChanged} onStatus={setStatus} />
         ) : activeTab === 'applications' ? (
           <OwnerApplicationsPanel onStatus={setStatus} onChanged={handleApplicationsChanged} />
-        ) : (
+        ) : activeTab === 'technicians' ? (
           <OwnerTechniciansPanel salons={salons} onStatus={setStatus} />
+        ) : (
+          <OwnerPaymentsPanel salons={salons} onStatus={setStatus} />
         )}
       </main>
     </div>

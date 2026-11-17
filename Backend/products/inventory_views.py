@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingStatus, DailyExpense, Salon, UserRole
+from .models import Booking, BookingStatus, DailyExpense, PaymentMethod, Salon, UserRole
 from .report_views import (
     _appointment_date_filter,
     _parse_date_range,
@@ -16,6 +16,7 @@ from .report_views import (
     _worker_name,
 )
 from .salon_utils import filter_bookings_by_salon, parse_admin_salon_id, resolve_salon_id
+from .payment_utils import collected_amount
 from .service_prices import resolve_service_price_kes
 from .inventory_permissions import (
     inventory_salon_scope,
@@ -100,7 +101,15 @@ def report_daily_inventory(request):
         lambda: {
             'services': [],
             'expenses': [],
-            'by_worker': defaultdict(lambda: {'count': 0, 'revenue_kes': 0}),
+            'by_worker': defaultdict(
+                lambda: {
+                    'count': 0,
+                    'revenue_kes': 0,
+                    'cash_kes': 0,
+                    'bank_kes': 0,
+                    'unpaid_kes': 0,
+                }
+            ),
         }
     )
 
@@ -113,7 +122,9 @@ def report_daily_inventory(request):
             continue
 
         price = _price_for_booking(booking)
+        paid = collected_amount(booking, price)
         worker_name = _booking_worker_name(booking)
+        method = booking.payment_method or ''
         entry = {
             'booking_id': booking.id,
             'client_name': booking.name,
@@ -125,6 +136,11 @@ def report_daily_inventory(request):
             'status_label': booking.get_status_display(),
             'is_walk_in': bool(booking.is_walk_in),
             'can_complete': booking.status in (BookingStatus.PENDING, BookingStatus.ACCEPTED),
+            'payment_method': method,
+            'payment_method_label': (
+                booking.get_payment_method_display() if method else ''
+            ),
+            'payment_amount_kes': booking.payment_amount_kes,
         }
         days_map[day.isoformat()]['services'].append(entry)
 
@@ -132,6 +148,13 @@ def report_daily_inventory(request):
         worker_bucket['count'] += 1
         if booking.status in (BookingStatus.ACCEPTED, BookingStatus.COMPLETED):
             worker_bucket['revenue_kes'] += price
+        if booking.status == BookingStatus.COMPLETED:
+            if method == PaymentMethod.CASH:
+                worker_bucket['cash_kes'] += paid
+            elif method == PaymentMethod.BANK:
+                worker_bucket['bank_kes'] += paid
+            else:
+                worker_bucket['unpaid_kes'] += paid
 
     for expense in expenses:
         day_key = expense.business_date.isoformat()
@@ -164,15 +187,34 @@ def report_daily_inventory(request):
             if row['status'] in (BookingStatus.ACCEPTED, BookingStatus.COMPLETED)
         ]
         pending = [row for row in services if row['status'] == BookingStatus.PENDING]
+        completed = [row for row in services if row['status'] == BookingStatus.COMPLETED]
 
         revenue_kes = sum(row['price_kes'] for row in counted)
         expenses_kes = sum(row['amount_kes'] for row in expense_rows)
+        cash_kes = sum(
+            (row['payment_amount_kes'] if row['payment_amount_kes'] is not None else row['price_kes'])
+            for row in completed
+            if row['payment_method'] == PaymentMethod.CASH
+        )
+        bank_kes = sum(
+            (row['payment_amount_kes'] if row['payment_amount_kes'] is not None else row['price_kes'])
+            for row in completed
+            if row['payment_method'] == PaymentMethod.BANK
+        )
+        unpaid_kes = sum(
+            (row['payment_amount_kes'] if row['payment_amount_kes'] is not None else row['price_kes'])
+            for row in completed
+            if not row['payment_method']
+        )
 
         by_worker = [
             {
                 'worker_name': name,
                 'count': stats['count'],
                 'revenue_kes': stats['revenue_kes'],
+                'cash_kes': stats['cash_kes'],
+                'bank_kes': stats['bank_kes'],
+                'unpaid_kes': stats['unpaid_kes'],
             }
             for name, stats in sorted(
                 bucket['by_worker'].items(),
@@ -187,6 +229,9 @@ def report_daily_inventory(request):
                 'accepted_count': len(counted),
                 'pending_count': len(pending),
                 'revenue_kes': revenue_kes,
+                'cash_kes': cash_kes,
+                'bank_kes': bank_kes,
+                'unpaid_kes': unpaid_kes,
                 'expenses_kes': expenses_kes,
                 'net_kes': revenue_kes - expenses_kes,
                 'services': sorted(services, key=lambda row: row['booking_id']),
@@ -200,6 +245,9 @@ def report_daily_inventory(request):
         'services_count': sum(day['services_count'] for day in days),
         'accepted_count': sum(day['accepted_count'] for day in days),
         'revenue_kes': sum(day['revenue_kes'] for day in days),
+        'cash_kes': sum(day['cash_kes'] for day in days),
+        'bank_kes': sum(day['bank_kes'] for day in days),
+        'unpaid_kes': sum(day['unpaid_kes'] for day in days),
         'expenses_kes': sum(day['expenses_kes'] for day in days),
         'net_kes': sum(day['net_kes'] for day in days),
     }

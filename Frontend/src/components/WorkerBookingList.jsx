@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { venueLabel } from '../constants/serviceVenue'
+import { paymentMethodLabel } from '../constants/paymentMethods'
 import { formatBookingWhen } from '../utils/formatBookingWhen'
 import './css/Dashboard.css'
 
@@ -61,6 +62,12 @@ const WorkerBookingList = ({
             <a className="worker-booking-phone" href={`tel:${booking.phone}`}>
               Call {booking.phone}
             </a>
+            {booking.status === 'completed' && booking.payment_method ? (
+              <p className="worker-booking-payment">
+                {paymentMethodLabel(booking.payment_method)}
+                {booking.payment_amount_kes != null ? ` · KSh ${Number(booking.payment_amount_kes).toLocaleString()}` : ''}
+              </p>
+            ) : null}
 
             {(isPending || booking.status === 'accepted') && (
               <div className="worker-booking-actions">
@@ -78,7 +85,7 @@ const WorkerBookingList = ({
                   <button
                     type="button"
                     className="btn btn-sm btn-success"
-                    onClick={() => onComplete(booking.id)}
+                    onClick={() => onComplete(booking)}
                     disabled={busy}
                   >
                     {busy ? 'Saving...' : 'Mark done (inventory)'}

@@ -157,7 +157,7 @@ const SalonDetail = () => {
 
           {technicians.length === 0 ? (
             <p className="available-workers-status text-center">
-              Technicians assigned to this salon will appear here once schedules are set.
+              Technicians assigned to this salon will appear here.
             </p>
           ) : (
             <div className="available-workers-grid">

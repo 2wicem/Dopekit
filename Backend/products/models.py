@@ -30,6 +30,11 @@ class ServiceVenue(models.TextChoices):
     OUTDOOR = 'outdoor', 'Outdoor (we come to you)'
 
 
+class PaymentMethod(models.TextChoices):
+    CASH = 'cash', 'Cash'
+    BANK = 'bank', 'Bank / M-Pesa'
+
+
 class Booking(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -77,6 +82,19 @@ class Booking(models.Model):
         default=False,
         help_text='Recorded by staff (manual), not booked by the client online.',
     )
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PaymentMethod.choices,
+        blank=True,
+        default='',
+        help_text='How the client paid when the job was completed.',
+    )
+    payment_amount_kes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Amount collected. Defaults to the service price.',
+    )
+    paid_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -102,7 +120,7 @@ class TimeSlot(models.Model):
     status = models.CharField(
         max_length=12,
         choices=SlotStatus.choices,
-        default=SlotStatus.UNAVAILABLE,
+        default=SlotStatus.AVAILABLE,
     )
     booking = models.OneToOneField(
         Booking,

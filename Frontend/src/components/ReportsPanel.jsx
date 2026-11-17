@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { todayIso } from '../constants/slots'
 import { apiFetch } from '../config/api'
+import { PAYMENT_METHODS, paymentMethodLabel } from '../constants/paymentMethods'
 import './css/Dashboard.css'
 
 const DEFAULT_RANGE_DAYS = 30
@@ -69,6 +70,8 @@ const ReportsPanel = ({
   const [expenseForm, setExpenseForm] = useState(emptyExpenseForm)
   const [expenseSaving, setExpenseSaving] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [completingId, setCompletingId] = useState(null)
+  const [completeMethod, setCompleteMethod] = useState('cash')
 
   const isAdminScope = scope === 'admin'
   const showInventory = isAdminScope || canViewInventory
@@ -176,13 +179,15 @@ const ReportsPanel = ({
     }
   }
 
-  const handleCompleteService = async (bookingId) => {
+  const handleCompleteService = async (bookingId, paymentMethod = 'cash') => {
     setStatus(null)
     try {
       const response = await apiFetch(`/products/bookings/${bookingId}/complete/`, {
         method: 'POST',
+        body: JSON.stringify({ payment_method: paymentMethod }),
       })
       const data = await parseJson(response)
+      setCompletingId(null)
       await loadReports()
       setStatus({ type: 'success', message: data.message || 'Added to daily inventory.' })
     } catch (error) {
@@ -344,6 +349,14 @@ const ReportsPanel = ({
 
           {showInventory && inventory?.totals && (
             <div className="dashboard-stats mb-4">
+              <div className="dashboard-stat-card">
+                <span className="dashboard-stat-value">{formatKes(inventory.totals.cash_kes)}</span>
+                <span className="dashboard-stat-label">Cash</span>
+              </div>
+              <div className="dashboard-stat-card">
+                <span className="dashboard-stat-value">{formatKes(inventory.totals.bank_kes)}</span>
+                <span className="dashboard-stat-label">Bank / M-Pesa</span>
+              </div>
               <div className="dashboard-stat-card">
                 <span className="dashboard-stat-value">{formatKes(inventory.totals.revenue_kes)}</span>
                 <span className="dashboard-stat-label">Revenue (completed)</span>
@@ -514,6 +527,8 @@ const ReportsPanel = ({
                                   <tr>
                                     <th>Technician</th>
                                     <th className="text-end">Services</th>
+                                    <th className="text-end">Cash</th>
+                                    <th className="text-end">Bank</th>
                                     <th className="text-end">Revenue</th>
                                   </tr>
                                 </thead>
@@ -522,6 +537,8 @@ const ReportsPanel = ({
                                     <tr key={row.worker_name}>
                                       <td>{row.worker_name}</td>
                                       <td className="text-end">{row.count}</td>
+                                      <td className="text-end">{formatKes(row.cash_kes)}</td>
+                                      <td className="text-end">{formatKes(row.bank_kes)}</td>
                                       <td className="text-end">{formatKes(row.revenue_kes)}</td>
                                     </tr>
                                   ))}
@@ -540,6 +557,7 @@ const ReportsPanel = ({
                                     <th>Service</th>
                                     <th>Technician</th>
                                     <th className="text-end">Price</th>
+                                    <th>Paid</th>
                                     <th>Status</th>
                                     <th aria-label="Inventory" />
                                   </tr>
@@ -563,13 +581,43 @@ const ReportsPanel = ({
                                       <td>{row.service}</td>
                                       <td>{row.worker_name}</td>
                                       <td className="text-end">{formatKes(row.price_kes)}</td>
+                                      <td>
+                                        {row.payment_method
+                                          ? paymentMethodLabel(row.payment_method)
+                                          : '—'}
+                                      </td>
                                       <td>{row.status_label}</td>
                                       <td className="text-end">
-                                        {row.can_complete ? (
+                                        {row.can_complete && completingId === row.booking_id ? (
+                                          <div className="d-flex flex-column align-items-end gap-1">
+                                            <select
+                                              className="form-select form-select-sm"
+                                              value={completeMethod}
+                                              onChange={(event) => setCompleteMethod(event.target.value)}
+                                              aria-label="Payment method"
+                                            >
+                                              {PAYMENT_METHODS.map((entry) => (
+                                                <option key={entry.value} value={entry.value}>
+                                                  {entry.label}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <button
+                                              type="button"
+                                              className="btn btn-link btn-sm p-0"
+                                              onClick={() => handleCompleteService(row.booking_id, completeMethod)}
+                                            >
+                                              Confirm
+                                            </button>
+                                          </div>
+                                        ) : row.can_complete ? (
                                           <button
                                             type="button"
                                             className="btn btn-link btn-sm p-0"
-                                            onClick={() => handleCompleteService(row.booking_id)}
+                                            onClick={() => {
+                                              setCompletingId(row.booking_id)
+                                              setCompleteMethod('cash')
+                                            }}
                                           >
                                             Add to inventory
                                           </button>

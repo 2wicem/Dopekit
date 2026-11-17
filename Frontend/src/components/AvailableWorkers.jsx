@@ -44,7 +44,7 @@ const AvailableWorkers = () => {
 
       {!loading && !error && workers.length === 0 && (
         <p className="available-workers-status text-center">
-          Technicians will appear here once staff schedules are set.
+          No technicians are listed yet.
         </p>
       )}
 

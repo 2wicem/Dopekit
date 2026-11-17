@@ -241,7 +241,7 @@ const WorkerSchedule = ({ onChanged = null }) => {
         <div>
           <h2 className="worker-schedule-title">Your 2-hour slots</h2>
           <p className="text-muted mb-0 worker-schedule-subtitle">
-            Tap hours to open or mark off. Online and walk-in bookings stay locked.
+            Hours stay open for clients unless you mark them off or they are booked.
           </p>
         </div>
         <div className="worker-schedule-nav">

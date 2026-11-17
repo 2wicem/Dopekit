@@ -1,5 +1,6 @@
 import { todayIso } from '../constants/slots'
 import { SERVICE_VENUES } from '../constants/serviceVenue'
+import { PAYMENT_METHODS } from '../constants/paymentMethods'
 import './css/AdminShell.css'
 
 const daysAgoIso = (days) => {
@@ -63,6 +64,23 @@ const WalkInForm = ({
           onChange={onChange}
           placeholder="Optional"
         />
+      </div>
+      <div>
+        <label htmlFor="walkin-payment">Payment</label>
+        <select
+          id="walkin-payment"
+          className="form-select site-select"
+          name="payment_method"
+          value={form.payment_method || 'cash'}
+          onChange={onChange}
+          required
+        >
+          {PAYMENT_METHODS.map((entry) => (
+            <option key={entry.value} value={entry.value}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label htmlFor="walkin-date">Date</label>

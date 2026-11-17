@@ -70,7 +70,7 @@ const TechnicianCard = ({ worker, salonId = null, bookLabel }) => {
 
       <p className="available-worker-slots">
         {worker.is_available
-          ? `${worker.available_slots} open slot${worker.available_slots === 1 ? '' : 's'} (next 2 weeks)`
+          ? `${worker.available_slots} open slot${worker.available_slots === 1 ? '' : 's'} this week`
           : 'Check back soon for new openings'}
       </p>
       <p className="available-worker-next">

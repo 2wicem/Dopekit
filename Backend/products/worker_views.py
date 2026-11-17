@@ -13,7 +13,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, Salon, SlotStatus, TimeSlot, UserRole
-from .slot_utils import SLOT_HOURS, format_slot_label
+from .slot_utils import (
+    PUBLIC_SCHEDULE_DAYS,
+    SLOT_HOURS,
+    count_open_slots,
+    ensure_default_available_slots,
+    format_slot_label,
+    is_past_slot,
+)
 from .slot_views import _parse_date
 from .technician_showcase import completed_jobs_for_worker, technician_showcase_to_dict
 from .technician_utils import is_approved_technician
@@ -107,14 +114,7 @@ def _serialize_public_worker(user, today, horizon):
     if profile.role == UserRole.WORKER and not is_approved_technician(profile):
         return None
 
-    available_qs = TimeSlot.objects.filter(
-        worker=user,
-        date__gte=today,
-        date__lte=horizon,
-        status=SlotStatus.AVAILABLE,
-    )
-    available_count = available_qs.count()
-    next_slot = available_qs.order_by('date', 'start_hour').first()
+    available_count, next_slot = count_open_slots(user, today, horizon)
     specialty = profile.technician_specialty or ''
     showcase = technician_showcase_to_dict(profile, completed_jobs_for_worker(user))
 
@@ -155,7 +155,7 @@ def _serialize_public_worker(user, today, horizon):
 
 def build_public_workers(salon_id=None, freelance_only=False):
     today = timezone.localdate()
-    horizon = today + timedelta(days=14)
+    horizon = today + timedelta(days=PUBLIC_SCHEDULE_DAYS - 1)
     staff = _public_worker_queryset(salon_id=salon_id, freelance_only=freelance_only)
 
     workers = []
@@ -174,7 +174,7 @@ def build_public_workers(salon_id=None, freelance_only=False):
     return workers
 
 
-def _public_day_slots(existing_slots):
+def _public_day_slots(existing_slots, slot_date):
     by_hour = {slot.start_hour: slot for slot in existing_slots}
     day_slots = []
     for hour in SLOT_HOURS:
@@ -185,15 +185,25 @@ def _public_day_slots(existing_slots):
                 'label': format_slot_label(hour),
                 'status': slot.status,
             }
-            if slot.status == SlotStatus.AVAILABLE:
+            if slot.status == SlotStatus.AVAILABLE and not is_past_slot(slot_date, hour):
                 entry['id'] = slot.id
+            elif is_past_slot(slot_date, hour) and slot.status == SlotStatus.AVAILABLE:
+                entry['status'] = SlotStatus.UNAVAILABLE
             day_slots.append(entry)
-        else:
+        elif is_past_slot(slot_date, hour):
             day_slots.append(
                 {
                     'start_hour': hour,
                     'label': format_slot_label(hour),
                     'status': SlotStatus.UNAVAILABLE,
+                }
+            )
+        else:
+            day_slots.append(
+                {
+                    'start_hour': hour,
+                    'label': format_slot_label(hour),
+                    'status': SlotStatus.AVAILABLE,
                 }
             )
     return day_slots
@@ -216,7 +226,7 @@ def public_worker_schedule(request, worker_id):
         return denied
 
     profile = user.profile
-    raw_days = request.GET.get('days', '14').strip()
+    raw_days = request.GET.get('days', str(PUBLIC_SCHEDULE_DAYS)).strip()
     try:
         days = int(raw_days)
     except (TypeError, ValueError):
@@ -226,6 +236,7 @@ def public_worker_schedule(request, worker_id):
     today = timezone.localdate()
     horizon = today + timedelta(days=days - 1)
 
+    ensure_default_available_slots([user], today, horizon)
     existing = TimeSlot.objects.filter(
         worker=user,
         date__gte=today,
@@ -240,7 +251,7 @@ def public_worker_schedule(request, worker_id):
     open_count = 0
     for offset in range(days):
         slot_date = today + timedelta(days=offset)
-        day_slots = _public_day_slots(by_date.get(slot_date, []))
+        day_slots = _public_day_slots(by_date.get(slot_date, []), slot_date)
         open_count += sum(1 for entry in day_slots if entry['status'] == SlotStatus.AVAILABLE)
         schedule.append(
             {
@@ -388,11 +399,28 @@ def complete_booking(request, booking_id):
             {'message': 'Already in daily inventory.', 'booking': _booking_to_dict(booking)}
         )
 
+    try:
+        payload = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        payload = {}
+
+    from .payment_utils import apply_client_payment, parse_payment_fields
+
+    payment, payment_error = parse_payment_fields(
+        payload,
+        default_amount=booking.service_price_kes,
+        required=True,
+    )
+    if payment_error:
+        return JsonResponse({'error': payment_error}, status=400)
+
     booking.status = BookingStatus.COMPLETED
-    booking.save(update_fields=['status'])
+    update_fields = ['status'] + apply_client_payment(booking, payment)
+    booking.save(update_fields=update_fields)
+    method_label = booking.get_payment_method_display()
     return JsonResponse(
         {
-            'message': 'Marked complete and added to daily inventory.',
+            'message': f'Marked complete · {method_label} added to daily inventory.',
             'booking': _booking_to_dict(booking),
         }
     )

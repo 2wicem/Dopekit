@@ -8,8 +8,14 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingStatus, SlotStatus, TimeSlot, UserRole
-from .slot_utils import SLOT_HOURS, format_slot_label, parse_date
+from .models import Booking, BookingStatus, SlotStatus, TechnicianApprovalStatus, TimeSlot, UserRole
+from .slot_utils import (
+    SLOT_HOURS,
+    ensure_default_available_slots,
+    format_slot_label,
+    is_past_slot,
+    parse_date,
+)
 from .views import _booking_to_dict, _forbidden, _unauthorized
 from .worker_permissions import require_approved_worker
 
@@ -38,7 +44,7 @@ def _slot_to_dict(slot):
     }
 
 
-def _virtual_slot(worker, slot_date, start_hour, status=SlotStatus.UNAVAILABLE):
+def _virtual_slot(worker, slot_date, start_hour, status=SlotStatus.AVAILABLE):
     return {
         'id': None,
         'date': slot_date.isoformat(),
@@ -58,8 +64,10 @@ def _merge_day_slots(worker, slot_date, existing_slots):
     for hour in SLOT_HOURS:
         if hour in by_hour:
             merged.append(_slot_to_dict(by_hour[hour]))
+        elif is_past_slot(slot_date, hour):
+            merged.append(_virtual_slot(worker, slot_date, hour, SlotStatus.UNAVAILABLE))
         else:
-            merged.append(_virtual_slot(worker, slot_date, hour))
+            merged.append(_virtual_slot(worker, slot_date, hour, SlotStatus.AVAILABLE))
     return merged
 
 
@@ -117,23 +125,37 @@ def list_available_slots(request):
     if slot_date < timezone.localdate():
         return JsonResponse({'slots': []})
 
+    workers = User.objects.filter(
+        profile__role=UserRole.WORKER,
+        profile__technician_approval=TechnicianApprovalStatus.APPROVED,
+    )
+    worker_id = request.GET.get('worker_id', '').strip()
+    if worker_id:
+        try:
+            workers = workers.filter(pk=int(worker_id))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid worker_id.'}, status=400)
+
+    ensure_default_available_slots(workers, slot_date, slot_date)
+
     slots = (
-        TimeSlot.objects.filter(date=slot_date, status=SlotStatus.AVAILABLE)
+        TimeSlot.objects.filter(
+            date=slot_date,
+            status=SlotStatus.AVAILABLE,
+            worker_id__in=workers.values_list('id', flat=True),
+        )
         .select_related('worker')
         .order_by('start_hour', 'worker__first_name')
     )
 
-    worker_id = request.GET.get('worker_id', '').strip()
-    if worker_id:
-        try:
-            slots = slots.filter(worker_id=int(worker_id))
-        except (TypeError, ValueError):
-            return JsonResponse({'error': 'Invalid worker_id.'}, status=400)
-
     return JsonResponse(
         {
             'date': slot_date.isoformat(),
-            'slots': [_slot_to_dict(slot) for slot in slots],
+            'slots': [
+                _slot_to_dict(slot)
+                for slot in slots
+                if not is_past_slot(slot.date, slot.start_hour)
+            ],
         }
     )
 

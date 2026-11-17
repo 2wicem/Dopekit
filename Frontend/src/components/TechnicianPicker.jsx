@@ -64,7 +64,7 @@ const TechnicianPreview = ({ worker }) => {
 
       <p className="technician-preview-slots">
         {worker.is_available
-          ? `${worker.available_slots} open slot${worker.available_slots === 1 ? '' : 's'} in the next 2 weeks`
+          ? `${worker.available_slots} open slot${worker.available_slots === 1 ? '' : 's'} this week`
           : 'No open slots soon — you can still send a request and we will confirm a time.'}
       </p>
     </div>

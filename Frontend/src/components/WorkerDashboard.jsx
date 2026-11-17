@@ -10,6 +10,7 @@ import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
+import PaymentCollectForm from './PaymentCollectForm'
 import './css/WorkerApp.css'
 
 const ReportsPanel = lazy(() => import('./ReportsPanel'))
@@ -21,6 +22,7 @@ const emptyWalkIn = {
   phone: '',
   service: '',
   service_price_kes: '',
+  payment_method: 'cash',
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),
@@ -47,6 +49,9 @@ const WorkerDashboard = () => {
   const [showWalkIn, setShowWalkIn] = useState(false)
   const [walkInForm, setWalkInForm] = useState(emptyWalkIn)
   const [walkInSaving, setWalkInSaving] = useState(false)
+  const [paymentTarget, setPaymentTarget] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [paymentAmount, setPaymentAmount] = useState('')
 
   const canRecordWalkIn = true
 
@@ -220,13 +225,14 @@ const WorkerDashboard = () => {
       })
   }
 
-  const handleBookingAction = async (bookingId, action) => {
+  const handleBookingAction = async (bookingId, action, extra = null) => {
     setBusyId(bookingId)
     setStatus(null)
 
     try {
       const response = await apiFetch(`/products/bookings/${bookingId}/${action}/`, {
         method: 'POST',
+        body: extra ? JSON.stringify(extra) : undefined,
       })
       const text = await response.text()
       const data = text ? JSON.parse(text) : {}
@@ -238,10 +244,34 @@ const WorkerDashboard = () => {
       setStatus({ type: 'success', message: data.message })
       await loadBookings(true)
       await loadSummary(true)
+      return true
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
+      return false
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const openCompletePayment = (booking) => {
+    setPaymentTarget(booking)
+    setPaymentMethod('cash')
+    setPaymentAmount(
+      booking.service_price_kes != null ? String(booking.service_price_kes) : ''
+    )
+  }
+
+  const submitCompletePayment = async (event) => {
+    event.preventDefault()
+    if (!paymentTarget) {
+      return
+    }
+    const saved = await handleBookingAction(paymentTarget.id, 'complete', {
+      payment_method: paymentMethod,
+      payment_amount_kes: paymentAmount === '' ? null : Number(paymentAmount),
+    })
+    if (saved) {
+      setPaymentTarget(null)
     }
   }
 
@@ -471,10 +501,41 @@ const WorkerDashboard = () => {
                 highlightId={highlightId}
                 busyId={busyId}
                 onAccept={(id) => handleBookingAction(id, 'accept')}
-                onComplete={(id) => handleBookingAction(id, 'complete')}
+                onComplete={openCompletePayment}
                 onCancel={(id) => handleBookingAction(id, 'cancel')}
               />
             )}
+          </div>
+        )}
+
+        {paymentTarget && (
+          <div className="worker-payment-overlay" role="dialog" aria-modal="true" aria-labelledby="worker-payment-title">
+            <form className="worker-payment-card" onSubmit={submitCompletePayment}>
+              <h2 id="worker-payment-title">Record payment</h2>
+              <p>
+                {paymentTarget.name}
+                {paymentTarget.service ? ` · ${paymentTarget.service}` : ''}
+              </p>
+              <PaymentCollectForm
+                method={paymentMethod}
+                amount={paymentAmount}
+                onMethodChange={setPaymentMethod}
+                onAmountChange={setPaymentAmount}
+              />
+              <div className="worker-payment-actions">
+                <button type="submit" className="btn btn-success" disabled={busyId === paymentTarget.id}>
+                  {busyId === paymentTarget.id ? 'Saving…' : 'Save to inventory'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setPaymentTarget(null)}
+                  disabled={busyId === paymentTarget.id}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

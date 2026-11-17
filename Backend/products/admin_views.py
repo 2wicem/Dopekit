@@ -469,6 +469,16 @@ def create_walk_in_booking(request):
         data.get('service_price_kes'),
     )
 
+    from .payment_utils import apply_client_payment, parse_payment_fields
+
+    payment, payment_error = parse_payment_fields(
+        data,
+        default_amount=service_price_kes,
+        required=True,
+    )
+    if payment_error:
+        return JsonResponse({'error': payment_error}, status=400)
+
     booking = Booking.objects.create(
         user=None,
         name=name,
@@ -483,6 +493,8 @@ def create_walk_in_booking(request):
         status=BookingStatus.COMPLETED,
         is_walk_in=True,
     )
+    apply_client_payment(booking, payment)
+    booking.save(update_fields=['payment_method', 'payment_amount_kes', 'paid_at'])
 
     schedule_booking_created_notification(booking.id)
 

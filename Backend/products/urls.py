@@ -38,6 +38,7 @@ urlpatterns = [
     path('owner/applications/<int:user_id>/approve/', salon_owner_views.approve_owner_application, name='owner_approve_application'),
     path('owner/applications/<int:user_id>/reject/', salon_owner_views.reject_owner_application, name='owner_reject_application'),
     path('owner/salons/<int:salon_id>/invite-code/', salon_owner_views.regenerate_salon_invite_code, name='owner_regenerate_invite_code'),
+    path('owner/payments/', salon_owner_views.owner_daily_payments, name='owner_daily_payments'),
     path('workers/', worker_views.list_public_workers, name='list_public_workers'),
     path('workers/<int:worker_id>/schedule/', worker_views.public_worker_schedule, name='public_worker_schedule'),
     path('map/nearby/', map_views.nearby_map_markers, name='nearby_map_markers'),

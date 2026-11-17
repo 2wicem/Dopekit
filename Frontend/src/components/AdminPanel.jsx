@@ -28,6 +28,7 @@ const emptyWalkIn = {
   phone: '',
   service: '',
   service_price_kes: '',
+  payment_method: 'cash',
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),

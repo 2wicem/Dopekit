@@ -49,6 +49,12 @@ def _booking_to_dict(booking):
         'is_walk_in': bool(booking.is_walk_in),
         'source': 'walk_in' if booking.is_walk_in else 'online',
         'source_label': 'Walk-in' if booking.is_walk_in else 'Online',
+        'payment_method': booking.payment_method or '',
+        'payment_method_label': (
+            booking.get_payment_method_display() if booking.payment_method else ''
+        ),
+        'payment_amount_kes': booking.payment_amount_kes,
+        'paid_at': booking.paid_at.isoformat() if booking.paid_at else None,
     }
     if booking.salon_id:
         data['salon_id'] = booking.salon_id
