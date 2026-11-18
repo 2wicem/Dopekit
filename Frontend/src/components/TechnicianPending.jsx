@@ -28,16 +28,16 @@ const TechnicianPending = () => {
   const pendingSubtitle = isRejected
     ? 'Your technician application was not approved. You can still book services as a client.'
     : isPendingOwner
-      ? `Thanks for applying to join ${application.application_salon_name || 'your salon branch'}. Your branch manager must review your application before it goes to platform admin.`
+      ? `Thanks for applying to join ${application.application_salon_name || 'your salon branch'}. Your salon owner can activate you from My salons, or add you as staff without this queue.`
       : isFreelance
         ? 'Thanks for applying as a freelance technician. Platform admin is reviewing your profile and references.'
-        : 'Your salon manager approved your application. Platform admin is doing the final verification before you can open the staff dashboard.'
+        : 'Only freelance technicians wait on platform admin. Ask your salon owner to add you from My salons if you are salon staff.'
 
   const pendingHint = isPendingOwner
-    ? 'We notified your salon owner when you applied. Check back here after they review your details.'
+    ? 'Your salon owner can activate this account from My salons → Invite signups.'
     : isFreelance
-      ? 'Freelance technicians are verified directly by platform admin. You will get access to the staff dashboard once approved.'
-      : 'Final approval usually happens soon after your salon manager forwards your application.'
+      ? 'Freelance technicians are verified by platform admin. You will get access to the staff dashboard once approved.'
+      : 'Salon staff are added by the salon owner and do not need platform admin approval.'
 
   useEffect(() => {
     if (!user) {
@@ -82,7 +82,7 @@ const TechnicianPending = () => {
       if (nextStage === 'pending_owner') {
         setStatus({
           type: 'info',
-          text: 'Still waiting for your salon manager to review your application.',
+          text: 'Still waiting for your salon owner to activate this account.',
         })
         return
       }

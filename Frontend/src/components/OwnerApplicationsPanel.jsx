@@ -29,7 +29,7 @@ const OwnerApplicationsPanel = ({ onStatus, onChanged }) => {
   }, [loadApplications])
 
   const handleReview = async (userId, action) => {
-    const label = action === 'approve' ? 'forward to platform admin' : 'reject'
+    const label = action === 'approve' ? 'add this person to your salon' : 'reject'
     if (!window.confirm(`Are you sure you want to ${label} this application?`)) {
       return
     }
@@ -57,10 +57,10 @@ const OwnerApplicationsPanel = ({ onStatus, onChanged }) => {
     <div className="owner-applications-panel">
       <div className="admin-panel-toolbar">
         <div>
-          <h2 className="admin-panel-title">New applications</h2>
+          <h2 className="admin-panel-title">Invite signups</h2>
           <p className="admin-panel-lead">
-            Review salon team applicants first. Approved applications go to platform admin for final
-            verification.
+            Prefer adding staff yourself from Technicians. If someone used a branch invite code
+            before this change, you can still activate them here — no platform admin step.
           </p>
         </div>
       </div>
@@ -95,7 +95,7 @@ const OwnerApplicationsPanel = ({ onStatus, onChanged }) => {
                       disabled={reviewingId === entry.id}
                       onClick={() => handleReview(entry.id, 'approve')}
                     >
-                      Approve
+                      Activate
                     </button>
                     <button
                       type="button"

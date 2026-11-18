@@ -258,6 +258,27 @@ def update_user_role(request, user_id):
     )
 
 
+@require_http_methods(['DELETE'])
+def delete_user(request, user_id):
+    denied = _require_admin(request)
+    if denied:
+        return denied
+
+    target = get_object_or_404(User.objects.select_related('profile'), pk=user_id)
+    if target.id == request.user.id:
+        return JsonResponse({'error': 'You cannot delete your own account.'}, status=400)
+
+    target_profile = getattr(target, 'profile', None)
+    if target_profile and target_profile.role == UserRole.ADMIN:
+        other_admins = UserProfile.objects.filter(role=UserRole.ADMIN).exclude(user_id=target.id)
+        if not other_admins.exists():
+            return JsonResponse({'error': 'You cannot delete the last platform admin.'}, status=400)
+
+    display_name = target.first_name or target.username
+    target.delete()
+    return JsonResponse({'message': f'{display_name} was deleted.'})
+
+
 @require_http_methods(['PATCH'])
 def update_technician_showcase(request, user_id):
     denied = _require_admin(request)

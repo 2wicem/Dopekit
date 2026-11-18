@@ -97,13 +97,10 @@ def _public_worker_queryset(salon_id=None, freelance_only=False):
     )
 
     if freelance_only:
-        return staff.filter(profile__role=UserRole.WORKER, profile__salon__isnull=True)
+        return staff.filter(profile__technician_is_freelance=True)
 
     if salon_id is not None:
-        return staff.filter(
-            Q(profile__salon_id=salon_id)
-            | Q(profile__role=UserRole.WORKER, profile__salon__isnull=True)
-        )
+        return staff.filter(profile__salon_id=salon_id, profile__technician_is_freelance=False)
 
     return staff
 
@@ -131,8 +128,7 @@ def _serialize_public_worker(user, today, horizon):
         'name': user.first_name or user.username.capitalize(),
         'role': profile.role,
         'role_label': _public_worker_role_label(profile),
-        'is_freelance': profile.role == UserRole.WORKER
-        and (profile.technician_is_freelance or profile.salon_id is None),
+        'is_freelance': profile.role == UserRole.WORKER and bool(profile.technician_is_freelance),
         'salon_id': profile.salon_id,
         'salon_name': profile.salon.name if profile.salon_id else None,
         'latitude': latitude,

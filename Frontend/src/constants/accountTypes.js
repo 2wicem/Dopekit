@@ -13,8 +13,8 @@ export const ACCOUNT_TYPES = {
     shortLabel: 'Studio team',
     signupTitle: 'Welcome to the studio',
     signupSubtitle:
-      'Apply as a technician. An admin will review your account before you can access the staff dashboard.',
-    submitLabel: 'Submit application',
+      'Join a salon with a branch invite code, or apply as a freelancer for platform admin review.',
+    submitLabel: 'Create technician account',
   },
   salon_owner: {
     value: 'salon_owner',

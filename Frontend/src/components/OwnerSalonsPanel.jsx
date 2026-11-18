@@ -256,6 +256,9 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
                   </p>
                   <div className="owner-invite-code-row">
                     <span className="owner-invite-code-label">Team invite code</span>
+                    <span className="owner-invite-code-hint">
+                      Staff who sign up with this code join the branch immediately.
+                    </span>
                     <code className="owner-invite-code">{salon.technician_invite_code || 'Not set'}</code>
                     <div className="owner-invite-code-actions">
                       <button

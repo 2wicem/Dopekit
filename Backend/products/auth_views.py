@@ -18,7 +18,6 @@ from django.views.decorators.http import require_http_methods
 from .auth_utils import signup_role_from_account_type, user_to_dict
 from .models import TechnicianApprovalStatus, UserProfile, UserRole
 from .notifications import (
-    notify_owner_technician_application,
     notify_technician_application,
     send_freelancer_application_followup_email,
     send_password_reset_email,
@@ -165,39 +164,28 @@ def register(request):
     if role == UserRole.WORKER:
         profile_fields = dict(application_data or {})
         is_freelance = profile_fields.pop('technician_is_freelance', False)
-        if settings.REQUIRE_TECHNICIAN_APPROVAL:
-            initial_status = (
-                TechnicianApprovalStatus.PENDING_ADMIN
-                if is_freelance
-                else TechnicianApprovalStatus.PENDING_OWNER
-            )
+        application_salon = profile_fields.get('technician_application_salon')
+        needs_admin_approval = is_freelance and settings.REQUIRE_TECHNICIAN_APPROVAL
+        if needs_admin_approval:
             UserProfile.objects.create(
                 user=user,
                 phone=phone,
                 role=UserRole.CLIENT,
-                technician_approval=initial_status,
+                technician_approval=TechnicianApprovalStatus.PENDING_ADMIN,
+                technician_is_freelance=True,
                 **profile_fields,
             )
             clear_signup_phone_verification(phone)
             auth_login(request, user)
             followup_email_sent = False
             try:
-                if is_freelance:
-                    notify_technician_application(user)
-                else:
-                    notify_owner_technician_application(user)
+                notify_technician_application(user)
             except Exception:
                 logger.exception('Failed to notify staff about technician application for %s', user.email)
-            if is_freelance:
-                followup_email_sent = send_freelancer_application_followup_email(user)
-            success_message = (
-                'Approval request sent. A follow-up email is on its way.'
-                if is_freelance
-                else 'Application received. Your salon manager will review it first, then platform admin.'
-            )
+            followup_email_sent = send_freelancer_application_followup_email(user)
             return JsonResponse(
                 {
-                    'message': success_message,
+                    'message': 'Approval request sent. A follow-up email is on its way.',
                     'user': user_to_dict(user),
                     'followup_email_sent': followup_email_sent,
                 },
@@ -209,6 +197,8 @@ def register(request):
             phone=phone,
             role=UserRole.WORKER,
             technician_approval=TechnicianApprovalStatus.APPROVED,
+            technician_is_freelance=is_freelance,
+            salon=None if is_freelance else application_salon,
             **profile_fields,
         )
         clear_signup_phone_verification(phone)
@@ -561,9 +551,7 @@ def update_profile(request):
             profile.service_longitude = longitude
             update_fields.extend(['service_latitude', 'service_longitude'])
 
-        should_geocode_service_area = default_location and (
-            profile.technician_is_freelance or profile.salon_id is None
-        ) and (
+        should_geocode_service_area = default_location and profile.technician_is_freelance and (
             location_changed
             or profile.service_latitude is None
             or profile.service_longitude is None

@@ -5,19 +5,23 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
-from .admin_views import _apply_salon_fields
+from .admin_views import _apply_salon_fields, _unique_username
 from .auth_utils import user_to_dict
 from .models import Salon, TechnicianApprovalStatus, UserProfile, UserRole
+from .password_utils import password_strength_error
 from .salon_owner_permissions import get_owned_salon, owned_salon_queryset, require_salon_owner
 from .salon_utils import ensure_salon_invite_code, salon_to_dict, unique_slug
 from .technician_utils import (
-    forward_technician_to_admin,
+    auto_approve_technician,
     is_approved_technician,
     is_pending_owner_review,
     reject_technician,
 )
-from .technician_verification import technician_application_to_dict
-from .notifications import notify_technician_application
+from .technician_verification import (
+    VALID_SPECIALTIES,
+    is_valid_ke_phone,
+    technician_application_to_dict,
+)
 
 User = get_user_model()
 
@@ -190,6 +194,78 @@ def list_assignable_technicians(request):
     return JsonResponse({'technicians': assignable})
 
 
+@require_http_methods(['POST'])
+def create_owner_technician(request):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    name = (data.get('name') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+    specialty = (data.get('specialty') or '').strip().lower()
+
+    try:
+        salon_id = int(data.get('salon_id'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Choose a branch for this technician.'}, status=400)
+
+    salon = get_owned_salon(owner, salon_id)
+
+    if not name or not phone or not email or not password:
+        return JsonResponse(
+            {'error': 'Name, phone, email, and password are required.'},
+            status=400,
+        )
+    if not is_valid_ke_phone(phone):
+        return JsonResponse({'error': 'Enter a valid Kenyan phone number.'}, status=400)
+    if '@' not in email or '.' not in email.split('@')[-1]:
+        return JsonResponse({'error': 'Enter a valid email address.'}, status=400)
+
+    password_error = password_strength_error(password)
+    if password_error:
+        return JsonResponse({'error': password_error}, status=400)
+
+    if User.objects.filter(email__iexact=email).exists():
+        return JsonResponse({'error': 'An account with that email already exists.'}, status=400)
+
+    if specialty and specialty not in VALID_SPECIALTIES:
+        return JsonResponse({'error': 'Choose a valid specialty.'}, status=400)
+
+    user = User.objects.create_user(
+        username=_unique_username(email.split('@')[0] or name),
+        email=email,
+        password=password,
+        first_name=name,
+    )
+    profile = UserProfile.objects.create(
+        user=user,
+        phone=phone,
+        role=UserRole.WORKER,
+        technician_approval=TechnicianApprovalStatus.APPROVED,
+        technician_specialty=specialty,
+        technician_is_freelance=False,
+        salon=salon,
+        default_location=salon.location,
+        service_latitude=salon.latitude,
+        service_longitude=salon.longitude,
+    )
+
+    return JsonResponse(
+        {
+            'message': f'{name} was added to {salon.name} and can log in now.',
+            'technician': _staff_to_dict(profile),
+        },
+        status=201,
+    )
+
+
 @require_http_methods(['PATCH'])
 def assign_technician_salon(request, user_id):
     owner, denied = require_salon_owner(request)
@@ -215,7 +291,7 @@ def assign_technician_salon(request, user_id):
         if profile.salon_id not in owned_ids:
             return JsonResponse({'error': 'You can only unassign technicians from your branches.'}, status=403)
         profile.salon = None
-        profile.technician_is_freelance = True
+        profile.technician_is_freelance = False
     else:
         try:
             salon_id = int(raw_salon_id)
@@ -316,15 +392,11 @@ def approve_owner_application(request, user_id):
     ):
         return JsonResponse({'error': 'Application not found.'}, status=404)
 
-    forward_technician_to_admin(profile)
-    try:
-        notify_technician_application(target)
-    except Exception:
-        pass
+    auto_approve_technician(profile)
 
     return JsonResponse(
         {
-            'message': 'Application forwarded to platform admin for final approval.',
+            'message': f'{target.first_name or target.username} can now work at your salon.',
             'application': _application_to_dict(target),
         }
     )

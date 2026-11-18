@@ -56,6 +56,7 @@ const AdminPanel = () => {
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updatingUserId, setUpdatingUserId] = useState(null)
+  const [deletingUserId, setDeletingUserId] = useState(null)
   const [reviewingUserId, setReviewingUserId] = useState(null)
   const [deletingBookingId, setDeletingBookingId] = useState(null)
   const [pendingRoles, setPendingRoles] = useState({})
@@ -211,6 +212,47 @@ const AdminPanel = () => {
       return false
     } finally {
       setUpdatingUserId(null)
+    }
+  }
+
+  const handleDeleteUser = async (entry) => {
+    const label = entry.name || entry.email || 'this user'
+    if (
+      !window.confirm(
+        `Delete ${label}? They will no longer be able to log in. Bookings stay on the salon records.`
+      )
+    ) {
+      return
+    }
+
+    setDeletingUserId(entry.id)
+    setStatus(null)
+
+    try {
+      const response = await apiFetch(`/products/admin/users/${entry.id}/`, {
+        method: 'DELETE',
+      })
+      const data = await parseApiResponse(response, 'Delete user')
+      setUsers((current) => current.filter((userEntry) => userEntry.id !== entry.id))
+      setPendingTechnicians((current) => current.filter((tech) => tech.id !== entry.id))
+      setPendingRoles((current) => {
+        if (!(entry.id in current)) {
+          return current
+        }
+        const next = { ...current }
+        delete next[entry.id]
+        return next
+      })
+      const statsRes = await apiFetch(withSalonQuery(STATS_PATH))
+      const statsText = await statsRes.text()
+      if (statsRes.ok && statsText) {
+        setStats(JSON.parse(statsText))
+      }
+      setStatus({ type: 'success', message: data.message || `${label} was deleted.` })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setDeletingUserId(null)
     }
   }
 
@@ -516,7 +558,7 @@ const AdminPanel = () => {
                 </div>
                 <div className="dashboard-stat-card">
                   <span className="dashboard-stat-value">{stats.pending_technicians ?? 0}</span>
-                  <span className="dashboard-stat-label">Pending technicians</span>
+                  <span className="dashboard-stat-label">Pending freelancers</span>
                 </div>
               </div>
             )}
@@ -596,10 +638,11 @@ const AdminPanel = () => {
                   onStatus={setStatus}
                   onChanged={loadData}
                 />
-                <h3 className="reports-card-title mt-4">Pending applications</h3>
+                <h3 className="reports-card-title mt-4">Pending freelance applications</h3>
                 {pendingTechnicians.length === 0 ? (
                   <p className="text-center text-muted dashboard-empty">
-                    No pending technician applications.
+                    No freelance technicians waiting for platform approval. Salon staff are added by
+                    salon owners.
                   </p>
                 ) : (
                   pendingTechnicians.map((entry) => {
@@ -840,23 +883,35 @@ const AdminPanel = () => {
                           </td>
                           <td>{new Date(entry.date_joined).toLocaleDateString()}</td>
                           <td className="dashboard-row-actions">
-                            {entry.id !== user?.id && pendingChange && (
+                            {entry.id !== user?.id && (
                               <div className="dashboard-confirm-actions">
+                                {pendingChange && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-primary"
+                                      disabled={updatingUserId === entry.id}
+                                      onClick={() => handleConfirmRoleChange(entry.id)}
+                                    >
+                                      {updatingUserId === entry.id ? 'Saving…' : 'Confirm'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-secondary"
+                                      disabled={updatingUserId === entry.id}
+                                      onClick={() => handleCancelRoleChange(entry.id)}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                )}
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-primary"
-                                  disabled={updatingUserId === entry.id}
-                                  onClick={() => handleConfirmRoleChange(entry.id)}
+                                  className="btn btn-sm btn-outline-danger"
+                                  disabled={deletingUserId === entry.id || updatingUserId === entry.id}
+                                  onClick={() => handleDeleteUser(entry)}
                                 >
-                                  {updatingUserId === entry.id ? 'Saving…' : 'Confirm'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-secondary"
-                                  disabled={updatingUserId === entry.id}
-                                  onClick={() => handleCancelRoleChange(entry.id)}
-                                >
-                                  Cancel
+                                  {deletingUserId === entry.id ? 'Deleting…' : 'Delete'}
                                 </button>
                               </div>
                             )}

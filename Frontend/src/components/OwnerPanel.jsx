@@ -18,7 +18,7 @@ const APPLICATIONS_PATH = '/products/owner/applications/'
 
 const TABS = [
   { id: 'branches', label: 'Branches' },
-  { id: 'applications', label: 'Applications' },
+  { id: 'applications', label: 'Invite signups' },
   { id: 'technicians', label: 'Technicians' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'payments', label: 'Payments' },
@@ -78,7 +78,7 @@ const OwnerPanel = () => {
           <p className="admin-shell-eyebrow">Salon owner</p>
           <h1 className="admin-shell-title">My salons</h1>
           <p className="admin-shell-lead">
-            Manage branches, technicians, and completed services for {user?.name || 'your business'}.
+            Manage branches, add technicians, and log completed services for {user?.name || 'your business'}.
           </p>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">

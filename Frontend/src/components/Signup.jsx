@@ -352,7 +352,7 @@ const Signup = () => {
                   <h2 className="signup-verification-title">Technician verification</h2>
                   <p className="signup-verification-lead">
                     {isSalonTechnician
-                      ? 'Salon team members need a branch invite code, phone verification, and manager approval before platform admin activates the account.'
+                      ? 'Salon team members join with a branch invite code. Your salon owner can also add you directly from My salons, with no platform approval.'
                       : 'Freelance technicians are verified by phone and reviewed by platform admin before they can accept bookings.'}
                   </p>
 
@@ -548,8 +548,8 @@ const Signup = () => {
               {isTechnicianSignup && requireTechnicianApproval && (
                 <p className="signup-team-note">
                   {isSalonTechnician
-                    ? 'Your branch manager reviews salon applications first, then platform admin gives final approval.'
-                    : 'Freelance applications go straight to platform admin for verification.'}
+                    ? 'A valid invite code adds you to that salon immediately. Freelance work still needs platform admin approval.'
+                    : 'Freelance applications go to platform admin for verification.'}
                 </p>
               )}
 

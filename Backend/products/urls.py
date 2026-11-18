@@ -34,6 +34,7 @@ urlpatterns = [
     path('owner/salons/<int:salon_id>/', salon_owner_views.update_owner_salon, name='owner_update_salon'),
     path('owner/salons/<int:salon_id>/staff/', salon_owner_views.list_owner_salon_staff, name='owner_salon_staff'),
     path('owner/technicians/', salon_owner_views.list_assignable_technicians, name='owner_assignable_technicians'),
+    path('owner/technicians/create/', salon_owner_views.create_owner_technician, name='owner_create_technician'),
     path('owner/technicians/<int:user_id>/salon/', salon_owner_views.assign_technician_salon, name='owner_assign_technician_salon'),
     path('owner/applications/', salon_owner_views.list_owner_applications, name='owner_list_applications'),
     path('owner/applications/<int:user_id>/approve/', salon_owner_views.approve_owner_application, name='owner_approve_application'),
@@ -81,6 +82,7 @@ urlpatterns = [
     path('admin/contact-info/', admin_views.get_salon_contact_info, name='admin_get_contact_info'),
     path('admin/contact-info/update/', admin_views.update_salon_contact_info, name='admin_update_contact_info'),
     path('admin/users/', admin_views.list_users, name='admin_list_users'),
+    path('admin/users/<int:user_id>/', admin_views.delete_user, name='admin_delete_user'),
     path('admin/users/<int:user_id>/role/', admin_views.update_user_role, name='admin_update_role'),
     path('admin/users/<int:user_id>/salon/', admin_views.update_user_salon, name='admin_update_user_salon'),
     path(
