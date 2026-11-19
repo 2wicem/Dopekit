@@ -1,7 +1,7 @@
 from django.utils.text import slugify
 
 from .geo_utils import coordinate_pair_to_dict
-from .models import Salon
+from .models import Salon, SalonService
 
 
 def generate_salon_invite_code() -> str:
@@ -62,6 +62,17 @@ def salon_to_dict(salon: Salon, *, include_owner: bool = False, include_invite_c
             data['owner_email'] = None
 
     return data
+
+
+def salon_service_to_dict(service: SalonService) -> dict:
+    return {
+        'id': service.id,
+        'salon_id': service.salon_id,
+        'name': service.name,
+        'price_kes': service.price_kes,
+        'is_active': service.is_active,
+        'sort_order': service.sort_order,
+    }
 
 
 def get_primary_salon() -> Salon | None:

@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from .models import ContactMessage, Salon, SalonContactInfo
-from .salon_utils import get_primary_salon, salon_to_dict
+from .salon_utils import get_primary_salon, salon_service_to_dict, salon_to_dict
 from .notifications import notify_contact_message_created
 from .rate_limit import rate_limit
 
@@ -53,10 +53,30 @@ def get_public_salon_detail(request, slug):
 
     from .worker_views import build_public_workers
 
+    services = [
+        salon_service_to_dict(service)
+        for service in salon.menu_services.filter(is_active=True)
+    ]
     return JsonResponse(
         {
             'salon': salon_to_dict(salon),
+            'services': services,
             'technicians': build_public_workers(salon_id=salon.id),
+        }
+    )
+
+
+@require_http_methods(['GET'])
+def list_public_salon_services(request, salon_id):
+    salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+    if not salon:
+        return JsonResponse({'error': 'Salon not found.'}, status=404)
+    return JsonResponse(
+        {
+            'services': [
+                salon_service_to_dict(service)
+                for service in salon.menu_services.filter(is_active=True)
+            ]
         }
     )
 

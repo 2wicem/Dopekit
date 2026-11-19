@@ -117,7 +117,7 @@ const OwnerPanel = () => {
         ) : activeTab === 'technicians' ? (
           <OwnerTechniciansPanel salons={salons} onStatus={setStatus} />
         ) : activeTab === 'inventory' ? (
-          <OwnerInventoryPanel salons={salons} onStatus={setStatus} />
+          <OwnerInventoryPanel salons={salons} onStatus={setStatus} onChanged={handleSalonsChanged} />
         ) : activeTab === 'payments' ? (
           <OwnerPaymentsPanel salons={salons} onStatus={setStatus} />
         ) : (

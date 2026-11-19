@@ -27,6 +27,7 @@ const emptyWalkIn = {
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),
+  service_id: '',
 }
 
 const WORKER_BOOKINGS_PATH = '/products/bookings/worker/'
@@ -50,6 +51,7 @@ const WorkerDashboard = () => {
   const [showWalkIn, setShowWalkIn] = useState(false)
   const [walkInForm, setWalkInForm] = useState(emptyWalkIn)
   const [walkInSaving, setWalkInSaving] = useState(false)
+  const [salonServices, setSalonServices] = useState([])
   const [paymentTarget, setPaymentTarget] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [paymentAmount, setPaymentAmount] = useState('')
@@ -127,6 +129,32 @@ const WorkerDashboard = () => {
   useEffect(() => {
     loadSummary()
   }, [loadSummary])
+
+  useEffect(() => {
+    const salonId = user?.salon_id
+    if (!salonId) {
+      setSalonServices([])
+      return undefined
+    }
+
+    let cancelled = false
+    apiFetch(`/products/salons/${salonId}/services/`)
+      .then((response) => parseApiResponse(response, 'Salon services'))
+      .then((data) => {
+        if (!cancelled) {
+          setSalonServices(data.services || [])
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSalonServices([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.salon_id])
 
   useEffect(() => {
     if (activeTab === 'bookings') {
@@ -506,6 +534,7 @@ const WorkerDashboard = () => {
                 onChange={handleWalkInChange}
                 onSubmit={handleWalkInSubmit}
                 saving={walkInSaving}
+                serviceOptions={salonServices}
               />
             )}
             {loading ? (

@@ -15,7 +15,32 @@ const WalkInForm = ({
   onSubmit,
   saving = false,
   extraFields = null,
-}) => (
+  serviceOptions = [],
+}) => {
+  const handleServicePick = (event) => {
+    const serviceId = event.target.value
+    onChange({ target: { name: 'service_id', value: serviceId } })
+    const picked = serviceOptions.find((entry) => String(entry.id) === String(serviceId))
+    if (picked) {
+      onChange({ target: { name: 'service', value: picked.name } })
+      onChange({
+        target: {
+          name: 'service_price_kes',
+          value: picked.price_kes == null ? '' : String(picked.price_kes),
+        },
+      })
+      return
+    }
+    if (serviceId === '') {
+      onChange({ target: { name: 'service', value: '' } })
+      onChange({ target: { name: 'service_price_kes', value: '' } })
+    }
+  }
+
+  const usingCatalog = serviceOptions.length > 0
+  const customService = !usingCatalog || !form.service_id
+
+  return (
   <form className="admin-walkin-form" onSubmit={onSubmit}>
     <div className="admin-walkin-form-grid">
       <div>
@@ -42,14 +67,35 @@ const WalkInForm = ({
           placeholder="Optional"
         />
       </div>
+      {usingCatalog && (
+        <div>
+          <label htmlFor="walkin-service-id">Salon service</label>
+          <select
+            id="walkin-service-id"
+            className="form-select site-select"
+            name="service_id"
+            value={form.service_id || ''}
+            onChange={handleServicePick}
+          >
+            <option value="">Custom / other</option>
+            {serviceOptions.map((entry) => (
+              <option key={entry.id} value={String(entry.id)}>
+                {entry.name}
+                {entry.price_kes != null ? ` · KES ${entry.price_kes}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div>
-        <label htmlFor="walkin-service">Service</label>
+        <label htmlFor="walkin-service">{usingCatalog ? 'Service name' : 'Service'}</label>
         <input
           id="walkin-service"
           name="service"
           value={form.service}
           onChange={onChange}
           placeholder="e.g. Acrylics"
+          readOnly={usingCatalog && !customService}
         />
       </div>
       <div>
@@ -131,6 +177,7 @@ const WalkInForm = ({
       </button>
     </div>
   </form>
-)
+  )
+}
 
 export default WalkInForm

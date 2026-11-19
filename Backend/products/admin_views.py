@@ -527,10 +527,30 @@ def create_walk_in_booking(request):
     if requested_date < today - timedelta(days=30):
         return JsonResponse({'error': 'Walk-ins can be backdated up to 30 days.'}, status=400)
 
+    catalog = None
+    raw_service_id = data.get('service_id')
+    if raw_service_id not in (None, '', 'null', 'custom') and salon is not None:
+        from .models import SalonService
+
+        try:
+            catalog = SalonService.objects.filter(
+                pk=int(raw_service_id),
+                salon=salon,
+                is_active=True,
+            ).first()
+        except (TypeError, ValueError):
+            catalog = None
+        if catalog is None:
+            return JsonResponse({'error': 'Choose a service from your salon menu.'}, status=400)
+        if not service:
+            service = catalog.name
+
     service_price_kes = resolve_service_price_kes(
         service,
         data.get('service_price_kes'),
     )
+    if service_price_kes is None and catalog is not None:
+        service_price_kes = catalog.price_kes
 
     from .payment_utils import apply_client_payment, parse_payment_fields
 

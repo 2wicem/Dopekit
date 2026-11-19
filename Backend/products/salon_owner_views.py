@@ -8,10 +8,10 @@ from django.views.decorators.http import require_http_methods
 
 from .admin_views import _apply_salon_fields, _unique_username
 from .auth_utils import user_to_dict
-from .models import Salon, TechnicianApprovalStatus, UserProfile, UserRole
+from .models import Salon, SalonService, TechnicianApprovalStatus, UserProfile, UserRole
 from .password_utils import password_strength_error
 from .salon_owner_permissions import get_owned_salon, owned_salon_queryset, require_salon_owner
-from .salon_utils import ensure_salon_invite_code, salon_to_dict, unique_slug
+from .salon_utils import ensure_salon_invite_code, salon_service_to_dict, salon_to_dict, unique_slug
 from .technician_utils import (
     auto_approve_technician,
     is_approved_technician,
@@ -44,6 +44,9 @@ def _owner_salon_to_dict(salon: Salon) -> dict:
         for profile in staff
         if is_approved_technician(profile)
     ]
+    data['services'] = [
+        salon_service_to_dict(service) for service in salon.menu_services.all()
+    ]
     return data
 
 
@@ -68,7 +71,7 @@ def list_owner_salons(request):
     if denied:
         return denied
 
-    salons = owned_salon_queryset(owner).select_related('owner')
+    salons = owned_salon_queryset(owner).select_related('owner').prefetch_related('menu_services')
     return JsonResponse({'salons': [_owner_salon_to_dict(salon) for salon in salons]})
 
 
@@ -155,6 +158,103 @@ def update_owner_salon(request, salon_id):
         {
             'message': 'Branch updated.',
             'salon': _owner_salon_to_dict(salon),
+        }
+    )
+
+
+def _parse_service_price(raw_value):
+    if raw_value in (None, '', 'null'):
+        return None, None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return None, 'Enter a price in KES, or leave it blank.'
+    if value < 0:
+        return None, 'Price cannot be negative.'
+    return value, None
+
+
+@require_http_methods(['POST'])
+def create_owner_salon_service(request, salon_id):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    salon = get_owned_salon(owner, salon_id)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    name = (data.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'Service name is required.'}, status=400)
+    if len(name) > 120:
+        return JsonResponse({'error': 'Service name is too long.'}, status=400)
+
+    price_kes, price_error = _parse_service_price(data.get('price_kes'))
+    if price_error:
+        return JsonResponse({'error': price_error}, status=400)
+
+    service = SalonService.objects.create(
+        salon=salon,
+        name=name,
+        price_kes=price_kes,
+        is_active=data.get('is_active', True) is not False,
+    )
+    return JsonResponse(
+        {
+            'message': f'{name} added to your menu.',
+            'service': salon_service_to_dict(service),
+        },
+        status=201,
+    )
+
+
+def _owned_service_or_404(owner, service_id):
+    return get_object_or_404(
+        SalonService.objects.select_related('salon'),
+        pk=service_id,
+        salon__owner=owner,
+    )
+
+
+@require_http_methods(['PATCH', 'DELETE'])
+def update_owner_salon_service(request, service_id):
+    owner, denied = require_salon_owner(request)
+    if denied:
+        return denied
+
+    service = _owned_service_or_404(owner, service_id)
+
+    if request.method == 'DELETE':
+        name = service.name
+        service.delete()
+        return JsonResponse({'message': f'{name} removed from your menu.'})
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    if 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return JsonResponse({'error': 'Service name is required.'}, status=400)
+        service.name = name
+    if 'price_kes' in data:
+        price_kes, price_error = _parse_service_price(data.get('price_kes'))
+        if price_error:
+            return JsonResponse({'error': price_error}, status=400)
+        service.price_kes = price_kes
+    if 'is_active' in data:
+        service.is_active = bool(data.get('is_active'))
+
+    service.save()
+    return JsonResponse(
+        {
+            'message': 'Service updated.',
+            'service': salon_service_to_dict(service),
         }
     )
 

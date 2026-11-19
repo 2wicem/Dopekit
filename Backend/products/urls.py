@@ -20,6 +20,11 @@ urlpatterns = [
     path('contact/', contact_views.create_contact_message, name='create_contact_message'),
     path('contact/info/', contact_views.get_contact_info, name='get_contact_info'),
     path('salons/', contact_views.list_public_salons, name='list_public_salons'),
+    path(
+        'salons/<int:salon_id>/services/',
+        contact_views.list_public_salon_services,
+        name='list_public_salon_services',
+    ),
     path('salons/<slug:slug>/', contact_views.get_public_salon_detail, name='get_public_salon'),
     path('bookings/', views.create_booking, name='create_booking'),
     path('bookings/mine/', views.my_bookings, name='my_bookings'),
@@ -33,6 +38,16 @@ urlpatterns = [
     path('owner/salons/create/', salon_owner_views.create_owner_salon, name='owner_create_salon'),
     path('owner/salons/<int:salon_id>/', salon_owner_views.update_owner_salon, name='owner_update_salon'),
     path('owner/salons/<int:salon_id>/staff/', salon_owner_views.list_owner_salon_staff, name='owner_salon_staff'),
+    path(
+        'owner/salons/<int:salon_id>/services/',
+        salon_owner_views.create_owner_salon_service,
+        name='owner_create_salon_service',
+    ),
+    path(
+        'owner/services/<int:service_id>/',
+        salon_owner_views.update_owner_salon_service,
+        name='owner_update_salon_service',
+    ),
     path('owner/technicians/', salon_owner_views.list_assignable_technicians, name='owner_assignable_technicians'),
     path('owner/technicians/create/', salon_owner_views.create_owner_technician, name='owner_create_technician'),
     path('owner/technicians/<int:user_id>/salon/', salon_owner_views.assign_technician_salon, name='owner_assign_technician_salon'),

@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from .models import Booking, ContactMessage, DailyExpense, Salon, SalonContactInfo, TimeSlot, UserProfile
+from .models import (
+    Booking,
+    ContactMessage,
+    DailyExpense,
+    Salon,
+    SalonContactInfo,
+    SalonService,
+    TimeSlot,
+    UserProfile,
+)
 
 
 @admin.register(DailyExpense)
@@ -49,6 +58,13 @@ class ContactMessageAdmin(admin.ModelAdmin):
     @admin.display(description='Message')
     def message_preview(self, obj):
         return obj.message[:80]
+
+
+@admin.register(SalonService)
+class SalonServiceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'salon', 'price_kes', 'is_active', 'sort_order')
+    list_filter = ('is_active', 'salon')
+    search_fields = ('name', 'salon__name')
 
 
 @admin.register(Salon)

@@ -48,6 +48,10 @@
   color: inherit;
 }
 
+.owner-salon-services {
+  margin-bottom: 1.75rem;
+}
+
 .owner-staff-section + .owner-staff-section {
   margin-top: 1.5rem;
 }

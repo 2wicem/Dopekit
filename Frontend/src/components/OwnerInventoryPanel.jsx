@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { todayIso } from '../constants/slots'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
+import OwnerSalonServices from './OwnerSalonServices'
 import ReportsPanel from './ReportsPanel'
 
 const WALK_IN_PATH = '/products/bookings/walk-in/'
@@ -16,9 +17,10 @@ const emptyWalkIn = {
   location: '',
   requested_date: todayIso(),
   preferred_worker_id: '',
+  service_id: '',
 }
 
-const OwnerInventoryPanel = ({ salons, onStatus }) => {
+const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
   const [salonId, setSalonId] = useState(salons[0] ? String(salons[0].id) : '')
   const [showWalkIn, setShowWalkIn] = useState(false)
   const [walkInForm, setWalkInForm] = useState(emptyWalkIn)
@@ -31,8 +33,13 @@ const OwnerInventoryPanel = ({ salons, onStatus }) => {
     }
   }, [salonId, salons])
 
+  useEffect(() => {
+    setWalkInForm((current) => ({ ...current, service_id: '', service: '', service_price_kes: '' }))
+  }, [salonId])
+
   const selectedSalon = salons.find((salon) => String(salon.id) === String(salonId))
   const technicians = selectedSalon?.technicians || []
+  const serviceOptions = (selectedSalon?.services || []).filter((entry) => entry.is_active !== false)
 
   const salonQuery = useMemo(() => {
     if (!salonId) {
@@ -92,6 +99,8 @@ const OwnerInventoryPanel = ({ salons, onStatus }) => {
 
   return (
     <div>
+      <OwnerSalonServices salon={selectedSalon} onChanged={onChanged} onStatus={onStatus} />
+
       <div className="admin-walkin-toolbar">
         <p className="admin-walkin-lead mb-0">
           Log completed walk-ins for a technician. That same job appears on their inventory and
@@ -140,6 +149,7 @@ const OwnerInventoryPanel = ({ salons, onStatus }) => {
           onChange={handleWalkInChange}
           onSubmit={handleWalkInSubmit}
           saving={walkInSaving}
+          serviceOptions={serviceOptions}
           extraFields={
             <div>
               <label htmlFor="walkin-technician">Technician</label>
