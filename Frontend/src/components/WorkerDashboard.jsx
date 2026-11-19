@@ -517,9 +517,10 @@ const WorkerDashboard = () => {
           </div>
         ) : activeTab === 'reports' ? (
           <div className="worker-app-panel" role="tabpanel">
-            <Suspense fallback={<p className="worker-app-loading">Loading reports…</p>}>
+            <Suspense fallback={<p className="worker-app-loading">Loading inventory…</p>}>
               <ReportsPanel
                 scope={user?.role === 'admin' ? 'admin' : 'technician'}
+                variant="inventory"
                 canViewInventory
                 canRecordExpenses={Boolean(user?.can_record_expenses)}
               />

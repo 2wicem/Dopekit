@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { todayIso } from '../constants/slots'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
 import OwnerSalonServices from './OwnerSalonServices'
 import TechnicianServices from './TechnicianServices'
-import ReportsPanel from './ReportsPanel'
+
+const ReportsPanel = lazy(() => import('./ReportsPanel'))
 
 const catalogOptions = (entries, group) =>
   (entries || [])
@@ -204,13 +205,16 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
         />
       )}
 
-      <ReportsPanel
-        key={`${salonQuery}-${refreshKey}`}
-        scope="owner"
-        salonQuery={salonQuery}
-        canViewInventory
-        canRecordExpenses
-      />
+      <Suspense fallback={<p className="text-muted">Loading inventory…</p>}>
+        <ReportsPanel
+          key={`${salonQuery}-${refreshKey}`}
+          scope="owner"
+          variant="inventory"
+          salonQuery={salonQuery}
+          canViewInventory
+          canRecordExpenses
+        />
+      </Suspense>
     </div>
   )
 }

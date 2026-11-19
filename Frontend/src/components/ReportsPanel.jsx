@@ -5,6 +5,12 @@ import { PAYMENT_METHODS, paymentMethodLabel } from '../constants/paymentMethods
 import './css/Dashboard.css'
 
 const DEFAULT_RANGE_DAYS = 30
+const INVENTORY_RANGE_DAYS = 7
+const RANGE_PRESETS = [
+  { days: 0, label: 'Today' },
+  { days: 7, label: '7 days' },
+  { days: 30, label: '30 days' },
+]
 
 const daysAgoIso = (days) => {
   const date = new Date()
@@ -54,10 +60,15 @@ const ReportsPanel = ({
   salonQuery = '',
   canViewInventory = false,
   canRecordExpenses = null,
+  variant = 'full',
 }) => {
-  const [fromDate, setFromDate] = useState(daysAgoIso(DEFAULT_RANGE_DAYS))
+  const inventoryFirst = variant === 'inventory'
+  const [fromDate, setFromDate] = useState(
+    daysAgoIso(inventoryFirst ? INVENTORY_RANGE_DAYS : DEFAULT_RANGE_DAYS),
+  )
   const [toDate, setToDate] = useState(todayIso())
   const [loading, setLoading] = useState(true)
+  const [loadingDay, setLoadingDay] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [status, setStatus] = useState(null)
   const [summary, setSummary] = useState(null)
@@ -77,52 +88,50 @@ const ReportsPanel = ({
   const isAdminScope = scope === 'admin'
   const showInventory = isSalonWide || canViewInventory
   const allowExpenses = canRecordExpenses == null ? isSalonWide : canRecordExpenses
+  const showExtraReports = !inventoryFirst
 
   const loadReports = useCallback(async () => {
     setLoading(true)
     setStatus(null)
 
     const query = buildQuery(fromDate, toDate, salonQuery)
-    const requests = [
-      apiFetch(`/products/reports/summary/?${query}`),
-      apiFetch(`/products/reports/by-service/?${query}`),
-      apiFetch(`/products/reports/by-venue/?${query}`),
-      apiFetch(`/products/reports/timeline/?${query}`),
-    ]
-
-    if (showInventory) {
-      requests.push(apiFetch(`/products/reports/daily-inventory/?${query}`))
-    }
-
-    if (isSalonWide) {
-      requests.push(apiFetch(`/products/reports/by-worker/?${query}`))
-    }
-
     try {
-      const responses = await Promise.all(requests)
-      const parsed = await Promise.all(responses.map(parseJson))
-
-      let index = 0
-      setSummary(parsed[index++])
-      setByService(parsed[index].items || [])
-      index += 1
-      setByVenue(parsed[index].items || [])
-      index += 1
-      setTimeline(parsed[index].items || [])
-      index += 1
       if (showInventory) {
-        setInventory(parsed[index] || null)
-        index += 1
-      } else {
-        setInventory(null)
+        const inventoryResponse = await apiFetch(`/products/reports/daily-inventory/?${query}`)
+        const inventoryData = await parseJson(inventoryResponse)
+        setInventory(inventoryData)
+        if (!showExtraReports) {
+          setLoading(false)
+        }
       }
-      setByWorker(isSalonWide ? parsed[index]?.items || [] : [])
+
+      if (!showExtraReports) {
+        return
+      }
+
+      const extraRequests = [
+        apiFetch(`/products/reports/summary/?${query}`),
+        apiFetch(`/products/reports/by-service/?${query}`),
+        apiFetch(`/products/reports/by-venue/?${query}`),
+        apiFetch(`/products/reports/timeline/?${query}`),
+      ]
+      if (isSalonWide) {
+        extraRequests.push(apiFetch(`/products/reports/by-worker/?${query}`))
+      }
+
+      const responses = await Promise.all(extraRequests)
+      const parsed = await Promise.all(responses.map(parseJson))
+      setSummary(parsed[0])
+      setByService(parsed[1].items || [])
+      setByVenue(parsed[2].items || [])
+      setTimeline(parsed[3].items || [])
+      setByWorker(isSalonWide ? parsed[4]?.items || [] : [])
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
       setLoading(false)
     }
-  }, [fromDate, toDate, isSalonWide, showInventory, salonQuery])
+  }, [fromDate, toDate, isSalonWide, showInventory, salonQuery, showExtraReports])
 
   useEffect(() => {
     loadReports()
@@ -141,8 +150,46 @@ const ReportsPanel = ({
     return Number.isFinite(parsed) ? parsed : null
   }, [salonQuery])
 
-  const toggleDayExpanded = (date) => {
-    setExpandedDays((current) => ({ ...current, [date]: !current[date] }))
+  const mergeInventoryDay = (dayPayload) => {
+    setInventory((current) => {
+      if (!current?.days) {
+        return current
+      }
+      return {
+        ...current,
+        days: current.days.map((day) => (day.date === dayPayload.date ? { ...day, ...dayPayload } : day)),
+      }
+    })
+  }
+
+  const loadDayDetails = async (date) => {
+    setLoadingDay(date)
+    try {
+      const query = buildQuery(date, date, salonQuery)
+      const response = await apiFetch(`/products/reports/daily-inventory/?${query}&detail=1`)
+      const data = await parseJson(response)
+      const dayPayload = data.days?.[0]
+      if (dayPayload) {
+        mergeInventoryDay(dayPayload)
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setLoadingDay(null)
+    }
+  }
+
+  const toggleDayExpanded = (day) => {
+    const nextOpen = !expandedDays[day.date]
+    setExpandedDays((current) => ({ ...current, [day.date]: nextOpen }))
+    if (nextOpen && !day.details_loaded) {
+      loadDayDetails(day.date)
+    }
+  }
+
+  const applyRangePreset = (days) => {
+    setToDate(todayIso())
+    setFromDate(days === 0 ? todayIso() : daysAgoIso(days))
   }
 
   const handleExpenseChange = (event) => {
@@ -260,7 +307,9 @@ const ReportsPanel = ({
         <div>
           <h2 className="reports-panel-title">{scopeLabel}</h2>
           <p className="reports-panel-subtitle text-muted mb-0">
-            Filter by appointment date range, then download a CSV for your records.
+            {inventoryFirst
+              ? 'Daily totals load first. Open a day only when you need the job list.'
+              : 'Filter by appointment date range, then download a CSV for your records.'}
           </p>
         </div>
         <button
@@ -301,13 +350,26 @@ const ReportsPanel = ({
             onChange={(event) => setToDate(event.target.value)}
           />
         </div>
+        <div className="reports-range-presets">
+          {RANGE_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => applyRangePreset(preset.days)}
+              disabled={loading}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           className="btn btn-primary reports-apply-btn"
           onClick={loadReports}
           disabled={loading}
         >
-          {loading ? 'Loading…' : 'Apply'}
+          {loading ? 'Updating…' : 'Apply'}
         </button>
       </div>
 
@@ -317,10 +379,13 @@ const ReportsPanel = ({
         </div>
       )}
 
-      {loading ? (
-        <p className="text-center text-muted">Loading reports…</p>
+      {loading && !inventory && !summary ? (
+        <p className="text-center text-muted">Loading inventory…</p>
       ) : (
         <>
+          {loading && (inventory || summary) ? (
+            <p className="text-muted small mb-3">Updating totals…</p>
+          ) : null}
           {summary && (
             <div className="dashboard-stats mb-4">
               <div className="dashboard-stat-card">
@@ -503,7 +568,7 @@ const ReportsPanel = ({
                       <button
                         type="button"
                         className="reports-inventory-day-toggle"
-                        onClick={() => toggleDayExpanded(day.date)}
+                        onClick={() => toggleDayExpanded(day)}
                         aria-expanded={expanded}
                       >
                         <span>
@@ -521,7 +586,10 @@ const ReportsPanel = ({
                       </button>
                       {expanded && (
                         <div className="reports-inventory-day-body">
-                          {day.by_worker?.length > 0 && (
+                          {(loadingDay === day.date || !day.details_loaded) && (
+                            <p className="text-muted mb-0">Loading this day…</p>
+                          )}
+                          {day.details_loaded && day.by_worker?.length > 0 && (
                             <div className="mb-3">
                               <h4 className="reports-inventory-subtitle">By technician</h4>
                               <table className="table reports-table mb-0">
@@ -548,7 +616,7 @@ const ReportsPanel = ({
                               </table>
                             </div>
                           )}
-                          {day.services.length > 0 && (
+                          {day.details_loaded && day.services?.length > 0 && (
                             <div className="mb-3">
                               <h4 className="reports-inventory-subtitle">Services</h4>
                               <table className="table reports-table mb-0">
@@ -631,7 +699,7 @@ const ReportsPanel = ({
                               </table>
                             </div>
                           )}
-                          {day.expenses.length > 0 && (
+                          {day.details_loaded && day.expenses?.length > 0 && (
                             <div>
                               <h4 className="reports-inventory-subtitle">Expenses</h4>
                               <table className="table reports-table mb-0">
@@ -683,6 +751,7 @@ const ReportsPanel = ({
           </div>
           )}
 
+          {showExtraReports && (
           <div className="reports-grid">
             <div className="reports-card">
               <h3 className="reports-card-title">By service</h3>
@@ -782,6 +851,7 @@ const ReportsPanel = ({
               )}
             </div>
           </div>
+          )}
         </>
       )}
     </div>

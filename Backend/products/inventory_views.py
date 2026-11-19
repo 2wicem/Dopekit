@@ -29,6 +29,8 @@ from .inventory_permissions import (
 )
 from .technician_utils import is_freelance_technician
 
+MAX_INVENTORY_DAYS = 62
+
 
 def _booking_appointment_date(booking):
     slot = getattr(booking, 'time_slot', None)
@@ -105,6 +107,13 @@ def report_daily_inventory(request):
         return denied
 
     date_from, date_to = _parse_date_range(request)
+    if (date_to - date_from).days > MAX_INVENTORY_DAYS:
+        date_from = date_to - timedelta(days=MAX_INVENTORY_DAYS)
+
+    include_rows = request.GET.get('detail', '').strip().lower() in ('1', 'true', 'yes')
+    if date_from == date_to:
+        include_rows = True
+
     salon_id = inventory_salon_scope(request, profile)
     bookings = list(
         _inventory_bookings_queryset(
@@ -228,6 +237,10 @@ def report_daily_inventory(request):
             if not row['payment_method']
         )
 
+        if not services and not expense_rows:
+            cursor += timedelta(days=1)
+            continue
+
         by_worker = [
             {
                 'worker_name': name,
@@ -243,23 +256,24 @@ def report_daily_inventory(request):
             )
         ]
 
-        days.append(
-            {
-                'date': key,
-                'services_count': len(services),
-                'accepted_count': len(counted),
-                'pending_count': len(pending),
-                'revenue_kes': revenue_kes,
-                'cash_kes': cash_kes,
-                'bank_kes': bank_kes,
-                'unpaid_kes': unpaid_kes,
-                'expenses_kes': expenses_kes,
-                'net_kes': revenue_kes - expenses_kes,
-                'services': sorted(services, key=lambda row: row['booking_id']),
-                'expenses': expense_rows,
-                'by_worker': by_worker,
-            }
-        )
+        day_payload = {
+            'date': key,
+            'services_count': len(services),
+            'accepted_count': len(counted),
+            'pending_count': len(pending),
+            'revenue_kes': revenue_kes,
+            'cash_kes': cash_kes,
+            'bank_kes': bank_kes,
+            'unpaid_kes': unpaid_kes,
+            'expenses_kes': expenses_kes,
+            'net_kes': revenue_kes - expenses_kes,
+            'details_loaded': include_rows,
+        }
+        if include_rows:
+            day_payload['services'] = sorted(services, key=lambda row: row['booking_id'])
+            day_payload['expenses'] = expense_rows
+            day_payload['by_worker'] = by_worker
+        days.append(day_payload)
         cursor += timedelta(days=1)
 
     totals = {

@@ -578,6 +578,13 @@
   margin-bottom: 1.25rem;
 }
 
+.reports-range-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
 .reports-apply-btn {
   align-self: end;
 }
@@ -661,6 +668,8 @@
   border: 1px solid var(--dk-border);
   border-radius: 0.65rem;
   overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
 }
 
 .reports-inventory-day-toggle {
