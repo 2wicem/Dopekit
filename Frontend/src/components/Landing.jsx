@@ -1,25 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import LandingBookTab from './LandingBookTab'
-import LandingFreelancersTab from './LandingFreelancersTab'
-import LandingSalonsTab from './LandingSalonsTab'
 import { usePageSeo } from '../hooks/usePageSeo'
 import { useSwipeTabs } from '../hooks/useSwipeTabs'
-import { LANDING_TABS } from './landingData'
+import { LANDING_TABS } from './landingTabs'
 import './css/Landing.css'
 import './css/Services.css'
 
-const TAB_PANELS = {
-  book: LandingBookTab,
-  salons: LandingSalonsTab,
-  freelancers: LandingFreelancersTab,
-}
+const LandingSalonsTab = lazy(() => import('./LandingSalonsTab'))
+const LandingFreelancersTab = lazy(() => import('./LandingFreelancersTab'))
 
 const Landing = () => {
   usePageSeo()
   const [activeTab, setActiveTab] = useState('book')
   const tabIds = useMemo(() => LANDING_TABS.map((tab) => tab.id), [])
   const { onTouchStart, onTouchEnd, onTouchCancel } = useSwipeTabs(tabIds, activeTab, setActiveTab)
-  const ActivePanel = TAB_PANELS[activeTab]
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -64,7 +58,13 @@ const Landing = () => {
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchCancel}
       >
-        <ActivePanel />
+        {activeTab === 'book' ? (
+          <LandingBookTab />
+        ) : (
+          <Suspense fallback={<p className="text-center text-muted py-5">Loading…</p>}>
+            {activeTab === 'salons' ? <LandingSalonsTab /> : <LandingFreelancersTab />}
+          </Suspense>
+        )}
       </div>
     </div>
   )

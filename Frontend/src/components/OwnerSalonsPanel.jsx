@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../config/api'
+import { apiFetch, parseApiResponse } from '../config/api'
 
 export const emptyBranchForm = {
   name: '',
@@ -47,10 +47,7 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
       const response = await apiFetch(`/products/owner/salons/${salonId}/invite-code/`, {
         method: 'POST',
       })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not regenerate invite code.')
-      }
+      const data = await parseApiResponse(response, 'Invite code')
       onStatus?.({ type: 'success', message: data.message || 'Invite code regenerated.' })
       await onChanged?.()
     } catch (error) {
@@ -116,10 +113,7 @@ const OwnerSalonsPanel = ({ salons, onChanged, onStatus }) => {
           body: JSON.stringify(form),
         }
       )
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Could not save branch.')
-      }
+      const data = await parseApiResponse(response, 'Save branch')
 
       onStatus?.({ type: 'success', message: data.message })
       cancelEdit()

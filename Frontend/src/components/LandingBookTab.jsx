@@ -1,12 +1,15 @@
+import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import AvailableSalons from './AvailableSalons'
-import Bookservice from './Bookservice'
 import BrandLogo from './BrandLogo'
+import DeferredMount from './DeferredMount'
 import LandingHeroCarousel from './LandingHeroCarousel'
-import LandingNearbyMap from './LandingNearbyMap'
-import LandingTechniciansSection from './LandingTechniciansSection'
 import LandingLocalTrust from './LandingLocalTrust'
-import { BOOK_SLIDES } from './landingData'
+import LazyBookservice from './LazyBookservice'
+import { BOOK_SLIDES } from './landingBookSlides'
+
+const NearbyMapPanel = lazy(() => import('./LandingNearbyMap'))
+const TechniciansPanel = lazy(() => import('./LandingTechniciansSection'))
 
 const scrollToDiscovery = (event) => {
   event.preventDefault()
@@ -45,16 +48,27 @@ const LandingBookTab = () => (
         >
           View technicians
         </a>
-        <Bookservice />
+        <LazyBookservice />
       </div>
     </LandingHeroCarousel>
 
     <div id="book-discovery" className="landing-book-discovery">
-      <LandingNearbyMap />
+      <DeferredMount
+        delay={400}
+        fallback={<div className="landing-nearby-map-placeholder">Map loads after the page is ready…</div>}
+      >
+        <Suspense fallback={<div className="landing-nearby-map-placeholder">Loading map…</div>}>
+          <NearbyMapPanel />
+        </Suspense>
+      </DeferredMount>
       <div className="landing-book-discovery-salons">
         <AvailableSalons />
       </div>
-      <LandingTechniciansSection />
+      <DeferredMount delay={200} fallback={null}>
+        <Suspense fallback={null}>
+          <TechniciansPanel />
+        </Suspense>
+      </DeferredMount>
       <LandingLocalTrust />
     </div>
   </>

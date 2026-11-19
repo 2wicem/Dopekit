@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { usePublicWorkers } from '../hooks/usePublicWorkers'
 import LandingHeroCarousel from './LandingHeroCarousel'
 import TechnicianCard from './TechnicianCard'
-import { FREELANCE_SLIDES } from './landingData'
+import { FREELANCE_SLIDES } from './landingFreelanceSlides'
 
 const LandingFreelancersTab = () => {
   const { workers, loading, error } = usePublicWorkers()

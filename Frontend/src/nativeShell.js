@@ -18,11 +18,9 @@ export const initNativeShell = async () => {
     // StatusBar is unavailable in some WebView previews.
   }
 
-  try {
-    await SplashScreen.hide()
-  } catch {
-    // SplashScreen plugin is a no-op in the browser.
-  }
+  requestAnimationFrame(() => {
+    SplashScreen.hide().catch(() => {})
+  })
 
   App.addListener('backButton', ({ canGoBack }) => {
     if (canGoBack || window.history.length > 1) {

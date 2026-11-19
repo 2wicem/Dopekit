@@ -3,6 +3,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import F, Q, Value
 from django.db.models.functions import Coalesce
@@ -15,13 +16,13 @@ from .models import Booking, BookingStatus, Salon, SlotStatus, TimeSlot, UserRol
 from .slot_utils import (
     PUBLIC_SCHEDULE_DAYS,
     SLOT_HOURS,
-    count_open_slots,
+    count_open_slots_for_workers,
     ensure_default_available_slots,
     format_slot_label,
     is_past_slot,
 )
 from .slot_views import _parse_date
-from .technician_showcase import completed_jobs_for_worker, technician_showcase_to_dict
+from .technician_showcase import completed_jobs_by_worker_ids, technician_showcase_to_dict
 from .technician_utils import is_approved_technician
 from .technician_verification import SPECIALTY_LABELS
 from .views import _booking_to_dict, _forbidden
@@ -105,14 +106,13 @@ def _public_worker_queryset(salon_id=None, freelance_only=False):
     return staff
 
 
-def _serialize_public_worker(user, today, horizon):
+def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
     profile = user.profile
     if profile.role == UserRole.WORKER and not is_approved_technician(profile):
         return None
 
-    available_count, next_slot = count_open_slots(user, today, horizon)
     specialty = profile.technician_specialty or ''
-    showcase = technician_showcase_to_dict(profile, completed_jobs_for_worker(user))
+    showcase = technician_showcase_to_dict(profile, completed_jobs)
 
     latitude = None
     longitude = None
@@ -150,13 +150,25 @@ def _serialize_public_worker(user, today, horizon):
 
 def build_public_workers(salon_id=None, freelance_only=False):
     today = timezone.localdate()
+    cache_key = f'dk:public_workers:v3:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     horizon = today + timedelta(days=PUBLIC_SCHEDULE_DAYS - 1)
     staff = list(_public_worker_queryset(salon_id=salon_id, freelance_only=freelance_only))
-    ensure_default_available_slots(staff, today, horizon)
+    availability = count_open_slots_for_workers(staff, today, horizon)
+    completed_jobs = completed_jobs_by_worker_ids([user.id for user in staff])
 
     workers = []
     for user in staff:
-        item = _serialize_public_worker(user, today, horizon)
+        open_count, next_slot = availability.get(user.pk, (0, None))
+        item = _serialize_public_worker(
+            user,
+            open_count,
+            next_slot,
+            completed_jobs.get(user.id, 0),
+        )
         if item:
             workers.append(item)
 
@@ -167,6 +179,7 @@ def build_public_workers(salon_id=None, freelance_only=False):
             item['name'].lower(),
         )
     )
+    cache.set(cache_key, workers, 45)
     return workers
 
 

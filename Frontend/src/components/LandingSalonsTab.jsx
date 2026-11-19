@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { usePublicSalons } from '../hooks/usePublicSalons'
 import LandingHeroCarousel from './LandingHeroCarousel'
 import SalonMarketplaceCard from './SalonMarketplaceCard'
-import { SALON_SLIDES } from './landingData'
+import { SALON_SLIDES } from './landingSalonSlides'
 
 const LandingSalonsTab = () => {
   const { salons, loading, error } = usePublicSalons()

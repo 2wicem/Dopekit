@@ -63,6 +63,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    target: 'es2020',
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          leaflet: ['leaflet', 'react-leaflet'],
+        },
+      },
+    },
+  },
   preview: {
     host: true,
     port: 5173,

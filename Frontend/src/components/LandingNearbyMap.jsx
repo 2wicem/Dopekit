@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import Bookservice from './Bookservice'
+import LazyBookservice from './LazyBookservice'
 import TechnicianScheduleButton from './TechnicianScheduleButton'
 import NearbyMap from './NearbyMap'
 import { CLIENT_MAP_ZOOM, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, NEARBY_FILTER_OPTIONS } from '../constants/mapDefaults'
@@ -161,7 +161,7 @@ const LandingNearbyMap = () => {
                     <Link to={`/salons/${marker.slug}`} className="btn btn-sm btn-outline-primary">
                       View
                     </Link>
-                    <Bookservice variant="card" salonId={marker.salon_id} label="Book" />
+                    <LazyBookservice variant="card" salonId={marker.salon_id} label="Book" />
                   </div>
                 ) : (
                   <div className="landing-nearby-card__actions">
@@ -173,7 +173,7 @@ const LandingNearbyMap = () => {
                       }}
                       salonId={marker.salon_id}
                     />
-                    <Bookservice
+                    <LazyBookservice
                       variant="card"
                       workerId={marker.worker_id}
                       workerName={marker.name}

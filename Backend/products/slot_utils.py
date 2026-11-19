@@ -82,33 +82,42 @@ def ensure_default_available_slots(workers, date_from, date_to):
 
 
 def count_open_slots(worker, date_from, date_to):
+    return count_open_slots_for_workers([worker], date_from, date_to)[worker.pk]
+
+
+def count_open_slots_for_workers(workers, date_from, date_to):
     from datetime import timedelta
 
     from .models import SlotStatus, TimeSlot
 
-    existing = {
-        (slot.date, slot.start_hour): slot
-        for slot in TimeSlot.objects.filter(
-            worker=worker,
-            date__gte=date_from,
-            date__lte=date_to,
-        )
-    }
+    worker_list = list(workers)
+    results = {worker.pk: (0, None) for worker in worker_list}
+    if not worker_list or date_to < date_from:
+        return results
 
-    open_count = 0
-    next_slot = None
-    cursor = date_from
-    while cursor <= date_to:
-        for hour in SLOT_HOURS:
-            if is_past_slot(cursor, hour):
-                continue
-            slot = existing.get((cursor, hour))
-            status = slot.status if slot else SlotStatus.AVAILABLE
-            if status != SlotStatus.AVAILABLE:
-                continue
-            open_count += 1
-            if next_slot is None:
-                next_slot = slot or SimpleNamespace(date=cursor, start_hour=hour)
-        cursor += timedelta(days=1)
+    existing = {}
+    for slot in TimeSlot.objects.filter(
+        worker_id__in=[worker.pk for worker in worker_list],
+        date__gte=date_from,
+        date__lte=date_to,
+    ).only('worker_id', 'date', 'start_hour', 'status'):
+        existing[(slot.worker_id, slot.date, slot.start_hour)] = slot.status
 
-    return open_count, next_slot
+    for worker in worker_list:
+        open_count = 0
+        next_slot = None
+        cursor = date_from
+        while cursor <= date_to:
+            for hour in SLOT_HOURS:
+                if is_past_slot(cursor, hour):
+                    continue
+                status = existing.get((worker.pk, cursor, hour), SlotStatus.AVAILABLE)
+                if status != SlotStatus.AVAILABLE:
+                    continue
+                open_count += 1
+                if next_slot is None:
+                    next_slot = SimpleNamespace(date=cursor, start_hour=hour)
+            cursor += timedelta(days=1)
+        results[worker.pk] = (open_count, next_slot)
+
+    return results

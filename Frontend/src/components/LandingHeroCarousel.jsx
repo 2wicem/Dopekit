@@ -1,19 +1,22 @@
 import { useHeroCarousel } from '../hooks/useHeroCarousel'
 
 const LandingHeroCarousel = ({ slides, compact = false, overlay = 'default', children }) => {
-  const activeIndex = useHeroCarousel(slides.length)
+  const activeIndex = useHeroCarousel(slides.length, 5000)
+  const active = slides[activeIndex] || slides[0]
 
   return (
     <section className={`landing-hero${compact ? ' landing-hero--compact' : ''}`}>
       <div className="landing-hero-carousel" aria-hidden="true">
-        {slides.map(({ id, image, alt }, index) => (
+        {active && (
           <img
-            key={id}
-            src={image}
-            alt={alt}
-            className={`landing-hero-bg${index === activeIndex ? ' is-active' : ''}`}
+            key={active.id}
+            src={active.image}
+            alt=""
+            className="landing-hero-bg is-active"
+            fetchPriority="high"
+            decoding="async"
           />
-        ))}
+        )}
       </div>
 
       <div

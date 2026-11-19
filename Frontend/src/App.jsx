@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Footer from './components/Footer'
+import Landing from './components/Landing'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
@@ -11,7 +12,6 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const Contact = lazy(() => import('./components/Contact'))
 const DiscoverSalonsTechnicians = lazy(() => import('./components/DiscoverSalonsTechnicians'))
 const ForgotPassword = lazy(() => import('./components/ForgotPassword'))
-const Landing = lazy(() => import('./components/Landing'))
 const Login = lazy(() => import('./components/Login'))
 const MyBookings = lazy(() => import('./components/MyBookings'))
 const OwnerPanel = lazy(() => import('./components/OwnerPanel'))

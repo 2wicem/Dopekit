@@ -1,20 +1,17 @@
-import Bookservice from './Bookservice'
 import BrandLogo from './BrandLogo'
+import LazyBookservice from './LazyBookservice'
 import ThemeToggle from './ThemeToggle'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ROLE_LABELS } from '../constants/roles'
 import { useAuth } from '../context/useAuth'
 import { useTheme } from '../context/useTheme'
 
 const Navbar = () => {
-  const { user, logout, loading, refreshUser } = useAuth()
+  const { user, logout, loading } = useAuth()
   const { isDark } = useTheme()
   const location = useLocation()
-
-  useEffect(() => {
-    refreshUser({ silent: true })
-  }, [location.pathname, refreshUser])
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const navLinkClass = (path) => {
     const isActive =
@@ -25,25 +22,7 @@ const Navbar = () => {
   }
 
   const closeMobileNav = useCallback(() => {
-    if (window.matchMedia('(min-width: 992px)').matches) {
-      return
-    }
-
-    const menu = document.getElementById('navbarNav')
-    const toggler = document.querySelector('.site-nav-toggler')
-    if (!menu?.classList.contains('show')) {
-      return
-    }
-
-    const { Collapse } = window.bootstrap || {}
-    if (Collapse) {
-      const instance = Collapse.getInstance(menu) || Collapse.getOrCreateInstance(menu, { toggle: false })
-      instance.hide()
-    } else {
-      menu.classList.remove('show')
-    }
-
-    toggler?.setAttribute('aria-expanded', 'false')
+    setMenuOpen(false)
   }, [])
 
   useEffect(() => {
@@ -96,11 +75,10 @@ const Navbar = () => {
             <button
               className="navbar-toggler site-nav-toggler"
               type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#navbarNav"
               aria-controls="navbarNav"
-              aria-expanded="false"
+              aria-expanded={menuOpen}
               aria-label="Toggle navigation"
+              onClick={() => setMenuOpen((open) => !open)}
             >
               <span className="site-nav-toggler-bars" aria-hidden="true">
                 <span />
@@ -110,7 +88,7 @@ const Navbar = () => {
             </button>
           </div>
 
-          <div className="collapse navbar-collapse site-nav-collapse" id="navbarNav">
+          <div className={`collapse navbar-collapse site-nav-collapse${menuOpen ? ' show' : ''}`} id="navbarNav">
             <ul className="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center site-nav-list">
               <li className="nav-item">
                 <Link to="/Services" className={navLinkClass('/Services')} onClick={handleNavClick}>
@@ -225,7 +203,7 @@ const Navbar = () => {
               )}
 
               <li className="nav-item nav-item-booking ms-lg-2">
-                <Bookservice />
+                <LazyBookservice />
               </li>
               <li className="nav-item d-none d-lg-flex ms-lg-2">
                 <ThemeToggle />

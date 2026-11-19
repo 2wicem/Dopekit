@@ -327,6 +327,7 @@ elif not DEBUG:
 
 _admin_path = os.getenv('DJANGO_ADMIN_PATH', 'admin/' if DEBUG else 'dk-manage/').strip().strip('/')
 DJANGO_ADMIN_PATH = f'{_admin_path or ("admin" if DEBUG else "dk-manage")}/'
+CSRF_FAILURE_VIEW = 'bootstrap.csrf_failure.csrf_failure'
 ADMIN_ALLOWED_IPS = env_list('ADMIN_ALLOWED_IPS')
 
 # (max requests, window seconds)

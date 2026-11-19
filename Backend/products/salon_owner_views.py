@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
@@ -24,6 +25,7 @@ from .technician_verification import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def _owner_salon_to_dict(salon: Salon) -> dict:
@@ -103,12 +105,16 @@ def create_owner_salon(request):
         is_primary=False,
     )
 
-    error = _apply_salon_fields(salon, data)
-    if error:
-        return JsonResponse({'error': error}, status=400)
+    try:
+        error = _apply_salon_fields(salon, data)
+        if error:
+            return JsonResponse({'error': error}, status=400)
 
-    salon.save()
-    ensure_salon_invite_code(salon)
+        salon.save()
+        ensure_salon_invite_code(salon)
+    except Exception:
+        logger.exception('Failed to create owner salon')
+        return JsonResponse({'error': 'Could not save this branch. Try again.'}, status=500)
 
     return JsonResponse(
         {
@@ -135,11 +141,15 @@ def update_owner_salon(request, salon_id):
     if 'is_primary' in data:
         return JsonResponse({'error': 'Only platform admins can set the primary salon.'}, status=403)
 
-    error = _apply_salon_fields(salon, data)
-    if error:
-        return JsonResponse({'error': error}, status=400)
+    try:
+        error = _apply_salon_fields(salon, data)
+        if error:
+            return JsonResponse({'error': error}, status=400)
 
-    salon.save()
+        salon.save()
+    except Exception:
+        logger.exception('Failed to update owner salon')
+        return JsonResponse({'error': 'Could not save this branch. Try again.'}, status=500)
 
     return JsonResponse(
         {

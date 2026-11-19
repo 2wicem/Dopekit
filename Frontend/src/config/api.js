@@ -76,11 +76,11 @@ export const apiFetch = async (path, options = {}) => {
   }
 
   const mutating = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)
-  if (mutating && !readCsrfToken()) {
+  if (mutating) {
     try {
       await ensureCsrfCookie()
     } catch {
-      /* login still sends whatever token we have */
+      /* still send whatever token we already have */
     }
   }
   if (mutating) {

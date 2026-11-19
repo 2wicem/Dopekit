@@ -42,12 +42,26 @@ def normalize_rating_average(raw_value) -> Decimal | None:
 
 
 def completed_jobs_for_worker(user) -> int:
-    return (
+    return completed_jobs_by_worker_ids([user.id]).get(user.id, 0)
+
+
+def completed_jobs_by_worker_ids(worker_ids) -> dict:
+    counts = {worker_id: 0 for worker_id in worker_ids}
+    if not worker_ids:
+        return counts
+
+    rows = (
         Booking.objects.filter(status=BookingStatus.ACCEPTED)
-        .filter(Q(time_slot__worker=user) | Q(preferred_worker=user))
-        .distinct()
-        .count()
+        .filter(Q(time_slot__worker_id__in=worker_ids) | Q(preferred_worker_id__in=worker_ids))
+        .values_list('id', 'time_slot__worker_id', 'preferred_worker_id')
     )
+    seen = {worker_id: set() for worker_id in worker_ids}
+    for booking_id, slot_worker_id, preferred_id in rows:
+        if slot_worker_id in seen:
+            seen[slot_worker_id].add(booking_id)
+        if preferred_id in seen:
+            seen[preferred_id].add(booking_id)
+    return {worker_id: len(ids) for worker_id, ids in seen.items()}
 
 
 def technician_showcase_to_dict(profile, completed_jobs: int = 0) -> dict:

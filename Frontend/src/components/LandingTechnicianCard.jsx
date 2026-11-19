@@ -1,4 +1,4 @@
-import Bookservice from './Bookservice'
+import LazyBookservice from './LazyBookservice'
 import TechnicianRating from './TechnicianRating'
 import TechnicianScheduleButton from './TechnicianScheduleButton'
 import { workerInitials } from './TechnicianCard'
@@ -46,7 +46,7 @@ const LandingTechnicianCard = ({ worker }) => {
 
         <div className="landing-tech-card__actions">
           <TechnicianScheduleButton worker={worker} salonId={worker.salon_id} />
-          <Bookservice
+          <LazyBookservice
             variant="card"
             workerId={worker.id}
             workerName={worker.name}

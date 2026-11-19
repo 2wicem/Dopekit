@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import { apiFetch } from '../config/api'
+import { apiFetch, parseApiResponse } from '../config/api'
 import OwnerApplicationsPanel from './OwnerApplicationsPanel'
 import OwnerSalonsPanel from './OwnerSalonsPanel'
 import OwnerTechniciansPanel from './OwnerTechniciansPanel'
@@ -35,11 +35,7 @@ const OwnerPanel = () => {
 
   const loadSalons = useCallback(async () => {
     const response = await apiFetch(SALONS_PATH)
-    const text = await response.text()
-    const data = text ? JSON.parse(text) : {}
-    if (!response.ok) {
-      throw new Error(data.error || 'Could not load branches.')
-    }
+    const data = await parseApiResponse(response, 'Branches')
     setSalons(data.salons || [])
     return data.salons || []
   }, [])
