@@ -176,7 +176,7 @@ def create_booking(request):
         try:
             preferred_worker = User.objects.select_related('profile', 'profile__salon').get(
                 pk=int(preferred_worker_id),
-                profile__role__in=(UserRole.WORKER, UserRole.ADMIN),
+                profile__role__in=(UserRole.WORKER, UserRole.ADMIN, UserRole.SALON_OWNER),
             )
         except (User.DoesNotExist, TypeError, ValueError):
             return JsonResponse({'error': 'Invalid technician selected.'}, status=400)

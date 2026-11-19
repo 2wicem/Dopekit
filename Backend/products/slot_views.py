@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import Booking, BookingStatus, SlotStatus, TechnicianApprovalStatus, TimeSlot, UserRole
+from .technician_utils import bookable_technician_q
 from .slot_utils import (
     SLOT_HOURS,
     ensure_default_available_slots,
@@ -125,9 +126,14 @@ def list_available_slots(request):
         return JsonResponse({'slots': []})
 
     workers = User.objects.filter(
-        profile__role=UserRole.WORKER,
-        profile__technician_approval=TechnicianApprovalStatus.APPROVED,
-    )
+        bookable_technician_q()
+    ).filter(
+        Q(profile__role=UserRole.SALON_OWNER)
+        | Q(
+            profile__role=UserRole.WORKER,
+            profile__technician_approval=TechnicianApprovalStatus.APPROVED,
+        )
+    ).distinct()
     worker_id = request.GET.get('worker_id', '').strip()
     if worker_id:
         try:

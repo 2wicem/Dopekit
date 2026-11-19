@@ -18,9 +18,31 @@ def is_approved_technician(profile) -> bool:
         return False
     if profile.role == UserRole.ADMIN:
         return True
+    if profile.role == UserRole.SALON_OWNER:
+        return True
     if profile.role != UserRole.WORKER:
         return False
     return profile.technician_approval == TechnicianApprovalStatus.APPROVED
+
+
+def bookable_technician_q(*, salon_id=None, freelance_only=False):
+    from django.db.models import Q
+
+    if freelance_only:
+        return Q(profile__role=UserRole.WORKER, profile__technician_is_freelance=True)
+
+    owner_q = Q(profile__role=UserRole.SALON_OWNER, owned_salons__is_active=True)
+    if salon_id is not None:
+        return Q(
+            profile__role=UserRole.WORKER,
+            profile__salon_id=salon_id,
+            profile__technician_is_freelance=False,
+        ) | Q(
+            profile__role=UserRole.SALON_OWNER,
+            owned_salons__pk=salon_id,
+            owned_salons__is_active=True,
+        )
+    return Q(profile__role=UserRole.WORKER) | owner_q
 
 
 def technician_is_pending(profile) -> bool:

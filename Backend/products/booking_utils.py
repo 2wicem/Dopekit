@@ -1,5 +1,6 @@
 from django.db.models import Q
 
+from .models import UserRole
 from .technician_utils import is_freelance_technician
 
 
@@ -14,7 +15,17 @@ def salon_for_technician(worker):
     profile = getattr(worker, 'profile', None) if worker else None
     if not profile or is_freelance_technician(profile):
         return None
-    return profile.salon
+    if profile.salon_id:
+        return profile.salon
+    if profile.role == UserRole.SALON_OWNER:
+        from .models import Salon
+
+        return (
+            Salon.objects.filter(owner_id=worker.id, is_active=True)
+            .order_by('-is_primary', 'name')
+            .first()
+        )
+    return None
 
 
 def ensure_shared_job_fields(booking):

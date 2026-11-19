@@ -23,7 +23,7 @@ from .slot_utils import (
 )
 from .slot_views import _parse_date
 from .technician_showcase import completed_jobs_by_worker_ids, technician_showcase_to_dict
-from .technician_utils import is_approved_technician
+from .technician_utils import bookable_technician_q, is_approved_technician
 from .technician_verification import SPECIALTY_LABELS
 from .views import _booking_to_dict, _forbidden
 from .worker_permissions import require_approved_worker
@@ -82,55 +82,67 @@ def _worker_bookings_queryset(user):
     )
 
 
-def _public_worker_role_label(profile) -> str:
+def _public_worker_role_label(profile, salon=None) -> str:
     if profile.role == UserRole.ADMIN:
         return 'Lead stylist'
-    if profile.salon_id is None:
+    if profile.role == UserRole.SALON_OWNER:
+        return 'Salon technician'
+    if profile.salon_id is None and salon is None:
         return 'Freelance technician'
     return 'Nail technician'
 
 
+def _public_salon_for_user(user):
+    profile = getattr(user, 'profile', None)
+    if not profile:
+        return None
+    if profile.salon_id and profile.salon:
+        return profile.salon
+    owned = [salon for salon in user.owned_salons.all() if salon.is_active]
+    if not owned:
+        return None
+    return next((salon for salon in owned if salon.is_primary), owned[0])
+
+
 def _public_worker_queryset(salon_id=None, freelance_only=False):
-    staff = (
-        User.objects.filter(profile__role=UserRole.WORKER)
+    return (
+        User.objects.filter(bookable_technician_q(salon_id=salon_id, freelance_only=freelance_only))
         .select_related('profile', 'profile__salon')
+        .prefetch_related('owned_salons')
+        .distinct()
         .order_by('first_name', 'username')
     )
-
-    if freelance_only:
-        return staff.filter(profile__technician_is_freelance=True)
-
-    if salon_id is not None:
-        return staff.filter(profile__salon_id=salon_id, profile__technician_is_freelance=False)
-
-    return staff
 
 
 def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
     profile = user.profile
     if profile.role == UserRole.WORKER and not is_approved_technician(profile):
         return None
+    if profile.role == UserRole.SALON_OWNER and not _public_salon_for_user(user):
+        return None
 
     specialty = profile.technician_specialty or ''
     showcase = technician_showcase_to_dict(profile, completed_jobs)
+    salon = _public_salon_for_user(user)
 
     latitude = None
     longitude = None
     if profile.service_latitude is not None and profile.service_longitude is not None:
         latitude = float(profile.service_latitude)
         longitude = float(profile.service_longitude)
-    elif profile.salon_id and profile.salon and profile.salon.latitude is not None:
-        latitude = float(profile.salon.latitude)
-        longitude = float(profile.salon.longitude)
+    elif salon and salon.latitude is not None:
+        latitude = float(salon.latitude)
+        longitude = float(salon.longitude)
 
     return {
         'id': user.id,
         'name': user.first_name or user.username.capitalize(),
         'role': profile.role,
-        'role_label': _public_worker_role_label(profile),
+        'role_label': _public_worker_role_label(profile, salon),
         'is_freelance': profile.role == UserRole.WORKER and bool(profile.technician_is_freelance),
-        'salon_id': profile.salon_id,
-        'salon_name': profile.salon.name if profile.salon_id else None,
+        'is_salon_owner': profile.role == UserRole.SALON_OWNER,
+        'salon_id': salon.id if salon else None,
+        'salon_name': salon.name if salon else None,
         'latitude': latitude,
         'longitude': longitude,
         'specialty_label': SPECIALTY_LABELS.get(specialty, specialty.replace('_', ' ').title()) or None,
@@ -150,7 +162,7 @@ def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
 
 def build_public_workers(salon_id=None, freelance_only=False):
     today = timezone.localdate()
-    cache_key = f'dk:public_workers:v3:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
+    cache_key = f'dk:public_workers:v4:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -219,9 +231,18 @@ def _public_day_slots(existing_slots, slot_date):
 
 
 def _public_worker_or_404(worker_id):
-    user = get_object_or_404(User, pk=worker_id)
+    user = get_object_or_404(
+        User.objects.select_related('profile', 'profile__salon').prefetch_related('owned_salons'),
+        pk=worker_id,
+    )
     profile = getattr(user, 'profile', None)
-    if not profile or profile.role != UserRole.WORKER:
+    if not profile:
+        return None, JsonResponse({'error': 'Technician not found.'}, status=404)
+    if profile.role == UserRole.SALON_OWNER:
+        if _public_salon_for_user(user) is None:
+            return None, JsonResponse({'error': 'Technician not found.'}, status=404)
+        return user, None
+    if profile.role != UserRole.WORKER:
         return None, JsonResponse({'error': 'Technician not found.'}, status=404)
     if not is_approved_technician(profile):
         return None, JsonResponse({'error': 'Technician not found.'}, status=404)
@@ -275,7 +296,7 @@ def public_worker_schedule(request, worker_id):
             'worker': {
                 'id': user.id,
                 'name': user.first_name or user.username,
-                'role_label': _public_worker_role_label(profile),
+                'role_label': _public_worker_role_label(profile, _public_salon_for_user(user)),
             },
             'from': today.isoformat(),
             'days': days,
