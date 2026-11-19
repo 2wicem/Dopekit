@@ -7,6 +7,7 @@ from .models import (
     Salon,
     SalonContactInfo,
     SalonService,
+    TechnicianService,
     TimeSlot,
     UserProfile,
 )
@@ -65,6 +66,13 @@ class SalonServiceAdmin(admin.ModelAdmin):
     list_display = ('name', 'salon', 'price_kes', 'is_active', 'sort_order')
     list_filter = ('is_active', 'salon')
     search_fields = ('name', 'salon__name')
+
+
+@admin.register(TechnicianService)
+class TechnicianServiceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'technician', 'price_kes', 'is_active', 'sort_order')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'technician__username', 'technician__first_name')
 
 
 @admin.register(Salon)

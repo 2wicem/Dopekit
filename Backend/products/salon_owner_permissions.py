@@ -39,10 +39,17 @@ def booking_in_owned_salons(user, booking) -> bool:
 
 
 def technician_on_owned_salon(user, worker, salon_id=None) -> bool:
+    salon_ids = set(owned_salon_ids(user))
+    if worker.id == user.id:
+        if not salon_ids:
+            return False
+        if salon_id is not None and salon_id not in salon_ids:
+            return False
+        return True
+
     profile = getattr(worker, 'profile', None)
     if not profile or not is_approved_technician(profile):
         return False
-    salon_ids = set(owned_salon_ids(user))
     if profile.salon_id not in salon_ids:
         return False
     if salon_id is not None and profile.salon_id != salon_id:

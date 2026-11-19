@@ -1,7 +1,7 @@
 from django.utils.text import slugify
 
 from .geo_utils import coordinate_pair_to_dict
-from .models import Salon, SalonService
+from .models import Salon, SalonService, TechnicianService
 
 
 def generate_salon_invite_code() -> str:
@@ -68,11 +68,74 @@ def salon_service_to_dict(service: SalonService) -> dict:
     return {
         'id': service.id,
         'salon_id': service.salon_id,
+        'source': 'salon',
+        'catalog_id': f'salon:{service.id}',
         'name': service.name,
         'price_kes': service.price_kes,
         'is_active': service.is_active,
         'sort_order': service.sort_order,
     }
+
+
+def technician_service_to_dict(service: TechnicianService) -> dict:
+    return {
+        'id': service.id,
+        'technician_id': service.technician_id,
+        'source': 'technician',
+        'catalog_id': f'tech:{service.id}',
+        'name': service.name,
+        'price_kes': service.price_kes,
+        'is_active': service.is_active,
+        'sort_order': service.sort_order,
+    }
+
+
+def parse_service_price(raw_value):
+    if raw_value in (None, '', 'null'):
+        return None, None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return None, 'Enter a price in KES, or leave it blank.'
+    if value < 0:
+        return None, 'Price cannot be negative.'
+    return value, None
+
+
+def resolve_walk_in_catalog(raw_service_id, salon=None, preferred_worker=None):
+    if raw_service_id in (None, '', 'null', 'custom'):
+        return None, None
+
+    raw = str(raw_service_id).strip()
+    kind = 'salon'
+    pk_raw = raw
+    if ':' in raw:
+        kind, pk_raw = raw.split(':', 1)
+        kind = kind.strip().lower()
+
+    try:
+        pk = int(pk_raw)
+    except (TypeError, ValueError):
+        return None, 'Choose a service from the menu.'
+
+    if kind in ('tech', 'technician'):
+        if preferred_worker is None:
+            return None, 'Choose the technician who did this service.'
+        catalog = TechnicianService.objects.filter(
+            pk=pk,
+            technician=preferred_worker,
+            is_active=True,
+        ).first()
+        if catalog is None:
+            return None, "Choose a service from that technician's menu."
+        return catalog, None
+
+    if salon is None:
+        return None, 'Choose a service from your salon menu.'
+    catalog = SalonService.objects.filter(pk=pk, salon=salon, is_active=True).first()
+    if catalog is None:
+        return None, 'Choose a service from your salon menu.'
+    return catalog, None
 
 
 def get_primary_salon() -> Salon | None:

@@ -10,6 +10,7 @@ import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
+import TechnicianServices from './TechnicianServices'
 import PaymentCollectForm from './PaymentCollectForm'
 import WorkerPayoutsPanel from './WorkerPayoutsPanel'
 import './css/WorkerApp.css'
@@ -52,11 +53,28 @@ const WorkerDashboard = () => {
   const [walkInForm, setWalkInForm] = useState(emptyWalkIn)
   const [walkInSaving, setWalkInSaving] = useState(false)
   const [salonServices, setSalonServices] = useState([])
+  const [myServices, setMyServices] = useState([])
   const [paymentTarget, setPaymentTarget] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [paymentAmount, setPaymentAmount] = useState('')
 
   const canRecordWalkIn = true
+  const serviceOptions = [
+    ...salonServices
+      .filter((entry) => entry.is_active !== false)
+      .map((entry) => ({
+        ...entry,
+        group: 'Salon',
+        catalog_id: entry.catalog_id || `salon:${entry.id}`,
+      })),
+    ...myServices
+      .filter((entry) => entry.is_active !== false)
+      .map((entry) => ({
+        ...entry,
+        group: 'You',
+        catalog_id: entry.catalog_id || `tech:${entry.id}`,
+      })),
+  ]
 
   const applyCounts = (data) => {
     if (typeof data.pending_count === 'number') {
@@ -514,6 +532,9 @@ const WorkerDashboard = () => {
         ) : (
           <div className="worker-app-panel" role="tabpanel">
             {canRecordWalkIn && (
+              <TechnicianServices onStatus={setStatus} onServicesChange={setMyServices} />
+            )}
+            {canRecordWalkIn && (
               <div className="admin-walkin-toolbar">
                 <p className="admin-walkin-lead">
                   Log extra walk-ins and mark jobs complete. The same record shows on your inventory
@@ -534,7 +555,7 @@ const WorkerDashboard = () => {
                 onChange={handleWalkInChange}
                 onSubmit={handleWalkInSubmit}
                 saving={walkInSaving}
-                serviceOptions={salonServices}
+                serviceOptions={serviceOptions}
               />
             )}
             {loading ? (

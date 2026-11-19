@@ -3,7 +3,17 @@ import { todayIso } from '../constants/slots'
 import { apiFetch, parseApiResponse } from '../config/api'
 import WalkInForm from './WalkInForm'
 import OwnerSalonServices from './OwnerSalonServices'
+import TechnicianServices from './TechnicianServices'
 import ReportsPanel from './ReportsPanel'
+
+const catalogOptions = (entries, group) =>
+  (entries || [])
+    .filter((entry) => entry.is_active !== false)
+    .map((entry) => ({
+      ...entry,
+      group,
+      catalog_id: entry.catalog_id || `${entry.source || 'salon'}:${entry.id}`,
+    }))
 
 const WALK_IN_PATH = '/products/bookings/walk-in/'
 
@@ -39,7 +49,16 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
 
   const selectedSalon = salons.find((salon) => String(salon.id) === String(salonId))
   const technicians = selectedSalon?.technicians || []
-  const serviceOptions = (selectedSalon?.services || []).filter((entry) => entry.is_active !== false)
+  const selectedTechnician = technicians.find(
+    (tech) => String(tech.id) === String(walkInForm.preferred_worker_id),
+  )
+  const serviceOptions = [
+    ...catalogOptions(selectedSalon?.services, selectedSalon?.name || 'Salon'),
+    ...catalogOptions(
+      selectedTechnician?.services,
+      selectedTechnician?.is_owner ? 'You' : selectedTechnician?.name,
+    ),
+  ]
 
   const salonQuery = useMemo(() => {
     if (!salonId) {
@@ -50,7 +69,18 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
 
   const handleWalkInChange = (event) => {
     const { name, value } = event.target
-    setWalkInForm((current) => ({ ...current, [name]: value }))
+    setWalkInForm((current) => {
+      if (name === 'preferred_worker_id') {
+        return {
+          ...current,
+          preferred_worker_id: value,
+          service_id: '',
+          service: '',
+          service_price_kes: '',
+        }
+      }
+      return { ...current, [name]: value }
+    })
   }
 
   const handleWalkInSubmit = async (event) => {
@@ -99,12 +129,13 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
 
   return (
     <div>
+      <TechnicianServices onStatus={onStatus} onChanged={onChanged} />
       <OwnerSalonServices salon={selectedSalon} onChanged={onChanged} onStatus={onStatus} />
 
       <div className="admin-walkin-toolbar">
         <p className="admin-walkin-lead mb-0">
-          Log completed walk-ins for a technician. That same job appears on their inventory and
-          yours — one record, not a copy.
+          Log completed walk-ins for yourself or a technician. That same job appears on their
+          inventory and yours — one record, not a copy.
         </p>
         <button
           type="button"
@@ -152,7 +183,7 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
           serviceOptions={serviceOptions}
           extraFields={
             <div>
-              <label htmlFor="walkin-technician">Technician</label>
+              <label htmlFor="walkin-technician">Who did this</label>
               <select
                 id="walkin-technician"
                 className="form-select site-select"
@@ -161,7 +192,7 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
                 onChange={handleWalkInChange}
                 required
               >
-                <option value="">Choose technician</option>
+                <option value="">You or a technician</option>
                 {technicians.map((tech) => (
                   <option key={tech.id} value={String(tech.id)}>
                     {tech.name}

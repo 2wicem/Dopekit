@@ -372,6 +372,26 @@ class SalonService(models.Model):
         return f'{self.salon.name}: {self.name}'
 
 
+class TechnicianService(models.Model):
+    technician = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='menu_services',
+    )
+    name = models.CharField(max_length=120)
+    price_kes = models.PositiveIntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f'{self.technician}: {self.name}'
+
+
 class WageType(models.TextChoices):
     NONE = 'none', 'No wage'
     DAILY = 'daily', 'Daily wage'

@@ -17,10 +17,12 @@ const WalkInForm = ({
   extraFields = null,
   serviceOptions = [],
 }) => {
+  const optionKey = (entry) => entry.catalog_id || `${entry.source || 'salon'}:${entry.id}`
+
   const handleServicePick = (event) => {
     const serviceId = event.target.value
     onChange({ target: { name: 'service_id', value: serviceId } })
-    const picked = serviceOptions.find((entry) => String(entry.id) === String(serviceId))
+    const picked = serviceOptions.find((entry) => optionKey(entry) === String(serviceId))
     if (picked) {
       onChange({ target: { name: 'service', value: picked.name } })
       onChange({
@@ -69,7 +71,7 @@ const WalkInForm = ({
       </div>
       {usingCatalog && (
         <div>
-          <label htmlFor="walkin-service-id">Salon service</label>
+          <label htmlFor="walkin-service-id">Service menu</label>
           <select
             id="walkin-service-id"
             className="form-select site-select"
@@ -79,7 +81,8 @@ const WalkInForm = ({
           >
             <option value="">Custom / other</option>
             {serviceOptions.map((entry) => (
-              <option key={entry.id} value={String(entry.id)}>
+              <option key={optionKey(entry)} value={optionKey(entry)}>
+                {entry.group ? `${entry.group} · ` : ''}
                 {entry.name}
                 {entry.price_kes != null ? ` · KES ${entry.price_kes}` : ''}
               </option>

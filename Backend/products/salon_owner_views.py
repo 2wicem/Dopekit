@@ -8,10 +8,17 @@ from django.views.decorators.http import require_http_methods
 
 from .admin_views import _apply_salon_fields, _unique_username
 from .auth_utils import user_to_dict
-from .models import Salon, SalonService, TechnicianApprovalStatus, UserProfile, UserRole
+from .models import Salon, SalonService, TechnicianApprovalStatus, TechnicianService, UserProfile, UserRole
 from .password_utils import password_strength_error
 from .salon_owner_permissions import get_owned_salon, owned_salon_queryset, require_salon_owner
-from .salon_utils import ensure_salon_invite_code, salon_service_to_dict, salon_to_dict, unique_slug
+from .salon_utils import (
+    ensure_salon_invite_code,
+    parse_service_price,
+    salon_service_to_dict,
+    salon_to_dict,
+    technician_service_to_dict,
+    unique_slug,
+)
 from .technician_utils import (
     auto_approve_technician,
     is_approved_technician,
@@ -28,11 +35,10 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def _owner_salon_to_dict(salon: Salon) -> dict:
+def _owner_salon_to_dict(salon: Salon, owner=None) -> dict:
     data = salon_to_dict(salon, include_invite_code=True)
     staff = salon.staff_profiles.filter(role=UserRole.WORKER).select_related('user')
-    data['technician_count'] = staff.count()
-    data['technicians'] = [
+    technicians = [
         {
             'id': profile.user_id,
             'name': profile.user.first_name or profile.user.username,
@@ -40,10 +46,42 @@ def _owner_salon_to_dict(salon: Salon) -> dict:
             'specialty_label': profile.technician_specialty.replace('_', ' ').title()
             if profile.technician_specialty
             else None,
+            'is_owner': False,
         }
         for profile in staff
         if is_approved_technician(profile)
     ]
+    data['technician_count'] = len(technicians)
+    if owner is not None and not any(entry['id'] == owner.id for entry in technicians):
+        owner_profile = getattr(owner, 'profile', None)
+        technicians.insert(
+            0,
+            {
+                'id': owner.id,
+                'name': f'{owner.first_name or owner.username} (you)',
+                'phone': owner_profile.phone if owner_profile else '',
+                'specialty_label': None,
+                'is_owner': True,
+            },
+        )
+    elif owner is not None:
+        for entry in technicians:
+            if entry['id'] == owner.id:
+                entry['is_owner'] = True
+                if '(you)' not in entry['name']:
+                    entry['name'] = f'{entry["name"]} (you)'
+
+    service_map = {}
+    staff_ids = [entry['id'] for entry in technicians]
+    if staff_ids:
+        for service in TechnicianService.objects.filter(technician_id__in=staff_ids):
+            service_map.setdefault(service.technician_id, []).append(
+                technician_service_to_dict(service)
+            )
+    for entry in technicians:
+        entry['services'] = service_map.get(entry['id'], [])
+
+    data['technicians'] = technicians
     data['services'] = [
         salon_service_to_dict(service) for service in salon.menu_services.all()
     ]
@@ -72,7 +110,7 @@ def list_owner_salons(request):
         return denied
 
     salons = owned_salon_queryset(owner).select_related('owner').prefetch_related('menu_services')
-    return JsonResponse({'salons': [_owner_salon_to_dict(salon) for salon in salons]})
+    return JsonResponse({'salons': [_owner_salon_to_dict(salon, owner=owner) for salon in salons]})
 
 
 @require_http_methods(['POST'])
@@ -122,7 +160,7 @@ def create_owner_salon(request):
     return JsonResponse(
         {
             'message': 'Branch created.',
-            'salon': _owner_salon_to_dict(salon),
+            'salon': _owner_salon_to_dict(salon, owner=owner),
         },
         status=201,
     )
@@ -157,21 +195,9 @@ def update_owner_salon(request, salon_id):
     return JsonResponse(
         {
             'message': 'Branch updated.',
-            'salon': _owner_salon_to_dict(salon),
+            'salon': _owner_salon_to_dict(salon, owner=owner),
         }
     )
-
-
-def _parse_service_price(raw_value):
-    if raw_value in (None, '', 'null'):
-        return None, None
-    try:
-        value = int(raw_value)
-    except (TypeError, ValueError):
-        return None, 'Enter a price in KES, or leave it blank.'
-    if value < 0:
-        return None, 'Price cannot be negative.'
-    return value, None
 
 
 @require_http_methods(['POST'])
@@ -192,7 +218,7 @@ def create_owner_salon_service(request, salon_id):
     if len(name) > 120:
         return JsonResponse({'error': 'Service name is too long.'}, status=400)
 
-    price_kes, price_error = _parse_service_price(data.get('price_kes'))
+    price_kes, price_error = parse_service_price(data.get('price_kes'))
     if price_error:
         return JsonResponse({'error': price_error}, status=400)
 
@@ -243,7 +269,7 @@ def update_owner_salon_service(request, service_id):
             return JsonResponse({'error': 'Service name is required.'}, status=400)
         service.name = name
     if 'price_kes' in data:
-        price_kes, price_error = _parse_service_price(data.get('price_kes'))
+        price_kes, price_error = parse_service_price(data.get('price_kes'))
         if price_error:
             return JsonResponse({'error': price_error}, status=400)
         service.price_kes = price_kes
@@ -547,7 +573,7 @@ def regenerate_salon_invite_code(request, salon_id):
     return JsonResponse(
         {
             'message': 'Invite code regenerated.',
-            'salon': _owner_salon_to_dict(salon),
+            'salon': _owner_salon_to_dict(salon, owner=owner),
         }
     )
 
