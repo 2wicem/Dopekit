@@ -450,8 +450,13 @@ def create_walk_in_booking(request):
     location = data.get('location', '').strip()
     salon_id = resolve_salon_id(data.get('salon_id'))
 
-    if not name or not phone:
-        return JsonResponse({'error': 'Name and phone are required.'}, status=400)
+    if not name:
+        return JsonResponse({'error': 'Client name is required.'}, status=400)
+    if phone:
+        from .technician_verification import is_valid_ke_phone
+
+        if not is_valid_ke_phone(phone):
+            return JsonResponse({'error': 'Enter a valid Kenyan phone number, or leave it blank.'}, status=400)
 
     if venue not in (ServiceVenue.INDOOR, ServiceVenue.OUTDOOR):
         return JsonResponse({'error': 'Please choose indoor or outdoor service.'}, status=400)

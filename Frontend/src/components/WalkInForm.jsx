@@ -30,7 +30,7 @@ const WalkInForm = ({
         />
       </div>
       <div>
-        <label htmlFor="walkin-phone">Phone</label>
+        <label htmlFor="walkin-phone">Phone (optional)</label>
         <input
           id="walkin-phone"
           name="phone"
@@ -39,7 +39,7 @@ const WalkInForm = ({
           autoComplete="tel"
           value={form.phone}
           onChange={onChange}
-          required
+          placeholder="Optional"
         />
       </div>
       <div>
