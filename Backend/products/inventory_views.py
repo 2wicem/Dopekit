@@ -2,6 +2,7 @@ import json
 from collections import defaultdict
 from datetime import timedelta
 
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -57,7 +58,40 @@ def _price_for_booking(booking) -> int:
     return resolved if resolved is not None else 0
 
 
-def _inventory_bookings_queryset(user, profile, date_from, date_to, salon_id):
+def _parse_inventory_worker_id(request):
+    raw = (request.GET.get('worker_id') or '').strip()
+    if raw in ('', 'all'):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _filter_bookings_by_worker(queryset, worker_id):
+    if worker_id is None:
+        return queryset
+    return queryset.filter(Q(preferred_worker_id=worker_id) | Q(time_slot__worker_id=worker_id))
+
+
+def _can_cancel_inventory_booking(profile, user, booking) -> bool:
+    if booking.status == BookingStatus.CANCELLED:
+        return False
+    if profile.role == UserRole.ADMIN:
+        return True
+    if profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import booking_in_owned_salons
+
+        return booking_in_owned_salons(user, booking)
+    if profile.role == UserRole.WORKER:
+        slot = getattr(booking, 'time_slot', None)
+        if slot and slot.worker_id:
+            return slot.worker_id == user.id
+        return booking.preferred_worker_id == user.id
+    return False
+
+
+def _inventory_bookings_queryset(user, profile, date_from, date_to, salon_id, worker_id=None):
     if profile.role == UserRole.SALON_OWNER:
         from .salon_owner_permissions import owned_salon_ids
 
@@ -65,14 +99,17 @@ def _inventory_bookings_queryset(user, profile, date_from, date_to, salon_id):
             Booking.objects.filter(_appointment_date_filter(date_from, date_to))
             .select_related('time_slot__worker', 'preferred_worker', 'user', 'salon')
         )
-        return filter_bookings_for_owned_salons(queryset, owned_salon_ids(user), salon_id)
+        queryset = filter_bookings_for_owned_salons(queryset, owned_salon_ids(user), salon_id)
+        return _filter_bookings_by_worker(queryset, worker_id)
     if salon_id is not None:
         queryset = (
             Booking.objects.filter(_appointment_date_filter(date_from, date_to))
             .select_related('time_slot__worker', 'preferred_worker', 'user', 'salon')
         )
-        return filter_bookings_by_salon(queryset, salon_id)
-    return _report_bookings_queryset(user, date_from, date_to, None)
+        queryset = filter_bookings_by_salon(queryset, salon_id)
+        return _filter_bookings_by_worker(queryset, worker_id)
+    queryset = _report_bookings_queryset(user, date_from, date_to, None)
+    return _filter_bookings_by_worker(queryset, worker_id)
 
 
 def _expenses_queryset(user, profile, salon_id, date_from, date_to):
@@ -115,6 +152,7 @@ def report_daily_inventory(request):
         include_rows = True
 
     salon_id = inventory_salon_scope(request, profile)
+    worker_id = _parse_inventory_worker_id(request)
     bookings = list(
         _inventory_bookings_queryset(
             request.user,
@@ -122,10 +160,13 @@ def report_daily_inventory(request):
             date_from,
             date_to,
             salon_id,
+            worker_id=worker_id,
         )
     )
 
-    expenses = list(_expenses_queryset(request.user, profile, salon_id, date_from, date_to))
+    expenses = []
+    if worker_id is None:
+        expenses = list(_expenses_queryset(request.user, profile, salon_id, date_from, date_to))
 
     days_map = defaultdict(
         lambda: {
@@ -166,6 +207,9 @@ def report_daily_inventory(request):
             'status_label': booking.get_status_display(),
             'is_walk_in': bool(booking.is_walk_in),
             'can_complete': booking.status in (BookingStatus.PENDING, BookingStatus.ACCEPTED),
+            'can_cancel': _can_cancel_inventory_booking(profile, request.user, booking),
+            'worker_id': booking.preferred_worker_id
+            or (booking.time_slot.worker_id if getattr(booking, 'time_slot', None) else None),
             'payment_method': method,
             'payment_method_label': (
                 booking.get_payment_method_display() if method else ''

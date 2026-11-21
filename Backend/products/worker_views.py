@@ -473,24 +473,35 @@ def complete_booking(request, booking_id):
 
 @require_http_methods(['POST'])
 def cancel_booking_worker(request, booking_id):
-    worker, denied = require_approved_worker(request)
+    from .inventory_permissions import require_staff_inventory
+    from .salon_owner_permissions import booking_in_owned_salons
+
+    profile, denied = require_staff_inventory(request)
     if denied:
         return denied
 
     booking = get_object_or_404(
-        Booking.objects.select_related('time_slot'),
+        Booking.objects.select_related('time_slot', 'preferred_worker', 'salon'),
         pk=booking_id,
     )
     slot = getattr(booking, 'time_slot', None)
+    worker = request.user
 
-    if slot:
-        profile = getattr(worker, 'profile', None)
-        if profile.role == UserRole.WORKER and slot.worker_id != worker.id:
-            return _forbidden('You can only cancel your own appointments.')
+    allowed = False
+    if profile.role == UserRole.ADMIN:
+        allowed = True
+    elif profile.role == UserRole.SALON_OWNER:
+        allowed = booking_in_owned_salons(worker, booking)
+    elif profile.role == UserRole.WORKER:
+        allowed = _worker_owns_booking(worker, booking)
+
+    if not allowed:
+        return _forbidden('You can only cancel services for your team or your own jobs.')
 
     if booking.status == BookingStatus.CANCELLED:
         return JsonResponse({'message': 'Already cancelled.', 'booking': _booking_to_dict(booking)})
 
+    was_logged = booking.status == BookingStatus.COMPLETED or booking.is_walk_in
     with transaction.atomic():
         booking.status = BookingStatus.CANCELLED
         booking.save(update_fields=['status'])
@@ -500,9 +511,10 @@ def cancel_booking_worker(request, booking_id):
                 booking=None,
             )
 
+    message = 'Service removed from inventory.' if was_logged else 'Booking cancelled.'
     return JsonResponse(
         {
-            'message': 'Booking cancelled.',
+            'message': message,
             'booking': _booking_to_dict(booking),
         }
     )

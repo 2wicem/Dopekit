@@ -58,6 +58,7 @@ const emptyExpenseForm = {
 const ReportsPanel = ({
   scope = 'technician',
   salonQuery = '',
+  technicians = [],
   canViewInventory = false,
   canRecordExpenses = null,
   variant = 'full',
@@ -82,19 +83,24 @@ const ReportsPanel = ({
   const [expenseSaving, setExpenseSaving] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [completingId, setCompletingId] = useState(null)
+  const [cancellingId, setCancellingId] = useState(null)
   const [completeMethod, setCompleteMethod] = useState('cash')
+  const [workerId, setWorkerId] = useState('')
 
   const isSalonWide = scope === 'admin' || scope === 'owner'
   const isAdminScope = scope === 'admin'
   const showInventory = isSalonWide || canViewInventory
   const allowExpenses = canRecordExpenses == null ? isSalonWide : canRecordExpenses
   const showExtraReports = !inventoryFirst
+  const filterQuery = [salonQuery, workerId ? `worker_id=${workerId}` : '']
+    .filter(Boolean)
+    .join('&')
 
   const loadReports = useCallback(async () => {
     setLoading(true)
     setStatus(null)
 
-    const query = buildQuery(fromDate, toDate, salonQuery)
+    const query = buildQuery(fromDate, toDate, filterQuery)
     try {
       if (showInventory) {
         const inventoryResponse = await apiFetch(`/products/reports/daily-inventory/?${query}`)
@@ -131,7 +137,7 @@ const ReportsPanel = ({
     } finally {
       setLoading(false)
     }
-  }, [fromDate, toDate, isSalonWide, showInventory, salonQuery, showExtraReports])
+  }, [fromDate, toDate, isSalonWide, showInventory, filterQuery, showExtraReports])
 
   useEffect(() => {
     loadReports()
@@ -165,7 +171,7 @@ const ReportsPanel = ({
   const loadDayDetails = async (date) => {
     setLoadingDay(date)
     try {
-      const query = buildQuery(date, date, salonQuery)
+      const query = buildQuery(date, date, filterQuery)
       const response = await apiFetch(`/products/reports/daily-inventory/?${query}&detail=1`)
       const data = await parseJson(response)
       const dayPayload = data.days?.[0]
@@ -243,6 +249,33 @@ const ReportsPanel = ({
     }
   }
 
+  const handleCancelService = async (row) => {
+    const label = row.service && row.service !== '—' ? row.service : 'this service'
+    if (
+      !window.confirm(
+        `Remove ${label} for ${row.client_name} (${row.worker_name}) from inventory? Use this if the job was not legitimate.`,
+      )
+    ) {
+      return
+    }
+    setCancellingId(row.booking_id)
+    setStatus(null)
+    try {
+      const response = await apiFetch(`/products/bookings/${row.booking_id}/cancel/`, {
+        method: 'POST',
+      })
+      const data = await parseJson(response)
+      const openDates = Object.keys(expandedDays).filter((date) => expandedDays[date])
+      await loadReports()
+      await Promise.all(openDates.map((date) => loadDayDetails(date)))
+      setStatus({ type: 'success', message: data.message || 'Service removed from inventory.' })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
   const handleDeleteExpense = async (expenseId) => {
     if (!window.confirm('Remove this expense from your daily records?')) {
       return
@@ -308,7 +341,7 @@ const ReportsPanel = ({
           <h2 className="reports-panel-title">{scopeLabel}</h2>
           <p className="reports-panel-subtitle text-muted mb-0">
             {inventoryFirst
-              ? 'Daily totals load first. Open a day only when you need the job list.'
+              ? 'Filter by technician to see their jobs. Open a day to cancel any that were not legitimate.'
               : 'Filter by appointment date range, then download a CSV for your records.'}
           </p>
         </div>
@@ -350,6 +383,26 @@ const ReportsPanel = ({
             onChange={(event) => setToDate(event.target.value)}
           />
         </div>
+        {technicians.length > 0 && (
+          <div>
+            <label htmlFor="reports-technician" className="form-label">
+              Technician
+            </label>
+            <select
+              id="reports-technician"
+              className="form-select site-select"
+              value={workerId}
+              onChange={(event) => setWorkerId(event.target.value)}
+            >
+              <option value="">All technicians</option>
+              {technicians.map((tech) => (
+                <option key={tech.id} value={String(tech.id)}>
+                  {tech.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="reports-range-presets">
           {RANGE_PRESETS.map((preset) => (
             <button
@@ -690,6 +743,16 @@ const ReportsPanel = ({
                                             }}
                                           >
                                             Add to inventory
+                                          </button>
+                                        ) : null}
+                                        {row.can_cancel ? (
+                                          <button
+                                            type="button"
+                                            className="btn btn-link btn-sm text-danger p-0"
+                                            disabled={cancellingId === row.booking_id}
+                                            onClick={() => handleCancelService(row)}
+                                          >
+                                            {cancellingId === row.booking_id ? 'Removing…' : 'Cancel'}
                                           </button>
                                         ) : null}
                                       </td>

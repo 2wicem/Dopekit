@@ -211,6 +211,7 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
           scope="owner"
           variant="inventory"
           salonQuery={salonQuery}
+          technicians={technicians}
           canViewInventory
           canRecordExpenses
         />
