@@ -303,6 +303,14 @@ REQUIRE_TECHNICIAN_APPROVAL = env_bool(
     'True',
 )
 
+# Held off so salon owners can add technicians without SMS OTP or application alerts.
+# Set TECHNICIAN_SMS_ENABLED=True on Railway when onboarding is done.
+TECHNICIAN_SMS_ENABLED = env_bool('TECHNICIAN_SMS_ENABLED', 'False')
+REQUIRE_TECHNICIAN_PHONE_OTP = env_bool(
+    'REQUIRE_TECHNICIAN_PHONE_OTP',
+    'True' if TECHNICIAN_SMS_ENABLED else 'False',
+)
+
 TECHNICIAN_SIGNUP_CODE = os.getenv('TECHNICIAN_SIGNUP_CODE', '').strip()
 
 CACHES = {

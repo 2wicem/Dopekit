@@ -61,12 +61,13 @@ def validate_technician_application(data) -> tuple[dict | None, str | None]:
     if not is_valid_ke_phone(phone):
         return None, 'Enter a valid Kenyan phone number.'
 
-    if phone_otp:
-        verified, otp_error = verify_signup_otp(phone, phone_otp)
-        if not verified:
-            return None, otp_error
-    elif not is_phone_verified_for_signup(phone):
-        return None, 'Verify your phone number with the SMS code before applying.'
+    if settings.REQUIRE_TECHNICIAN_PHONE_OTP:
+        if phone_otp:
+            verified, otp_error = verify_signup_otp(phone, phone_otp)
+            if not verified:
+                return None, otp_error
+        elif not is_phone_verified_for_signup(phone):
+            return None, 'Verify your phone number with the SMS code before applying.'
 
     invite_code = data.get('technician_invite_code', '').strip()
     specialty = data.get('technician_specialty', '').strip().lower()

@@ -343,7 +343,7 @@ def notify_technician_application(user) -> dict:
             email_sent = False
 
     sms_sent = False
-    if settings.AT_API_KEY:
+    if settings.AT_API_KEY and settings.TECHNICIAN_SMS_ENABLED:
         try:
             import africastalking
 
@@ -357,6 +357,8 @@ def notify_technician_application(user) -> dict:
             sms_sent = True
         except Exception:
             logger.exception('Failed to send technician application SMS for %s', user.email)
+    elif not settings.TECHNICIAN_SMS_ENABLED:
+        logger.info('Technician application SMS held for %s.', user.email)
 
     return {'email_sent': email_sent, 'sms_sent': sms_sent}
 
@@ -442,7 +444,7 @@ def notify_owner_technician_application(user) -> dict:
             logger.exception('Failed to notify salon owner about technician application')
 
     sms_sent = False
-    if owner_phone and settings.AT_API_KEY:
+    if owner_phone and settings.AT_API_KEY and settings.TECHNICIAN_SMS_ENABLED:
         try:
             import africastalking
 
@@ -464,6 +466,10 @@ def notify_owner_technician_application(user) -> dict:
 
 
 def send_technician_signup_otp_sms(phone: str, otp: str) -> bool:
+    if not settings.TECHNICIAN_SMS_ENABLED:
+        logger.info('Technician signup OTP SMS held for %s.', phone)
+        return False
+
     if not settings.AT_API_KEY:
         logger.warning('Technician signup OTP SMS skipped: AT_API_KEY not set.')
         return False

@@ -34,7 +34,7 @@ const Signup = () => {
   const prefilledType = parseSignupAccountType(searchParams.get('type'))
   const [allowTechnicianSignup, setAllowTechnicianSignup] = useState(true)
   const [requireTechnicianApproval, setRequireTechnicianApproval] = useState(true)
-  const [requireTechnicianPhoneOtp, setRequireTechnicianPhoneOtp] = useState(true)
+  const [requireTechnicianPhoneOtp, setRequireTechnicianPhoneOtp] = useState(false)
   const [otpSending, setOtpSending] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [accountType, setAccountType] = useState('client')

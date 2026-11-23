@@ -468,7 +468,7 @@ def signup_config(request):
         {
             'allow_technician_signup': settings.ALLOW_TECHNICIAN_SELF_SIGNUP,
             'require_technician_approval': settings.REQUIRE_TECHNICIAN_APPROVAL,
-            'require_technician_phone_otp': True,
+            'require_technician_phone_otp': settings.REQUIRE_TECHNICIAN_PHONE_OTP,
             'require_salon_invite_code': True,
             'password_hint': PASSWORD_HINT,
         }
