@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { todayIso } from '../constants/slots'
 import { apiFetch } from '../config/api'
+import TechnicianPhone from './TechnicianPhone'
 import './css/TechnicianSchedule.css'
 
 const formatDayHeader = (isoDate) => {
@@ -121,6 +122,10 @@ const TechnicianScheduleModal = ({ worker, salonId = null, onClose, onBookSlot }
                 <p className="technician-schedule-sub">
                   Next {scheduleData?.days ?? 7} days · hours are open unless booked or marked off
                 </p>
+                <TechnicianPhone
+                  phone={worker.phone || scheduleData?.worker?.phone}
+                  className="technician-schedule-phone"
+                />
               </div>
               <button type="button" className="btn-close" aria-label="Close" onClick={onClose} />
             </div>

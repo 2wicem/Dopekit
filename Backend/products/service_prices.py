@@ -1,13 +1,19 @@
-"""Default service menu prices (KES) — keep in sync with Frontend servicesData.js."""
+"""Default service menu prices (KES) — keep in sync with Frontend servicesData.js.
+
+Westlands / mid-to-high spa rates, not neighbourhood-salon pricing.
+"""
 
 DEFAULT_SERVICE_PRICES = {
-    'Just gel': 500,
-    'Builder + gel': 1000,
-    'Tips + gel': 1000,
-    'Tips Builder + gel': 1500,
-    'Gum gel': 1500,
-    'Pedicure': 1500,
-    'Acrylics': 2500,
+    'Just gel': 2000,
+    'Builder + gel': 3000,
+    'Tips + gel': 3500,
+    'Tips Builder + gel': 4500,
+    'Gum gel': 4000,
+    'Pedicure': 3000,
+    'Acrylics': 5000,
+    'Custom nail art': 5000,
+    'Kids gel': 1500,
+    'French tips': 2500,
 }
 
 

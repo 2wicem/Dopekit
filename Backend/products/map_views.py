@@ -94,6 +94,7 @@ def _technician_markers(client_lat, client_lng):
         marker.update(
             {
                 'worker_id': worker_id,
+                'phone': worker.get('phone') or '',
                 'salon_id': worker.get('salon_id'),
                 'salon_name': worker.get('salon_name'),
                 'is_freelance': worker.get('is_freelance', False),

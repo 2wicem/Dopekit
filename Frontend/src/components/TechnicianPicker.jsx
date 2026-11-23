@@ -1,3 +1,4 @@
+import TechnicianPhone from './TechnicianPhone'
 import TechnicianRating from './TechnicianRating'
 
 const TechnicianPreview = ({ worker }) => {
@@ -17,6 +18,7 @@ const TechnicianPreview = ({ worker }) => {
           {worker.salon_name && !worker.is_freelance && (
             <p className="technician-preview-salon">{worker.salon_name}</p>
           )}
+          <TechnicianPhone phone={worker.phone} className="technician-preview-phone" />
         </div>
         <span className={`technician-preview-availability${worker.is_available ? ' is-open' : ' is-booked'}`}>
           {worker.is_available ? 'Available' : 'Booked'}
@@ -120,7 +122,8 @@ const TechnicianPicker = ({
           const availabilityLabel = worker.is_available ? 'Available' : 'Booked'
           return (
             <option key={worker.id} value={worker.id}>
-              {worker.name} · {worker.role_label}
+              {worker.name}
+              {worker.phone ? ` · ${worker.phone}` : ''} · {worker.role_label}
               {worker.specialty_label ? ` · ${worker.specialty_label}` : ''}
               {rating} · {availabilityLabel}
             </option>

@@ -595,3 +595,68 @@
   background: rgba(255, 255, 255, 0.72);
   color: var(--dk-plum);
 }
+
+@media (orientation: landscape) and (max-width: 1100px) {
+  .worker-app-header {
+    padding: 0.45rem 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .worker-app-greeting {
+    font-size: 0.95rem;
+  }
+
+  .worker-app-date {
+    display: none;
+  }
+
+  .worker-app-body {
+    max-width: none;
+    padding: 0.55rem 0.85rem 0.85rem;
+  }
+
+  .worker-app-stats {
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .worker-app-stat {
+    padding: 0.45rem 0.35rem;
+  }
+
+  .worker-app-stat-value {
+    font-size: 1.1rem;
+  }
+
+  .worker-app-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 0.65rem;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+  }
+
+  .worker-app-tab {
+    padding: 0.4rem 0.35rem;
+    font-size: 0.78rem;
+  }
+
+  .worker-app .worker-schedule {
+    padding: 0.65rem;
+  }
+
+  .worker-app .worker-schedule-header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 0.45rem;
+  }
+
+  .worker-app .worker-slot-grid {
+    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  }
+
+  .worker-notify-banner,
+  .worker-install-banner {
+    display: none;
+  }
+}

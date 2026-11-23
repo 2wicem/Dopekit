@@ -72,7 +72,7 @@ const Services = () => {
                   </span>
                   <div>
                     <h3 className="services-price-panel-title">Price menu</h3>
-                    <p className="services-price-panel-sub">Tap any row to book instantly</p>
+                    <p className="services-price-panel-sub">Westlands spa rates — tap a row to book</p>
                   </div>
                 </div>
 

@@ -1,0 +1,42 @@
+.technician-phone-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.technician-phone-link:hover {
+  text-decoration: underline;
+}
+
+.landing-tech-card__phone,
+.available-worker-phone,
+.technician-preview-phone,
+.technician-schedule-phone,
+.landing-nearby-card__phone,
+.nearby-map-popup-phone {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+}
+
+.landing-tech-card__phone {
+  font-size: 0.7rem;
+  color: var(--dk-accent-soft, #e8c4cf);
+}
+
+.available-worker-phone,
+.technician-preview-phone {
+  color: var(--dk-accent-soft, #e8c4cf);
+}
+
+.technician-schedule-phone {
+  margin-top: 0.35rem;
+  color: var(--dk-accent-soft, #e8c4cf);
+}
+
+.landing-nearby-card__phone {
+  font-size: 0.72rem;
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.nearby-map-popup-phone {
+  color: #3a1f33;
+}

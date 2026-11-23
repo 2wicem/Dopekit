@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadPublicResource } from './publicResource'
 
 const WORKERS_PATH = '/products/workers/'
-const CACHE_KEY = 'dk:public_workers:v5'
+const CACHE_KEY = 'dk:public_workers:v6'
 
 export const usePublicWorkers = () => {
   const [workers, setWorkers] = useState([])

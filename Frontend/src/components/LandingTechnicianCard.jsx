@@ -1,4 +1,5 @@
 import LazyBookservice from './LazyBookservice'
+import TechnicianPhone from './TechnicianPhone'
 import TechnicianRating from './TechnicianRating'
 import TechnicianScheduleButton from './TechnicianScheduleButton'
 import { workerInitials } from './TechnicianCard'
@@ -36,6 +37,7 @@ const LandingTechnicianCard = ({ worker }) => {
         {worker.salon_name && !worker.is_freelance && (
           <p className="landing-tech-card__salon">{worker.salon_name}</p>
         )}
+        <TechnicianPhone phone={worker.phone} className="landing-tech-card__phone" />
 
         <TechnicianRating
           ratingAverage={worker.rating_average}

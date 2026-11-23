@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { formatDistanceKm } from '../utils/geo'
+import TechnicianPhone from './TechnicianPhone'
 import 'leaflet/dist/leaflet.css'
 
 const pinHtml = (iconClass, toneClass) =>
@@ -178,6 +179,9 @@ const NearbyMap = ({ center, zoom, clientCoords, markers, onPickLocation, allowM
                 {marker.distance_km != null && ` · ${formatDistanceKm(marker.distance_km)} away`}
               </p>
               {marker.location && <p className="nearby-map-popup-meta">{marker.location}</p>}
+              {marker.type === 'technician' ? (
+                <TechnicianPhone phone={marker.phone} className="nearby-map-popup-meta nearby-map-popup-phone" />
+              ) : null}
               {marker.type === 'technician' && marker.rating_count > 0 && marker.rating_average != null && (
                 <p className="nearby-map-popup-meta">
                   {Number(marker.rating_average).toFixed(1)} ★ ({marker.rating_count})

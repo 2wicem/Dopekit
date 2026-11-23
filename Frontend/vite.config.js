@@ -15,7 +15,7 @@ export default defineConfig({
         theme_color: '#6d3557',
         background_color: '#141014',
         display: 'standalone',
-        orientation: 'portrait-primary',
+        orientation: 'any',
         start_url: '/worker',
         scope: '/',
         icons: [

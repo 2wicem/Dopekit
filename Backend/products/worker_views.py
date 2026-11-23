@@ -139,6 +139,7 @@ def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
     return {
         'id': user.id,
         'name': user.first_name or user.username.capitalize(),
+        'phone': (profile.phone or '').strip(),
         'role': profile.role,
         'role_label': _public_worker_role_label(profile, salon),
         'is_freelance': profile.role == UserRole.WORKER and bool(profile.technician_is_freelance),
@@ -164,7 +165,7 @@ def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
 
 def build_public_workers(salon_id=None, freelance_only=False):
     today = timezone.localdate()
-    cache_key = f'dk:public_workers:v5:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
+    cache_key = f'dk:public_workers:v6:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
     stale_key = f'{cache_key}:stale'
     cached = cache.get(cache_key)
     if cached is not None:
@@ -316,6 +317,7 @@ def public_worker_schedule(request, worker_id):
             'worker': {
                 'id': user.id,
                 'name': user.first_name or user.username,
+                'phone': (profile.phone or '').strip(),
                 'role_label': _public_worker_role_label(profile, _public_salon_for_user(user)),
             },
             'from': today.isoformat(),

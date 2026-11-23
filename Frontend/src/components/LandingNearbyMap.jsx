@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LazyBookservice from './LazyBookservice'
+import TechnicianPhone from './TechnicianPhone'
 import TechnicianScheduleButton from './TechnicianScheduleButton'
 import NearbyMap from './NearbyMap'
 import { CLIENT_MAP_ZOOM, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, NEARBY_FILTER_OPTIONS } from '../constants/mapDefaults'
@@ -153,6 +154,9 @@ const LandingNearbyMap = () => {
                       {marker.type === 'salon' ? marker.location : marker.salon_name || 'Mobile service'}
                       {marker.distance_km != null && ` · ${formatDistanceKm(marker.distance_km)}`}
                     </p>
+                    {marker.type === 'technician' ? (
+                      <TechnicianPhone phone={marker.phone} className="landing-nearby-card__phone" />
+                    ) : null}
                   </div>
                 </div>
 
@@ -169,6 +173,7 @@ const LandingNearbyMap = () => {
                       worker={{
                         id: marker.worker_id,
                         name: marker.name,
+                        phone: marker.phone,
                         salon_id: marker.salon_id,
                       }}
                       salonId={marker.salon_id}

@@ -1,4 +1,5 @@
 import Bookservice from './Bookservice'
+import TechnicianPhone from './TechnicianPhone'
 import TechnicianRating from './TechnicianRating'
 import TechnicianScheduleButton from './TechnicianScheduleButton'
 
@@ -38,6 +39,7 @@ const TechnicianCard = ({ worker, salonId = null, bookLabel }) => {
           {worker.specialty_label && (
             <p className="available-worker-specialty">{worker.specialty_label}</p>
           )}
+          <TechnicianPhone phone={worker.phone} className="available-worker-phone" />
         </div>
         <span className={`available-worker-badge${worker.is_available ? ' is-open' : ''}`}>
           {worker.is_available ? 'Available' : 'Fully booked'}
