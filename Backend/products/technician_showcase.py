@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Q
+from django.db.models import Count
 
 from .models import Booking, BookingStatus
 
@@ -50,28 +50,38 @@ def completed_jobs_by_worker_ids(worker_ids) -> dict:
     if not worker_ids:
         return counts
 
-    rows = (
-        Booking.objects.filter(status=BookingStatus.ACCEPTED)
-        .filter(Q(time_slot__worker_id__in=worker_ids) | Q(preferred_worker_id__in=worker_ids))
-        .values_list('id', 'time_slot__worker_id', 'preferred_worker_id')
-    )
-    seen = {worker_id: set() for worker_id in worker_ids}
-    for booking_id, slot_worker_id, preferred_id in rows:
-        if slot_worker_id in seen:
-            seen[slot_worker_id].add(booking_id)
-        if preferred_id in seen:
-            seen[preferred_id].add(booking_id)
-    return {worker_id: len(ids) for worker_id, ids in seen.items()}
+    for row in (
+        Booking.objects.filter(
+            status=BookingStatus.COMPLETED,
+            preferred_worker_id__in=worker_ids,
+        )
+        .values('preferred_worker_id')
+        .annotate(total=Count('id'))
+    ):
+        counts[row['preferred_worker_id']] = row['total']
+
+    for row in (
+        Booking.objects.filter(
+            status=BookingStatus.COMPLETED,
+            preferred_worker_id__isnull=True,
+            time_slot__worker_id__in=worker_ids,
+        )
+        .values('time_slot__worker_id')
+        .annotate(total=Count('id'))
+    ):
+        worker_id = row['time_slot__worker_id']
+        counts[worker_id] = counts.get(worker_id, 0) + row['total']
+    return counts
 
 
-def technician_showcase_to_dict(profile, completed_jobs: int = 0) -> dict:
+def technician_showcase_to_dict(profile, completed_jobs: int = 0, portfolio_limit: int = 12) -> dict:
     rating_average = None
     if profile.technician_rating_average is not None:
         rating_average = float(profile.technician_rating_average)
 
     return {
         'work_summary': profile.technician_work_summary or '',
-        'portfolio_urls': parse_portfolio_urls(profile.technician_portfolio_urls),
+        'portfolio_urls': parse_portfolio_urls(profile.technician_portfolio_urls)[: max(0, portfolio_limit)],
         'rating_average': rating_average,
         'rating_count': profile.technician_rating_count or 0,
         'completed_jobs': completed_jobs,

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db.models import Q
@@ -79,6 +80,7 @@ def summarize_worker_payout(worker, salon, date_from, date_to, plan=None):
     collected = 0
     jobs = 0
     work_dates = set()
+    day_stats = defaultdict(lambda: {'jobs': 0, 'collected_kes': 0, 'advances_kes': 0})
     for booking in bookings:
         if booking_worker_id(booking) != worker.id:
             continue
@@ -86,11 +88,18 @@ def summarize_worker_payout(worker, salon, date_from, date_to, plan=None):
         day = _booking_appointment_date(booking)
         if day:
             work_dates.add(day)
-        if booking.payment_method in (PaymentMethod.CASH, PaymentMethod.BANK):
+            bucket = day_stats[day.isoformat()]
+            bucket['jobs'] += 1
+            if booking.payment_method in (PaymentMethod.CASH, PaymentMethod.BANK):
+                paid = collected_amount(booking, _price_for_booking(booking))
+                collected += paid
+                bucket['collected_kes'] += paid
+        elif booking.payment_method in (PaymentMethod.CASH, PaymentMethod.BANK):
             collected += collected_amount(booking, _price_for_booking(booking))
 
     plan = plan or WorkerCompensation.objects.filter(worker=worker, salon=salon).first()
-    commission = commission_kes(collected, plan.commission_percent if plan else 0)
+    percent = plan.commission_percent if plan else 0
+    commission = commission_kes(collected, percent)
     wage = wage_kes_for_dates(plan, work_dates)
     advances = list(
         WorkerAdvance.objects.filter(
@@ -101,6 +110,29 @@ def summarize_worker_payout(worker, salon, date_from, date_to, plan=None):
         )
     )
     advances_total = sum(item.amount_kes for item in advances)
+    for item in advances:
+        day_stats[item.business_date.isoformat()]['advances_kes'] += item.amount_kes
+
+    daily = []
+    for date_key in sorted(day_stats.keys(), reverse=True):
+        bucket = day_stats[date_key]
+        day_commission = commission_kes(bucket['collected_kes'], percent)
+        day_wage = 0
+        if plan and plan.wage_type == WageType.DAILY and bucket['jobs'] > 0 and plan.wage_kes:
+            day_wage = plan.wage_kes
+        day_earned = day_commission + day_wage
+        daily.append(
+            {
+                'date': date_key,
+                'jobs': bucket['jobs'],
+                'income_kes': bucket['collected_kes'],
+                'commission_kes': day_commission,
+                'wage_kes': day_wage,
+                'advances_kes': bucket['advances_kes'],
+                'net_pay_kes': day_earned - bucket['advances_kes'],
+            }
+        )
+
     earned = commission + wage
     return {
         'worker_id': worker.id,
@@ -110,6 +142,7 @@ def summarize_worker_payout(worker, salon, date_from, date_to, plan=None):
         'jobs': jobs,
         'days_worked': len(work_dates),
         'collected_kes': collected,
+        'income_kes': collected,
         'commission_kes': commission,
         'wage_kes': wage,
         'earned_kes': earned,
@@ -117,4 +150,5 @@ def summarize_worker_payout(worker, salon, date_from, date_to, plan=None):
         'net_pay_kes': earned - advances_total,
         'compensation': compensation_to_dict(plan),
         'advances': [advance_to_dict(item) for item in advances],
+        'days': daily,
     }

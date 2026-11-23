@@ -94,6 +94,30 @@ const WorkerPayoutsPanel = () => {
             {' · '}
             {report.jobs} job{report.jobs === 1 ? '' : 's'}
           </p>
+          {report.days?.length > 0 && (
+            <table className="table reports-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th className="text-end">Income</th>
+                  <th className="text-end">Commission</th>
+                  <th className="text-end">Advance</th>
+                  <th className="text-end">Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.days.map((row) => (
+                  <tr key={row.date}>
+                    <td>{row.date}</td>
+                    <td className="text-end">{formatKes(row.income_kes)}</td>
+                    <td className="text-end">{formatKes(row.commission_kes)}</td>
+                    <td className="text-end">{formatKes(row.advances_kes)}</td>
+                    <td className="text-end">{formatKes(row.net_pay_kes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           {report.advances?.length > 0 && (
             <table className="table reports-table">
               <thead>

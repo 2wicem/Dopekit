@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../config/api'
+import { loadPublicResource } from './publicResource'
 
 const WORKERS_PATH = '/products/workers/'
+const CACHE_KEY = 'dk:public_workers:v5'
 
 export const usePublicWorkers = () => {
   const [workers, setWorkers] = useState([])
@@ -11,32 +12,24 @@ export const usePublicWorkers = () => {
   useEffect(() => {
     let cancelled = false
 
-    const loadWorkers = async () => {
-      try {
-        const response = await apiFetch(WORKERS_PATH)
-        const text = await response.text()
-        const data = text ? JSON.parse(text) : {}
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Could not load technicians.')
-        }
-
+    loadPublicResource(CACHE_KEY, WORKERS_PATH, (data) => data.workers || [])
+      .then((list) => {
         if (!cancelled) {
-          setWorkers(data.workers || [])
+          setWorkers(list)
+          setError(null)
         }
-      } catch (err) {
+      })
+      .catch((err) => {
         if (!cancelled) {
           setError(err.message)
           setWorkers([])
         }
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) {
           setLoading(false)
         }
-      }
-    }
-
-    loadWorkers()
+      })
 
     return () => {
       cancelled = true

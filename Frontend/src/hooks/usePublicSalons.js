@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../config/api'
+import { loadPublicResource } from './publicResource'
 
 const SALONS_PATH = '/products/salons/'
+const CACHE_KEY = 'dk:public_salons:v1'
 
 export const usePublicSalons = () => {
   const [salons, setSalons] = useState([])
@@ -11,32 +12,24 @@ export const usePublicSalons = () => {
   useEffect(() => {
     let cancelled = false
 
-    const loadSalons = async () => {
-      try {
-        const response = await apiFetch(SALONS_PATH)
-        const text = await response.text()
-        const data = text ? JSON.parse(text) : {}
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Could not load salon locations.')
-        }
-
+    loadPublicResource(CACHE_KEY, SALONS_PATH, (data) => data.salons || [])
+      .then((list) => {
         if (!cancelled) {
-          setSalons(data.salons || [])
+          setSalons(list)
+          setError(null)
         }
-      } catch (err) {
+      })
+      .catch((err) => {
         if (!cancelled) {
           setError(err.message)
           setSalons([])
         }
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) {
           setLoading(false)
         }
-      }
-    }
-
-    loadSalons()
+      })
 
     return () => {
       cancelled = true

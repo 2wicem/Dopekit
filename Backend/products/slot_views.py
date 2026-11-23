@@ -140,8 +140,7 @@ def list_available_slots(request):
             workers = workers.filter(pk=int(worker_id))
         except (TypeError, ValueError):
             return JsonResponse({'error': 'Invalid worker_id.'}, status=400)
-
-    ensure_default_available_slots(workers, slot_date, slot_date)
+        ensure_default_available_slots(workers, slot_date, slot_date)
 
     slots = (
         TimeSlot.objects.filter(

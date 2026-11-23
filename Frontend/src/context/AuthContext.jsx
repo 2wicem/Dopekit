@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = useCallback(async ({ silent = false } = {}) => {
     try {
-      const response = await apiFetch(`${AUTH_BASE}/me/`, { timeoutMs: 8000 })
+      const response = await apiFetch(`${AUTH_BASE}/me/`, { timeoutMs: 5000 })
       const text = await response.text()
       const data = text ? JSON.parse(text) : {}
 

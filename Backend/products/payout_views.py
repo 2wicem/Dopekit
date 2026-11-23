@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
-from .models import UserRole, WageType, WorkerAdvance, WorkerCompensation
+from .models import Salon, UserRole, WageType, WorkerAdvance, WorkerCompensation
 from .payout_utils import (
     advance_to_dict,
     compensation_to_dict,
@@ -43,13 +43,54 @@ def _parse_owned_salon(request, owner):
 
 
 def _staff_on_salons(salon_ids):
-    return (
+    seen = set()
+    staff = []
+    workers = (
         User.objects.filter(
             profile__role=UserRole.WORKER,
             profile__salon_id__in=salon_ids,
         )
         .select_related('profile', 'profile__salon')
         .order_by('first_name', 'username')
+    )
+    for user in workers:
+        salon = user.profile.salon
+        key = (user.id, salon.id)
+        if key in seen:
+            continue
+        seen.add(key)
+        staff.append((user, salon))
+
+    for salon in Salon.objects.filter(id__in=salon_ids, owner_id__isnull=False).select_related('owner', 'owner__profile'):
+        owner = salon.owner
+        key = (owner.id, salon.id)
+        if key in seen:
+            continue
+        seen.add(key)
+        staff.append((owner, salon))
+    return staff
+
+
+def _pay_target_for_owner(owner, worker_id, salon_id=None):
+    target = get_object_or_404(
+        User.objects.select_related('profile', 'profile__salon'),
+        pk=worker_id,
+    )
+    profile = getattr(target, 'profile', None)
+    owned_ids = set(_owned_salon_ids(owner))
+    if profile and profile.role == UserRole.WORKER and profile.salon_id in owned_ids:
+        return target, profile.salon, None
+    if target.id == owner.id:
+        if salon_id and salon_id in owned_ids:
+            salon = get_owned_salon(owner, salon_id)
+            return target, salon, None
+        salons = list(owned_salon_queryset(owner)[:1])
+        if not salons:
+            return None, None, JsonResponse({'error': 'Create a salon branch first.'}, status=400)
+        return target, salons[0], None
+    return None, None, JsonResponse(
+        {'error': 'You can only set pay for technicians at your branches.'},
+        status=403,
     )
 
 
@@ -70,16 +111,17 @@ def owner_payouts(request):
     }
 
     workers = []
-    for user in _staff_on_salons(salon_ids):
-        if not is_approved_technician(user.profile):
+    for user, salon in _staff_on_salons(salon_ids):
+        profile = getattr(user, 'profile', None)
+        if profile and profile.role == UserRole.WORKER and not is_approved_technician(profile):
             continue
-        salon = user.profile.salon
         plan = plans.get((user.id, salon.id))
         workers.append(summarize_worker_payout(user, salon, date_from, date_to, plan))
 
     totals = {
         'jobs': sum(row['jobs'] for row in workers),
         'collected_kes': sum(row['collected_kes'] for row in workers),
+        'income_kes': sum(row['collected_kes'] for row in workers),
         'commission_kes': sum(row['commission_kes'] for row in workers),
         'wage_kes': sum(row['wage_kes'] for row in workers),
         'earned_kes': sum(row['earned_kes'] for row in workers),
@@ -87,12 +129,26 @@ def owner_payouts(request):
         'net_pay_kes': sum(row['net_pay_kes'] for row in workers),
     }
 
+    daily = []
+    for row in workers:
+        for day in row.get('days') or []:
+            daily.append(
+                {
+                    **day,
+                    'worker_id': row['worker_id'],
+                    'worker_name': row['worker_name'],
+                    'salon_name': row['salon_name'],
+                }
+            )
+    daily.sort(key=lambda item: (item['date'], item['worker_name'].lower()), reverse=True)
+
     return JsonResponse(
         {
             'from': date_from.isoformat(),
             'to': date_to.isoformat(),
             'totals': totals,
             'workers': workers,
+            'days': daily,
         }
     )
 
@@ -108,12 +164,13 @@ def update_worker_pay_plan(request, user_id):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON.'}, status=400)
 
-    target = get_object_or_404(User.objects.select_related('profile', 'profile__salon'), pk=user_id)
-    profile = getattr(target, 'profile', None)
-    if not profile or profile.role != UserRole.WORKER or not profile.salon_id:
-        return JsonResponse({'error': 'Technician is not assigned to a salon.'}, status=400)
-    if profile.salon.owner_id != owner.id:
-        return JsonResponse({'error': 'You can only set pay for technicians at your branches.'}, status=403)
+    try:
+        salon_id = int(data.get('salon_id')) if data.get('salon_id') not in (None, '', 'null') else None
+    except (TypeError, ValueError):
+        salon_id = None
+    target, salon, error = _pay_target_for_owner(owner, user_id, salon_id)
+    if error:
+        return error
 
     wage_type = (data.get('wage_type') or WageType.NONE).strip().lower()
     if wage_type not in WageType.values:
@@ -135,7 +192,7 @@ def update_worker_pay_plan(request, user_id):
 
     plan, _ = WorkerCompensation.objects.update_or_create(
         worker=target,
-        salon=profile.salon,
+        salon=salon,
         defaults={
             'wage_type': wage_type,
             'wage_kes': wage_kes,
@@ -168,12 +225,13 @@ def create_worker_advance(request):
     except (TypeError, ValueError):
         return JsonResponse({'error': 'Choose a technician.'}, status=400)
 
-    target = get_object_or_404(User.objects.select_related('profile', 'profile__salon'), pk=worker_id)
-    profile = getattr(target, 'profile', None)
-    if not profile or profile.role != UserRole.WORKER or not profile.salon_id:
-        return JsonResponse({'error': 'Technician is not assigned to a salon.'}, status=400)
-    if profile.salon.owner_id != owner.id:
-        return JsonResponse({'error': 'You can only record advances at your branches.'}, status=403)
+    try:
+        salon_id = int(data.get('salon_id')) if data.get('salon_id') not in (None, '', 'null') else None
+    except (TypeError, ValueError):
+        salon_id = None
+    target, salon, error = _pay_target_for_owner(owner, worker_id, salon_id)
+    if error:
+        return error
 
     business_date = parse_date((data.get('business_date') or '').strip())
     if not business_date:
@@ -188,7 +246,7 @@ def create_worker_advance(request):
 
     advance = WorkerAdvance.objects.create(
         worker=target,
-        salon=profile.salon,
+        salon=salon,
         business_date=business_date,
         amount_kes=amount,
         notes=(data.get('notes') or '').strip()[:200],

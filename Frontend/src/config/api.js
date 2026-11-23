@@ -30,7 +30,8 @@ const cookieCsrfToken = () => {
 
 const readCsrfToken = () => csrfTokenMemory || cookieCsrfToken()
 
-const DEFAULT_TIMEOUT_MS = 18000
+const DEFAULT_TIMEOUT_MS = 10000
+const GET_RETRY_COUNT = 1
 
 const timeoutError = () => {
   const error = new Error('The request timed out. Try again on a stronger connection.')
@@ -38,9 +39,11 @@ const timeoutError = () => {
   return error
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export const ensureCsrfCookie = async () => {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), 6000)
   try {
     const response = await fetch(apiUrl('/products/auth/csrf/'), {
       method: 'GET',
@@ -90,38 +93,50 @@ export const apiFetch = async (path, options = {}) => {
     }
   }
 
-  const controller = new AbortController()
-  const timer =
-    timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null
-  if (outerSignal) {
-    if (outerSignal.aborted) {
-      controller.abort()
-    } else {
-      outerSignal.addEventListener('abort', () => controller.abort(), { once: true })
+  const send = async () => {
+    const inner = new AbortController()
+    const innerTimer =
+      timeoutMs > 0 ? setTimeout(() => inner.abort(), timeoutMs) : null
+    if (outerSignal) {
+      if (outerSignal.aborted) {
+        inner.abort()
+      } else {
+        outerSignal.addEventListener('abort', () => inner.abort(), { once: true })
+      }
+    }
+    try {
+      return await fetch(apiUrl(path), {
+        ...fetchOptions,
+        method,
+        headers,
+        credentials: 'include',
+        signal: inner.signal,
+      })
+    } finally {
+      if (innerTimer) {
+        clearTimeout(innerTimer)
+      }
     }
   }
 
-  try {
-    return await fetch(apiUrl(path), {
-      ...fetchOptions,
-      method,
-      headers,
-      credentials: 'include',
-      signal: controller.signal,
-    })
-  } catch (error) {
-    if (error?.name === 'AbortError') {
+  const retries = mutating ? 0 : GET_RETRY_COUNT
+  let lastError = null
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await send()
+    } catch (error) {
+      lastError = error
+      const timedOut = error?.name === 'AbortError'
       if (outerSignal?.aborted) {
         throw error
       }
-      throw timeoutError()
-    }
-    throw error
-  } finally {
-    if (timer) {
-      clearTimeout(timer)
+      if (attempt >= retries) {
+        throw timedOut ? timeoutError() : error
+      }
+      await wait(250 * (attempt + 1))
     }
   }
+  throw lastError || timeoutError()
 }
 
 export const parseApiResponse = async (response, label = 'Request') => {

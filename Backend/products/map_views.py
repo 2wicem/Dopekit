@@ -1,8 +1,10 @@
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from .geo_utils import DEFAULT_MAP_LAT, DEFAULT_MAP_LNG, haversine_km, parse_lat_lng
 from .models import Salon
+from .http_responses import public_json
 from .worker_views import build_public_workers
 
 
@@ -20,6 +22,19 @@ def _marker_base(marker_id, marker_type, name, latitude, longitude, client_lat, 
 
 
 def _salon_markers(client_lat, client_lng):
+    cached = cache.get('dk:map:salons:v1')
+    if cached is not None:
+        markers = []
+        for item in cached:
+            marker = dict(item)
+            if client_lat is not None and client_lng is not None:
+                marker['distance_km'] = round(
+                    haversine_km(client_lat, client_lng, marker['latitude'], marker['longitude']),
+                    2,
+                )
+            markers.append(marker)
+        return markers
+
     markers = []
     for salon in Salon.objects.filter(is_active=True, latitude__isnull=False, longitude__isnull=False):
         if salon.latitude is None or salon.longitude is None:
@@ -36,6 +51,11 @@ def _salon_markers(client_lat, client_lng):
             }
         )
         markers.append(marker)
+    cache.set(
+        'dk:map:salons:v1',
+        [{key: value for key, value in marker.items() if key != 'distance_km'} for marker in markers],
+        180,
+    )
     return markers
 
 
@@ -113,7 +133,7 @@ def nearby_map_markers(request):
 
     markers = _sort_markers(markers, client_lat, client_lng)
 
-    return JsonResponse(
+    return public_json(
         {
             'client': {
                 'latitude': client_lat,
@@ -125,6 +145,8 @@ def nearby_map_markers(request):
                 'longitude': DEFAULT_MAP_LNG,
             },
             'markers': markers,
-        }
+        },
+        max_age=30,
+        stale=90,
     )
 

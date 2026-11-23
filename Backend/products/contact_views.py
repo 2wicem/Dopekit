@@ -1,10 +1,12 @@
 import json
 import logging
 
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from .models import ContactMessage, Salon, SalonContactInfo
+from .http_responses import public_json
 from .salon_utils import get_primary_salon, salon_service_to_dict, salon_to_dict
 from .notifications import notify_contact_message_created
 from .rate_limit import rate_limit
@@ -41,8 +43,13 @@ def _contact_message_to_dict(message):
 
 @require_http_methods(['GET'])
 def list_public_salons(request):
-    salons = Salon.objects.filter(is_active=True).order_by('-is_primary', 'name')
-    return JsonResponse({'salons': [salon_to_dict(salon) for salon in salons]})
+    cache_key = 'dk:public_salons:v1'
+    payload = cache.get(cache_key)
+    if payload is None:
+        salons = Salon.objects.filter(is_active=True).order_by('-is_primary', 'name')
+        payload = {'salons': [salon_to_dict(salon) for salon in salons]}
+        cache.set(cache_key, payload, 180)
+    return public_json(payload, max_age=60, stale=180)
 
 
 @require_http_methods(['GET'])

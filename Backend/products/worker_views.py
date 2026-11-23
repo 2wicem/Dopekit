@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -25,6 +26,7 @@ from .slot_views import _parse_date
 from .technician_showcase import completed_jobs_by_worker_ids, technician_showcase_to_dict
 from .technician_utils import bookable_technician_q, is_approved_technician
 from .technician_verification import SPECIALTY_LABELS
+from .http_responses import public_json
 from .views import _booking_to_dict, _forbidden
 from .worker_permissions import require_approved_worker
 
@@ -122,7 +124,7 @@ def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
         return None
 
     specialty = profile.technician_specialty or ''
-    showcase = technician_showcase_to_dict(profile, completed_jobs)
+    showcase = technician_showcase_to_dict(profile, completed_jobs, portfolio_limit=2)
     salon = _public_salon_for_user(user)
 
     latitude = None
@@ -162,37 +164,55 @@ def _serialize_public_worker(user, available_count, next_slot, completed_jobs):
 
 def build_public_workers(salon_id=None, freelance_only=False):
     today = timezone.localdate()
-    cache_key = f'dk:public_workers:v4:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
+    cache_key = f'dk:public_workers:v5:{salon_id}:{int(bool(freelance_only))}:{today.isoformat()}'
+    stale_key = f'{cache_key}:stale'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    horizon = today + timedelta(days=PUBLIC_SCHEDULE_DAYS - 1)
-    staff = list(_public_worker_queryset(salon_id=salon_id, freelance_only=freelance_only))
-    availability = count_open_slots_for_workers(staff, today, horizon)
-    completed_jobs = completed_jobs_by_worker_ids([user.id for user in staff])
+    lock_key = f'{cache_key}:lock'
+    got_lock = cache.add(lock_key, 1, timeout=12)
+    if not got_lock:
+        for _ in range(10):
+            time.sleep(0.05)
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return cached
+        stale = cache.get(stale_key)
+        if stale is not None:
+            return stale
 
-    workers = []
-    for user in staff:
-        open_count, next_slot = availability.get(user.pk, (0, None))
-        item = _serialize_public_worker(
-            user,
-            open_count,
-            next_slot,
-            completed_jobs.get(user.id, 0),
-        )
-        if item:
-            workers.append(item)
+    try:
+        horizon = today + timedelta(days=PUBLIC_SCHEDULE_DAYS - 1)
+        staff = list(_public_worker_queryset(salon_id=salon_id, freelance_only=freelance_only))
+        availability = count_open_slots_for_workers(staff, today, horizon)
+        completed_jobs = completed_jobs_by_worker_ids([user.id for user in staff])
 
-    workers.sort(
-        key=lambda item: (
-            -int(item['is_available']),
-            -item['available_slots'],
-            item['name'].lower(),
+        workers = []
+        for user in staff:
+            open_count, next_slot = availability.get(user.pk, (0, None))
+            item = _serialize_public_worker(
+                user,
+                open_count,
+                next_slot,
+                completed_jobs.get(user.id, 0),
+            )
+            if item:
+                workers.append(item)
+
+        workers.sort(
+            key=lambda item: (
+                -int(item['is_available']),
+                -item['available_slots'],
+                item['name'].lower(),
+            )
         )
-    )
-    cache.set(cache_key, workers, 45)
-    return workers
+        cache.set(cache_key, workers, 180)
+        cache.set(stale_key, workers, 1800)
+        return workers
+    finally:
+        if got_lock:
+            cache.delete(lock_key)
 
 
 def _public_day_slots(existing_slots, slot_date):
@@ -321,7 +341,7 @@ def list_public_workers(request):
             return JsonResponse({'error': 'Salon not found.'}, status=404)
 
     workers = build_public_workers(salon_id=salon_id, freelance_only=freelance_only)
-    return JsonResponse({'workers': workers})
+    return public_json({'workers': workers}, max_age=60, stale=180)
 
 
 @require_http_methods(['GET'])

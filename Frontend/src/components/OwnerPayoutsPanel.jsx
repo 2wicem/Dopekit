@@ -78,6 +78,7 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
           wage_type: planForm.wage_type,
           wage_kes: planForm.wage_kes === '' ? 0 : Number(planForm.wage_kes),
           commission_percent: planForm.commission_percent === '' ? 0 : planForm.commission_percent,
+          salon_id: workers.find((row) => row.worker_id === editingId)?.salon_id || salonId || undefined,
         }),
       })
       const text = await response.text()
@@ -105,6 +106,7 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
         body: JSON.stringify({
           ...advanceForm,
           amount_kes: Number(advanceForm.amount_kes),
+          salon_id: salonId || undefined,
         }),
       })
       const text = await response.text()
@@ -145,12 +147,13 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
 
   const workers = report?.workers || []
   const totals = report?.totals
+  const days = report?.days || []
 
   return (
     <div>
       <p className="text-muted mb-3">
-        Set wage and commission per technician, record advances, and see what you still owe for the
-        selected days.
+        Daily income, commission and advances for each salon technician. Set commission, record an
+        advance, then pick a date range to see what is still owed.
       </p>
       <div className="d-flex flex-wrap gap-3 mb-3 align-items-end">
         {salons.length > 1 && (
@@ -200,8 +203,12 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
           {totals && (
             <div className="dashboard-stats mb-4">
               <div className="dashboard-stat-card">
-                <span className="dashboard-stat-value">{formatKes(totals.earned_kes)}</span>
-                <span className="dashboard-stat-label">Earned (wage + commission)</span>
+                <span className="dashboard-stat-value">{formatKes(totals.income_kes ?? totals.collected_kes)}</span>
+                <span className="dashboard-stat-label">Income collected</span>
+              </div>
+              <div className="dashboard-stat-card">
+                <span className="dashboard-stat-value">{formatKes(totals.commission_kes)}</span>
+                <span className="dashboard-stat-label">Commission</span>
               </div>
               <div className="dashboard-stat-card">
                 <span className="dashboard-stat-value">{formatKes(totals.advances_kes)}</span>
@@ -213,6 +220,50 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
               </div>
             </div>
           )}
+
+          <div className="reports-card reports-card--wide mb-4">
+            <h3 className="reports-card-title">Daily technician list</h3>
+            {days.length === 0 ? (
+              <p className="text-muted mb-0">No income, commission or advances in this range.</p>
+            ) : (
+              <div className="dashboard-table-wrap table-responsive">
+                <table className="table reports-table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Technician</th>
+                      <th className="text-end">Jobs</th>
+                      <th className="text-end">Income</th>
+                      <th className="text-end">Commission</th>
+                      <th className="text-end">Advance</th>
+                      <th className="text-end">Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {days.map((row) => (
+                      <tr key={`${row.date}-${row.worker_id}`}>
+                        <td>
+                          {new Date(`${row.date}T12:00:00`).toLocaleDateString(undefined, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </td>
+                        <td>{row.worker_name}</td>
+                        <td className="text-end">{row.jobs}</td>
+                        <td className="text-end">{formatKes(row.income_kes)}</td>
+                        <td className="text-end">{formatKes(row.commission_kes)}</td>
+                        <td className="text-end">{formatKes(row.advances_kes)}</td>
+                        <td className="text-end">
+                          <strong>{formatKes(row.net_pay_kes)}</strong>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           <form className="reports-expense-form mb-4" onSubmit={saveAdvance}>
             <h3 className="reports-card-title">Record advance</h3>
@@ -292,9 +343,9 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
                   {row.days_worked === 1 ? '' : 's'}
                 </p>
                 <p className="mb-2">
-                  Collected {formatKes(row.collected_kes)} · Commission {formatKes(row.commission_kes)} ·
-                  Wage {formatKes(row.wage_kes)} · Advances {formatKes(row.advances_kes)} ·{' '}
-                  <strong>Pay {formatKes(row.net_pay_kes)}</strong>
+                  Income {formatKes(row.income_kes ?? row.collected_kes)} · Commission{' '}
+                  {formatKes(row.commission_kes)} · Wage {formatKes(row.wage_kes)} · Advances{' '}
+                  {formatKes(row.advances_kes)} · <strong>Pay {formatKes(row.net_pay_kes)}</strong>
                 </p>
                 {editingId === row.worker_id ? (
                   <form className="reports-expense-form" onSubmit={savePlan}>
