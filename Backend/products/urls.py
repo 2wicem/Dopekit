@@ -140,6 +140,7 @@ urlpatterns = [
     path('reports/by-worker/', report_views.report_by_worker, name='report_by_worker'),
     path('reports/timeline/', report_views.report_timeline, name='report_timeline'),
     path('reports/export/', report_views.export_bookings_csv, name='report_export'),
+    path('reports/export/pdf/', report_views.export_bookings_pdf, name='report_export_pdf'),
     path('reports/daily-inventory/', inventory_views.report_daily_inventory, name='report_daily_inventory'),
     path('reports/daily-expenses/', inventory_views.create_daily_expense, name='create_daily_expense'),
     path(

@@ -604,6 +604,12 @@
   margin-bottom: 1rem;
 }
 
+.reports-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .reports-panel-title {
   font-size: 1.15rem;
   margin-bottom: 0.35rem;

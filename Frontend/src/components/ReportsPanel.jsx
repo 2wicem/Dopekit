@@ -70,7 +70,7 @@ const ReportsPanel = ({
   const [toDate, setToDate] = useState(todayIso())
   const [loading, setLoading] = useState(true)
   const [loadingDay, setLoadingDay] = useState(null)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState(null)
   const [status, setStatus] = useState(null)
   const [summary, setSummary] = useState(null)
   const [byService, setByService] = useState([])
@@ -293,13 +293,15 @@ const ReportsPanel = ({
     }
   }
 
-  const handleExport = async () => {
-    setExporting(true)
+  const handleExport = async (format) => {
+    setExporting(format)
     setStatus(null)
 
     try {
       const query = buildQuery(fromDate, toDate, salonQuery)
-      const response = await apiFetch(`/products/reports/export/?${query}`)
+      const path =
+        format === 'pdf' ? `/products/reports/export/pdf/?${query}` : `/products/reports/export/?${query}`
+      const response = await apiFetch(path)
 
       if (!response.ok) {
         const text = await response.text()
@@ -318,14 +320,14 @@ const ReportsPanel = ({
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `bookings-${fromDate}-to-${toDate}.csv`
+      link.download = `bookings-${fromDate}-to-${toDate}.${format}`
       link.click()
       URL.revokeObjectURL(url)
-      setStatus({ type: 'success', message: 'Report downloaded.' })
+      setStatus({ type: 'success', message: format === 'pdf' ? 'PDF downloaded.' : 'CSV downloaded.' })
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
@@ -342,17 +344,27 @@ const ReportsPanel = ({
           <p className="reports-panel-subtitle text-muted mb-0">
             {inventoryFirst
               ? 'Filter by technician to see their jobs. Open a day to cancel any that were not legitimate.'
-              : 'Filter by appointment date range, then download a CSV for your records.'}
+              : 'Filter by appointment date range, then download a CSV or PDF for your records.'}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-outline-primary btn-sm"
-          onClick={handleExport}
-          disabled={exporting || loading}
-        >
-          {exporting ? 'Exporting…' : 'Download CSV'}
-        </button>
+        <div className="reports-export-actions">
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => handleExport('csv')}
+            disabled={Boolean(exporting) || loading}
+          >
+            {exporting === 'csv' ? 'Exporting…' : 'Download CSV'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => handleExport('pdf')}
+            disabled={Boolean(exporting) || loading}
+          >
+            {exporting === 'pdf' ? 'Exporting…' : 'Download PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="reports-filters">

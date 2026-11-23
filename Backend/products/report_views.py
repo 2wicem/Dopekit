@@ -325,12 +325,22 @@ def report_timeline(request):
     )
 
 
-@require_http_methods(['GET'])
-def export_bookings_csv(request):
-    _, denied = _require_report_access(request)
-    if denied:
-        return denied
+EXPORT_HEADERS = [
+    'ID',
+    'Client name',
+    'Phone',
+    'Service',
+    'Venue',
+    'Status',
+    'Appointment date',
+    'Time slot',
+    'Technician',
+    'Location',
+    'Booked on',
+]
 
+
+def _booking_export_rows(request):
     date_from, date_to = _parse_date_range(request)
     bookings = (
         _report_bookings_queryset(request.user, date_from, date_to, _admin_salon_filter(request))
@@ -338,24 +348,7 @@ def export_bookings_csv(request):
         .order_by('-created_at')
     )
 
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(
-        [
-            'ID',
-            'Client name',
-            'Phone',
-            'Service',
-            'Venue',
-            'Status',
-            'Appointment date',
-            'Time slot',
-            'Technician',
-            'Location',
-            'Booked on',
-        ]
-    )
-
+    rows = []
     for booking in bookings:
         slot = getattr(booking, 'time_slot', None)
         appointment_date = ''
@@ -373,7 +366,7 @@ def export_bookings_csv(request):
             if booking.preferred_worker_id:
                 technician = _worker_name(booking.preferred_worker)
 
-        writer.writerow(
+        rows.append(
             [
                 booking.id,
                 booking.name,
@@ -389,8 +382,128 @@ def export_bookings_csv(request):
             ]
         )
 
+    return date_from, date_to, rows
+
+
+@require_http_methods(['GET'])
+def export_bookings_csv(request):
+    _, denied = _require_report_access(request)
+    if denied:
+        return denied
+
+    date_from, date_to, rows = _booking_export_rows(request)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(EXPORT_HEADERS)
+    writer.writerows(rows)
+
     response = HttpResponse(buffer.getvalue(), content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = (
         f'attachment; filename="bookings-{date_from.isoformat()}-to-{date_to.isoformat()}.csv"'
+    )
+    return response
+
+
+@require_http_methods(['GET'])
+def export_bookings_pdf(request):
+    _, denied = _require_report_access(request)
+    if denied:
+        return denied
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    date_from, date_to, rows = _booking_export_rows(request)
+    buffer = io.BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+        title=f'Dopekit bookings {date_from.isoformat()} to {date_to.isoformat()}',
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'DopekitTitle',
+        parent=styles['Heading1'],
+        fontSize=14,
+        textColor=colors.HexColor('#6d3557'),
+        spaceAfter=4,
+    )
+    meta_style = ParagraphStyle(
+        'DopekitMeta',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#5c4a52'),
+        spaceAfter=8,
+    )
+    cell_style = ParagraphStyle(
+        'DopekitCell',
+        parent=styles['Normal'],
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor('#241820'),
+    )
+    header_style = ParagraphStyle(
+        'DopekitHeader',
+        parent=cell_style,
+        fontName='Helvetica-Bold',
+        textColor=colors.white,
+    )
+
+    def cell(value, header=False):
+        text = str(value if value not in (None, '') else '—')
+        return Paragraph(text.replace('&', '&amp;').replace('<', '&lt;'), header_style if header else cell_style)
+
+    table_data = [[cell(label, header=True) for label in EXPORT_HEADERS]]
+    table_data.extend([[cell(value) for value in row] for row in rows])
+    if not rows:
+        table_data.append([cell('No bookings in this date range.')] + [cell('')] * (len(EXPORT_HEADERS) - 1))
+
+    table = Table(
+        table_data,
+        repeatRows=1,
+        colWidths=[16 * mm, 28 * mm, 24 * mm, 28 * mm, 18 * mm, 20 * mm, 24 * mm, 22 * mm, 26 * mm, 42 * mm, 26 * mm],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6d3557')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#fff8fa')),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#fff8fa'), colors.HexColor('#f7eef2')]),
+                ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#d8c4cc')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+
+    document.build(
+        [
+            Paragraph('Dopekit booking report', title_style),
+            Paragraph(
+                f'{date_from.isoformat()} to {date_to.isoformat()} · {len(rows)} booking'
+                f'{"s" if len(rows) != 1 else ""}',
+                meta_style,
+            ),
+            Spacer(1, 4),
+            table,
+        ]
+    )
+
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="bookings-{date_from.isoformat()}-to-{date_to.isoformat()}.pdf"'
     )
     return response
