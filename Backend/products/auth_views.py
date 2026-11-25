@@ -16,6 +16,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from .auth_utils import signup_role_from_account_type, user_to_dict
+from .google_auth import google_signin_enabled, verify_google_credential
 from .models import TechnicianApprovalStatus, UserProfile, UserRole
 from .notifications import (
     notify_technician_application,
@@ -95,6 +96,30 @@ def _validate_username(username: str):
     return None
 
 
+def _unique_username(base: str) -> str:
+    cleaned = re.sub(r'[^a-zA-Z0-9._]', '', (base or 'guest').replace(' ', '_'))[:24]
+    cleaned = cleaned.strip('._') or 'guest'
+    if len(cleaned) < 3:
+        cleaned = f'{cleaned}user'
+    candidate = cleaned
+    suffix = 1
+    while User.objects.filter(username__iexact=candidate).exists():
+        suffix += 1
+        candidate = f'{cleaned[:20]}{suffix}'
+    return candidate
+
+
+def _create_profile(user, role, phone=''):
+    if role == UserRole.WORKER:
+        raise ValueError('Use technician application fields for worker profiles.')
+    return UserProfile.objects.create(
+        user=user,
+        phone=phone or '',
+        role=role,
+        technician_approval=TechnicianApprovalStatus.NOT_APPLICABLE,
+    )
+
+
 @require_http_methods(['POST'])
 @rate_limit('auth_register')
 def register(request):
@@ -103,19 +128,15 @@ def register(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON.'}, status=400)
 
-    username = data.get('username', '').strip() or data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
     phone = data.get('phone', '').strip()
     password = data.get('password', '')
-    confirm_password = data.get('confirm_password', '')
+    confirm_password = data.get('confirm_password', '') or password
     account_type = data.get('account_type', 'client')
+    display_name = data.get('name', '').strip() or data.get('username', '').strip()
 
-    if not username or not email or not phone or not password or not confirm_password:
-        return JsonResponse({'error': 'All fields are required.'}, status=400)
-
-    username_error = _validate_username(username)
-    if username_error:
-        return JsonResponse({'error': username_error}, status=400)
+    if not email or not password:
+        return JsonResponse({'error': 'Email and password are required.'}, status=400)
 
     role = signup_role_from_account_type(account_type)
     if role is None:
@@ -135,6 +156,18 @@ def register(request):
     if not EMAIL_PATTERN.match(email):
         return JsonResponse({'error': 'Enter a valid email address.'}, status=400)
 
+    if role == UserRole.WORKER and not phone:
+        return JsonResponse({'error': 'Phone number is required for technician signup.'}, status=400)
+
+    requested_username = data.get('username', '').strip()
+    if requested_username:
+        username_error = _validate_username(requested_username)
+        if username_error:
+            return JsonResponse({'error': username_error}, status=400)
+        username = requested_username
+    else:
+        username = _unique_username(display_name or email.split('@')[0])
+
     if password != confirm_password:
         return JsonResponse({'error': 'Passwords do not match.'}, status=400)
 
@@ -143,7 +176,7 @@ def register(request):
 
     password_error = _validate_new_password(
         password,
-        user=User(username=username, email=email, first_name=username),
+        user=User(username=username, email=email, first_name=display_name or username),
     )
     if password_error:
         return JsonResponse({'error': password_error}, status=400)
@@ -158,7 +191,7 @@ def register(request):
         username=username,
         email=email,
         password=password,
-        first_name=username,
+        first_name=display_name or username,
     )
 
     if role == UserRole.WORKER:
@@ -203,19 +236,9 @@ def register(request):
         )
         clear_signup_phone_verification(phone)
     elif role == UserRole.SALON_OWNER:
-        profile = UserProfile.objects.create(
-            user=user,
-            phone=phone,
-            role=UserRole.SALON_OWNER,
-            technician_approval=TechnicianApprovalStatus.NOT_APPLICABLE,
-        )
+        profile = _create_profile(user, UserRole.SALON_OWNER, phone)
     else:
-        profile = UserProfile.objects.create(
-            user=user,
-            phone=phone,
-            role=UserRole.CLIENT,
-            technician_approval=TechnicianApprovalStatus.NOT_APPLICABLE,
-        )
+        profile = _create_profile(user, UserRole.CLIENT, phone)
 
     auth_login(request, user)
 
@@ -264,6 +287,62 @@ def login_view(request):
         {
             'message': 'Logged in successfully.',
             'user': user_to_dict(user),
+        }
+    )
+
+
+@require_http_methods(['POST'])
+@rate_limit('auth_google')
+def google_login(request):
+    if not google_signin_enabled():
+        return JsonResponse({'error': 'Google sign-in is not available yet.'}, status=503)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    identity = verify_google_credential(data.get('credential', '').strip())
+    if not identity:
+        return JsonResponse({'error': 'Google sign-in could not be verified. Try email signup.'}, status=401)
+
+    account_type = data.get('account_type', 'client')
+    requested_role = signup_role_from_account_type(account_type) or UserRole.CLIENT
+    if requested_role == UserRole.WORKER:
+        return JsonResponse(
+            {
+                'error': 'Technician accounts need the short email form with your salon invite code.',
+            },
+            status=400,
+        )
+
+    user = User.objects.filter(profile__google_sub=identity['sub']).select_related('profile').first()
+    created = False
+    if user is None:
+        user = _find_user_by_email(identity['email'])
+        if user is None:
+            user = User.objects.create_user(
+                username=_unique_username(identity['name'] or identity['email'].split('@')[0]),
+                email=identity['email'],
+                password=None,
+                first_name=(identity['name'] or '')[:150],
+            )
+            _create_profile(user, requested_role)
+            created = True
+        profile = getattr(user, 'profile', None)
+        if profile is None:
+            profile = _create_profile(user, requested_role)
+            created = True
+        if not profile.google_sub:
+            profile.google_sub = identity['sub']
+            profile.save(update_fields=['google_sub'])
+
+    auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    return JsonResponse(
+        {
+            'message': 'Account created with Google.' if created else 'Logged in with Google.',
+            'user': user_to_dict(user),
+            'created': created,
         }
     )
 
@@ -471,6 +550,8 @@ def signup_config(request):
             'require_technician_phone_otp': settings.REQUIRE_TECHNICIAN_PHONE_OTP,
             'require_salon_invite_code': True,
             'password_hint': PASSWORD_HINT,
+            'google_client_id': settings.GOOGLE_CLIENT_ID,
+            'google_signin_enabled': google_signin_enabled(),
         }
     )
 

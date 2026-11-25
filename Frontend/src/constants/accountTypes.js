@@ -4,7 +4,7 @@ export const ACCOUNT_TYPES = {
     label: 'Client',
     shortLabel: 'Book appointments',
     signupTitle: 'Create your account',
-    signupSubtitle: 'Sign up to book faster and save your details for next time.',
+    signupSubtitle: 'Email or Google — about 20 seconds, then you can book.',
     submitLabel: 'Sign up as client',
   },
   technician: {
@@ -21,7 +21,7 @@ export const ACCOUNT_TYPES = {
     label: 'Salon owner',
     shortLabel: 'Manage branches',
     signupTitle: 'Register your salon business',
-    signupSubtitle: 'Create an owner account to add branches, locations, and assign technicians.',
+    signupSubtitle: 'Email or Google, then add your first branch.',
     submitLabel: 'Sign up as salon owner',
   },
 }

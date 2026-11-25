@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../config/api'
 import { resolvePostAuthDestination } from '../utils/redirect'
 import BrandLogo from './BrandLogo'
+import GoogleSignIn from './GoogleSignIn'
 import PasswordInput from './PasswordInput'
 import './css/Signup.css'
 
@@ -15,16 +16,20 @@ const Login = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirectTo = searchParams.get('redirect')
-  const { login, user } = useAuth()
+  const { login, loginWithGoogle, user } = useAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(false)
   const [allowTechnicianSignup, setAllowTechnicianSignup] = useState(false)
+  const [googleClientId, setGoogleClientId] = useState('')
 
   useEffect(() => {
     apiFetch(SIGNUP_CONFIG_PATH)
       .then((response) => response.json())
-      .then((data) => setAllowTechnicianSignup(data.allow_technician_signup === true))
+      .then((data) => {
+        setAllowTechnicianSignup(data.allow_technician_signup === true)
+        setGoogleClientId(data.google_signin_enabled ? data.google_client_id || '' : '')
+      })
       .catch(() => setAllowTechnicianSignup(false))
   }, [])
 
@@ -54,6 +59,23 @@ const Login = () => {
     }
   }
 
+  const handleGoogle = useCallback(
+    async (credential) => {
+      setLoading(true)
+      setStatus(null)
+      try {
+        const data = await loginWithGoogle({ credential, account_type: 'client' })
+        setStatus({ type: 'success', message: data.message })
+        setTimeout(() => navigate(resolveDestination(data.user, redirectTo)), 800)
+      } catch (error) {
+        setStatus({ type: 'error', message: error.message })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [loginWithGoogle, navigate, redirectTo]
+  )
+
   return (
     <section className="section-band section-band--alt signup-page">
       <div className="container">
@@ -71,6 +93,17 @@ const Login = () => {
               <div className={`alert alert-${status.type === 'success' ? 'success' : 'danger'}`}>
                 {status.message}
               </div>
+            )}
+
+            {googleClientId && (
+              <>
+                <GoogleSignIn
+                  clientId={googleClientId}
+                  onCredential={handleGoogle}
+                  disabled={loading}
+                />
+                <p className="signup-or">or log in with email</p>
+              </>
             )}
 
             <form onSubmit={handleSubmit} className="signup-form">

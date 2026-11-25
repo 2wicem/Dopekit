@@ -343,6 +343,7 @@ RATE_LIMITS = {
     'auth_register': (5, 3600),
     'auth_technician_signup_otp': (8, 3600),
     'auth_login': (10, 900),
+    'auth_google': (12, 900),
     'auth_forgot_password': (5, 3600),
     'auth_reset_password': (5, 3600),
     'booking_create': (20, 3600),
@@ -372,6 +373,8 @@ if RESEND_API_KEY:
     EMAIL_BACKEND = 'bootstrap.resend_backend.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
 
 AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
 AT_API_KEY = os.getenv('AT_API_KEY', '')

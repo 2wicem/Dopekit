@@ -89,6 +89,17 @@ export const AuthProvider = ({ children }) => {
     return data
   }, [])
 
+  const loginWithGoogle = useCallback(async ({ credential, account_type }) => {
+    await ensureCsrfCookie()
+    const response = await apiFetch(`${AUTH_BASE}/google/`, {
+      method: 'POST',
+      body: JSON.stringify({ credential, account_type }),
+    })
+    const data = await parseResponse(response)
+    setUser(data.user)
+    return data
+  }, [])
+
   const logout = useCallback(async () => {
     const response = await apiFetch(`${AUTH_BASE}/logout/`, {
       method: 'POST',
@@ -98,8 +109,8 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, refreshUser, setUser }),
-    [user, loading, login, register, logout, refreshUser]
+    () => ({ user, loading, login, register, loginWithGoogle, logout, refreshUser, setUser }),
+    [user, loading, login, register, loginWithGoogle, logout, refreshUser]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

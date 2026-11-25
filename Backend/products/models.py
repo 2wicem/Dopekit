@@ -149,7 +149,8 @@ class UserProfile(models.Model):
         on_delete=models.CASCADE,
         related_name='profile',
     )
-    phone = models.CharField(max_length=20)
+    phone = models.CharField(max_length=20, blank=True, default='')
+    google_sub = models.CharField(max_length=64, unique=True, null=True, blank=True)
     role = models.CharField(
         max_length=15,
         choices=UserRole.choices,

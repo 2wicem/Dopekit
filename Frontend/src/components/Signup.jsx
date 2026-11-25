@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ACCOUNT_TYPES, parseSignupAccountType } from '../constants/accountTypes'
 import { TECHNICIAN_SPECIALTIES } from '../constants/technicianSpecialties'
 import { useAuth } from '../context/useAuth'
 import { resolvePostAuthDestination, withRedirect } from '../utils/redirect'
 import { PASSWORD_HINT, validatePassword } from '../utils/passwordRules'
-import { validateUsername } from '../utils/usernameRules'
 import { apiFetch } from '../config/api'
 import BrandLogo from './BrandLogo'
+import GoogleSignIn from './GoogleSignIn'
 import PasswordInput from './PasswordInput'
 import SuccessPopup from './SuccessPopup'
 import './css/Signup.css'
@@ -30,20 +30,20 @@ const Signup = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirectTo = searchParams.get('redirect')
-  const { register } = useAuth()
+  const { register, loginWithGoogle } = useAuth()
   const prefilledType = parseSignupAccountType(searchParams.get('type'))
   const [allowTechnicianSignup, setAllowTechnicianSignup] = useState(true)
   const [requireTechnicianApproval, setRequireTechnicianApproval] = useState(true)
   const [requireTechnicianPhoneOtp, setRequireTechnicianPhoneOtp] = useState(false)
+  const [googleClientId, setGoogleClientId] = useState('')
   const [otpSending, setOtpSending] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [accountType, setAccountType] = useState('client')
   const [form, setForm] = useState({
-    username: '',
+    name: '',
     email: '',
     phone: '',
     password: '',
-    confirm_password: '',
     ...emptyTechnicianFields,
   })
   const [status, setStatus] = useState(null)
@@ -58,6 +58,7 @@ const Signup = () => {
         setAllowTechnicianSignup(allowed)
         setRequireTechnicianApproval(data.require_technician_approval === true)
         setRequireTechnicianPhoneOtp(data.require_technician_phone_otp !== false)
+        setGoogleClientId(data.google_signin_enabled ? data.google_client_id || '' : '')
         const nextType =
           prefilledType === 'salon_owner'
             ? 'salon_owner'
@@ -128,22 +129,9 @@ const Signup = () => {
     setLoading(true)
     setStatus(null)
 
-    const usernameError = validateUsername(form.username)
-    if (usernameError) {
-      setStatus({ type: 'error', message: usernameError })
-      setLoading(false)
-      return
-    }
-
     const passwordError = validatePassword(form.password)
     if (passwordError) {
       setStatus({ type: 'error', message: passwordError })
-      setLoading(false)
-      return
-    }
-
-    if (form.password !== form.confirm_password) {
-      setStatus({ type: 'error', message: 'Passwords do not match.' })
       setLoading(false)
       return
     }
@@ -172,11 +160,10 @@ const Signup = () => {
     }
 
     const payload = {
-      username: form.username.trim(),
-      email: form.email,
-      phone: form.phone,
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
       password: form.password,
-      confirm_password: form.confirm_password,
       account_type: accountType,
     }
 
@@ -220,13 +207,30 @@ const Signup = () => {
     }
   }
 
+  const handleGoogle = useCallback(
+    async (credential) => {
+      setLoading(true)
+      setStatus(null)
+      try {
+        const data = await loginWithGoogle({ credential, account_type: accountType })
+        setStatus({ type: 'success', message: data.message })
+        setTimeout(() => navigate(resolvePostAuthDestination(data.user, redirectTo)), 800)
+      } catch (error) {
+        setStatus({ type: 'error', message: error.message })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [accountType, loginWithGoogle, navigate, redirectTo]
+  )
+
   return (
     <section className="section-band section-band--alt signup-page">
       <div className="container">
         <div className="signup-card mx-auto">
           <div className="signup-card-header text-center">
             <BrandLogo size="md" />
-            <h1 className="signup-title">Welcome to the studio</h1>
+            <h1 className="signup-title">{accountMeta.signupTitle}</h1>
             <p className="signup-subtitle">{accountMeta.signupSubtitle}</p>
           </div>
 
@@ -260,24 +264,31 @@ const Signup = () => {
               </div>
             )}
 
+            {!isTechnicianSignup && googleClientId && (
+              <>
+                <GoogleSignIn
+                  clientId={googleClientId}
+                  onCredential={handleGoogle}
+                  disabled={loading}
+                />
+                <p className="signup-or">or sign up with email</p>
+              </>
+            )}
+
             <form onSubmit={handleSubmit} className="signup-form">
               <div className="mb-3">
-                <label htmlFor="signup-username" className="form-label">
-                  Username
+                <label htmlFor="signup-name" className="form-label">
+                  Name <span className="signup-optional">(optional)</span>
                 </label>
                 <input
                   type="text"
                   className="form-control signup-input"
-                  id="signup-username"
-                  name="username"
-                  value={form.username}
+                  id="signup-name"
+                  name="name"
+                  value={form.name}
                   onChange={handleChange}
-                  autoComplete="username"
-                  placeholder="e.g. jane_doe"
-                  minLength={3}
-                  maxLength={30}
-                  pattern="[a-zA-Z0-9._]{3,30}"
-                  required
+                  autoComplete="name"
+                  placeholder="e.g. Jane"
                 />
               </div>
 
@@ -297,6 +308,7 @@ const Signup = () => {
                 />
               </div>
 
+              {isTechnicianSignup && (
               <div className="mb-3">
                 <label htmlFor="signup-phone" className="form-label">
                   Phone
@@ -314,7 +326,7 @@ const Signup = () => {
                     placeholder="e.g. 0790331108"
                     required
                   />
-                  {isTechnicianSignup && requireTechnicianPhoneOtp && (
+                  {requireTechnicianPhoneOtp && (
                     <button
                       type="button"
                       className="btn btn-outline-primary btn-sm"
@@ -326,6 +338,7 @@ const Signup = () => {
                   )}
                 </div>
               </div>
+              )}
 
               {isTechnicianSignup && requireTechnicianPhoneOtp && (
                 <div className="mb-3">
@@ -514,7 +527,7 @@ const Signup = () => {
                 </div>
               )}
 
-              <div className="mb-3">
+              <div className="mb-4">
                 <label htmlFor="signup-password" className="form-label">
                   Password
                 </label>
@@ -528,21 +541,6 @@ const Signup = () => {
                   required
                 />
                 <p className="signup-password-hint">{PASSWORD_HINT}</p>
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="signup-confirm" className="form-label">
-                  Confirm password
-                </label>
-                <PasswordInput
-                  id="signup-confirm"
-                  name="confirm_password"
-                  value={form.confirm_password}
-                  onChange={handleChange}
-                  autoComplete="new-password"
-                  minLength={8}
-                  required
-                />
               </div>
 
               {isTechnicianSignup && requireTechnicianApproval && (

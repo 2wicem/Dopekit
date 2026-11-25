@@ -95,6 +95,7 @@ urlpatterns = [
     path('auth/technician/send-otp/', auth_views.send_technician_signup_otp, name='send_technician_signup_otp'),
     path('auth/csrf/', auth_views.csrf_bootstrap, name='csrf_bootstrap'),
     path('auth/login/', auth_views.login_view, name='login'),
+    path('auth/google/', auth_views.google_login, name='google_login'),
     path('auth/forgot-password/', auth_views.forgot_password, name='forgot_password'),
     path('auth/reset-password/', auth_views.reset_password, name='reset_password'),
     path('auth/logout/', auth_views.logout_view, name='logout'),

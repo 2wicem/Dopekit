@@ -196,6 +196,42 @@ select.signup-input,
   margin-bottom: 1rem;
 }
 
+.google-signin {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.35rem;
+}
+
+.google-signin > div {
+  width: 100% !important;
+}
+
+.signup-or {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.85rem 0 1rem;
+  color: var(--dk-text-muted, #e0cdd6);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.signup-or::before,
+.signup-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.signup-optional {
+  font-weight: 400;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
 .signup-footer-text {
   font-size: 0.88rem;
   color: var(--dk-text-muted, #e0cdd6);
