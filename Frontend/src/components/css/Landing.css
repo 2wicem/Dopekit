@@ -635,6 +635,10 @@
   padding-top: 0;
 }
 
+#top-ratings {
+  scroll-margin-top: 1.25rem;
+}
+
 .landing-technicians {
   position: relative;
   padding: 1.75rem 1rem 1.5rem;
@@ -916,6 +920,22 @@
   width: 100%;
   padding: 0.35rem 0.65rem;
   font-size: 0.78rem;
+}
+
+.landing-salon-rating-card__media .landing-tech-card__placeholder span {
+  font-size: 0.95rem;
+}
+
+.landing-salon-rating-card__open {
+  width: 100%;
+  border-color: rgba(245, 217, 168, 0.35);
+  color: var(--dk-gold-soft, #f5d9a8);
+}
+
+.landing-salon-rating-card__open:hover {
+  color: #fff;
+  border-color: rgba(255, 143, 171, 0.55);
+  background: rgba(224, 107, 138, 0.14);
 }
 
 .landing-technicians-more {

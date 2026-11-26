@@ -8,6 +8,32 @@ export const partitionTechniciansByType = (workers) => ({
   freelanceTechnicians: workers.filter((worker) => worker.is_freelance),
 })
 
+const compareByTopRated = (left, right) => {
+  const leftRated = (left.rating_count || 0) > 0 && left.rating_average != null
+  const rightRated = (right.rating_count || 0) > 0 && right.rating_average != null
+
+  if (leftRated !== rightRated) {
+    return leftRated ? -1 : 1
+  }
+
+  const ratingDiff = (right.rating_average || 0) - (left.rating_average || 0)
+  if (ratingDiff !== 0) {
+    return ratingDiff
+  }
+
+  const countDiff = (right.rating_count || 0) - (left.rating_count || 0)
+  if (countDiff !== 0) {
+    return countDiff
+  }
+
+  const jobsDiff = (right.completed_jobs || 0) - (left.completed_jobs || 0)
+  if (jobsDiff !== 0) {
+    return jobsDiff
+  }
+
+  return left.name.localeCompare(right.name)
+}
+
 export const sortTechnicians = (workers, sortBy = 'top-rated') => {
   const list = [...workers]
 
@@ -27,29 +53,64 @@ export const sortTechnicians = (workers, sortBy = 'top-rated') => {
     })
   }
 
-  return list.sort((left, right) => {
-    const leftRated = (left.rating_count || 0) > 0 && left.rating_average != null
-    const rightRated = (right.rating_count || 0) > 0 && right.rating_average != null
+  return list.sort(compareByTopRated)
+}
 
-    if (leftRated !== rightRated) {
-      return leftRated ? -1 : 1
+/** Derive salon ratings from staff technician ratings (weighted by rating count). */
+export const salonsWithDerivedRatings = (salons, workers) => {
+  const bySalonId = new Map()
+
+  for (const worker of workers) {
+    if (!worker.salon_id || worker.is_freelance) {
+      continue
+    }
+    if (!(worker.rating_count > 0) || worker.rating_average == null) {
+      continue
     }
 
-    const ratingDiff = (right.rating_average || 0) - (left.rating_average || 0)
-    if (ratingDiff !== 0) {
-      return ratingDiff
+    const current = bySalonId.get(worker.salon_id) || { weightSum: 0, countSum: 0, jobsSum: 0 }
+    current.weightSum += Number(worker.rating_average) * worker.rating_count
+    current.countSum += worker.rating_count
+    current.jobsSum += worker.completed_jobs || 0
+    bySalonId.set(worker.salon_id, current)
+  }
+
+  return salons.map((salon) => {
+    const aggregate = bySalonId.get(salon.id)
+    if (!aggregate || aggregate.countSum === 0) {
+      return {
+        ...salon,
+        rating_average: null,
+        rating_count: 0,
+        completed_jobs: 0,
+      }
     }
 
-    const countDiff = (right.rating_count || 0) - (left.rating_count || 0)
-    if (countDiff !== 0) {
-      return countDiff
+    return {
+      ...salon,
+      rating_average: aggregate.weightSum / aggregate.countSum,
+      rating_count: aggregate.countSum,
+      completed_jobs: aggregate.jobsSum,
     }
-
-    const jobsDiff = (right.completed_jobs || 0) - (left.completed_jobs || 0)
-    if (jobsDiff !== 0) {
-      return jobsDiff
-    }
-
-    return left.name.localeCompare(right.name)
   })
+}
+
+export const sortSalonsByRating = (salons, sortBy = 'top-rated') => {
+  if (sortBy === 'most-booked') {
+    return [...salons].sort((left, right) => {
+      const jobsDiff = (right.completed_jobs || 0) - (left.completed_jobs || 0)
+      if (jobsDiff !== 0) {
+        return jobsDiff
+      }
+
+      const ratingDiff = (right.rating_average || 0) - (left.rating_average || 0)
+      if (ratingDiff !== 0) {
+        return ratingDiff
+      }
+
+      return left.name.localeCompare(right.name)
+    })
+  }
+
+  return [...salons].sort(compareByTopRated)
 }
