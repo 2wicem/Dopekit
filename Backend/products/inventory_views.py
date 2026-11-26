@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingStatus, DailyExpense, PaymentMethod, Salon, UserRole
+from .models import Booking, BookingStatus, DailyExpense, DailyMpesaDeposit, PaymentMethod, Salon, UserRole
 from .report_views import (
     _appointment_date_filter,
     _parse_date_range,
@@ -137,6 +137,41 @@ def _expenses_queryset(user, profile, salon_id, date_from, date_to):
     return queryset.order_by('business_date', 'id')
 
 
+def _mpesa_deposits_queryset(user, profile, salon_id, date_from, date_to):
+    queryset = DailyMpesaDeposit.objects.filter(
+        business_date__gte=date_from,
+        business_date__lte=date_to,
+    ).select_related('recorded_by', 'salon')
+
+    if profile.role == UserRole.ADMIN:
+        if salon_id:
+            queryset = queryset.filter(salon_id=salon_id)
+    elif profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        ids = owned_salon_ids(user)
+        if salon_id:
+            queryset = queryset.filter(salon_id=salon_id) if salon_id in ids else queryset.none()
+        else:
+            queryset = queryset.filter(salon_id__in=ids)
+    elif is_freelance_technician(profile):
+        queryset = queryset.filter(recorded_by=user, salon__isnull=True)
+    else:
+        queryset = queryset.none()
+
+    return queryset.order_by('business_date', 'id')
+
+
+def _mpesa_deposit_to_dict(deposit) -> dict:
+    return {
+        'id': deposit.id,
+        'business_date': deposit.business_date.isoformat(),
+        'mpesa_code': deposit.mpesa_code,
+        'amount_kes': deposit.amount_kes,
+        'notes': deposit.notes or '',
+    }
+
+
 @require_http_methods(['GET'])
 def report_daily_inventory(request):
     profile, denied = require_staff_inventory(request)
@@ -165,13 +200,16 @@ def report_daily_inventory(request):
     )
 
     expenses = []
+    deposits = []
     if worker_id is None:
         expenses = list(_expenses_queryset(request.user, profile, salon_id, date_from, date_to))
+        deposits = list(_mpesa_deposits_queryset(request.user, profile, salon_id, date_from, date_to))
 
     days_map = defaultdict(
         lambda: {
             'services': [],
             'expenses': [],
+            'mpesa_deposit': None,
             'by_worker': defaultdict(
                 lambda: {
                     'count': 0,
@@ -215,6 +253,7 @@ def report_daily_inventory(request):
                 booking.get_payment_method_display() if method else ''
             ),
             'payment_amount_kes': booking.payment_amount_kes,
+            'record_code': booking.record_code or '',
         }
         days_map[day.isoformat()]['services'].append(entry)
 
@@ -247,6 +286,9 @@ def report_daily_inventory(request):
             }
         )
 
+    for deposit in deposits:
+        days_map[deposit.business_date.isoformat()]['mpesa_deposit'] = _mpesa_deposit_to_dict(deposit)
+
     days = []
     cursor = date_from
     while cursor <= date_to:
@@ -254,6 +296,7 @@ def report_daily_inventory(request):
         bucket = days_map[key]
         services = bucket['services']
         expense_rows = bucket['expenses']
+        mpesa_deposit = bucket['mpesa_deposit']
 
         counted = [
             row
@@ -281,7 +324,7 @@ def report_daily_inventory(request):
             if not row['payment_method']
         )
 
-        if not services and not expense_rows:
+        if not services and not expense_rows and not mpesa_deposit:
             cursor += timedelta(days=1)
             continue
 
@@ -311,6 +354,7 @@ def report_daily_inventory(request):
             'unpaid_kes': unpaid_kes,
             'expenses_kes': expenses_kes,
             'net_kes': revenue_kes - expenses_kes,
+            'mpesa_deposit': mpesa_deposit,
             'details_loaded': include_rows,
         }
         if include_rows:
@@ -329,6 +373,9 @@ def report_daily_inventory(request):
         'unpaid_kes': sum(day['unpaid_kes'] for day in days),
         'expenses_kes': sum(day['expenses_kes'] for day in days),
         'net_kes': sum(day['net_kes'] for day in days),
+        'mpesa_deposited_kes': sum(
+            (day['mpesa_deposit'] or {}).get('amount_kes', 0) for day in days
+        ),
     }
 
     meta = _report_meta(request.user, date_from, date_to)
@@ -449,3 +496,81 @@ def delete_daily_expense(request, expense_id):
 
     expense.delete()
     return JsonResponse({'message': 'Expense removed.'})
+
+
+@require_http_methods(['POST'])
+def upsert_daily_mpesa_deposit(request):
+    profile, denied = require_expense_access(request)
+    if denied:
+        return denied
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    from .record_codes import normalize_mpesa_code
+    from .slot_utils import parse_date
+
+    business_date = parse_date((data.get('business_date') or '').strip())
+    if not business_date:
+        return JsonResponse({'error': 'Choose a valid date for this M-Pesa deposit.'}, status=400)
+
+    mpesa_code = normalize_mpesa_code(data.get('mpesa_code') or '')
+    if len(mpesa_code) < 8:
+        return JsonResponse({'error': 'Enter a valid M-Pesa receipt code.'}, status=400)
+
+    try:
+        amount_kes = int(data.get('amount_kes'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Enter a valid amount deposited in KES.'}, status=400)
+
+    if amount_kes <= 0:
+        return JsonResponse({'error': 'Amount must be greater than zero.'}, status=400)
+
+    notes = (data.get('notes') or '').strip()
+
+    salon = None
+    if profile.role == UserRole.WORKER:
+        salon = None
+    elif profile.role == UserRole.SALON_OWNER:
+        from .salon_owner_permissions import owned_salon_ids
+
+        owned_ids = owned_salon_ids(request.user)
+        salon_id = resolve_salon_id(data.get('salon_id'))
+        if salon_id not in owned_ids:
+            if len(owned_ids) == 1:
+                salon_id = owned_ids[0]
+            else:
+                return JsonResponse({'error': 'Choose one of your salon branches.'}, status=400)
+        salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+    else:
+        salon_id = resolve_salon_id(data.get('salon_id'))
+        if salon_id:
+            salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
+
+    lookup = {'business_date': business_date}
+    if salon is not None:
+        lookup['salon'] = salon
+    else:
+        lookup['salon'] = None
+        lookup['recorded_by'] = request.user
+
+    deposit, created = DailyMpesaDeposit.objects.update_or_create(
+        **lookup,
+        defaults={
+            'mpesa_code': mpesa_code,
+            'amount_kes': amount_kes,
+            'notes': notes,
+            'recorded_by': request.user,
+            'salon': salon,
+        },
+    )
+
+    return JsonResponse(
+        {
+            'message': 'End-of-day M-Pesa deposit saved.' if created else 'End-of-day M-Pesa deposit updated.',
+            'mpesa_deposit': _mpesa_deposit_to_dict(deposit),
+        },
+        status=201 if created else 200,
+    )

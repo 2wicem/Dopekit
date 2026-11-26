@@ -149,5 +149,10 @@ urlpatterns = [
         inventory_views.delete_daily_expense,
         name='delete_daily_expense',
     ),
+    path(
+        'reports/daily-mpesa-deposit/',
+        inventory_views.upsert_daily_mpesa_deposit,
+        name='upsert_daily_mpesa_deposit',
+    ),
 ]
    

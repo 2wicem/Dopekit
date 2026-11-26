@@ -95,6 +95,13 @@ class Booking(models.Model):
         help_text='Amount collected. Defaults to the service price.',
     )
     paid_at = models.DateTimeField(null=True, blank=True)
+    record_code = models.CharField(
+        max_length=16,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text='Public authenticity code for staff-logged jobs, similar to an M-Pesa receipt.',
+    )
 
     class Meta:
         ordering = ['-created_at']
@@ -294,6 +301,47 @@ class DailyExpense(models.Model):
 
     def __str__(self):
         return f'{self.business_date} {self.label} KES {self.amount_kes}'
+
+
+class DailyMpesaDeposit(models.Model):
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='daily_mpesa_deposits',
+    )
+    business_date = models.DateField()
+    mpesa_code = models.CharField(max_length=16)
+    amount_kes = models.PositiveIntegerField()
+    notes = models.CharField(max_length=200, blank=True, default='')
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_mpesa_deposits',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-business_date', '-updated_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['salon', 'business_date'],
+                condition=models.Q(salon__isnull=False),
+                name='unique_mpesa_deposit_per_salon_day',
+            ),
+            models.UniqueConstraint(
+                fields=['recorded_by', 'business_date'],
+                condition=models.Q(salon__isnull=True),
+                name='unique_mpesa_deposit_per_user_day',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.business_date} {self.mpesa_code} KES {self.amount_kes}'
 
 
 class Salon(models.Model):

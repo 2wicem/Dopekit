@@ -1,5 +1,7 @@
 .admin-shell {
   min-height: 100dvh;
+  min-width: 0;
+  overflow-x: clip;
   background: var(--dk-bg, #141014);
   color: var(--dk-text, #f3e8ec);
   padding: 1.25rem 1.25rem 2rem;
@@ -98,8 +100,9 @@
 }
 
 .admin-app-main {
+  min-width: 0;
   padding: 1.25rem 1.5rem 2rem;
-  overflow-x: auto;
+  overflow-x: clip;
 }
 
 .admin-panel-toolbar {
@@ -297,6 +300,58 @@
   grid-column: 1 / -1;
 }
 
+.admin-walkin-services {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-walkin-services-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.admin-walkin-services-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-walkin-service-line {
+  padding: 0.75rem;
+  border: 1px solid var(--dk-border, rgba(255, 255, 255, 0.1));
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-walkin-service-line-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dk-text-muted, #e0cdd6);
+}
+
+.admin-walkin-services-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.admin-walkin-visit-total {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .admin-walkin-actions {
   margin-top: 0.85rem;
 }
@@ -327,7 +382,12 @@
 
 @media (max-width: 991px) {
   .admin-app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: clip;
+  }
+
+  .admin-app-main {
+    padding: 1rem 0.85rem 2rem;
   }
 
   .admin-app-sidebar {
@@ -441,6 +501,15 @@
 }
 
 @media (max-width: 767px) {
+  .admin-shell {
+    padding: 0.9rem 0.75rem 1.75rem;
+  }
+
+  .admin-shell-header {
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
   .admin-salon-form-grid {
     grid-template-columns: 1fr;
   }

@@ -9,7 +9,7 @@ import AdminSalonsPanel from './AdminSalonsPanel'
 import AdminStaffRoster from './AdminStaffRoster'
 import BookingsTable, { RoleBadge } from './BookingsTable'
 import ReportsPanel from './ReportsPanel'
-import WalkInForm from './WalkInForm'
+import WalkInForm, { emptyWalkInLine, walkInPayload } from './WalkInForm'
 import SuccessPopup from './SuccessPopup'
 import ThemeToggle from './ThemeToggle'
 import './css/Dashboard.css'
@@ -26,12 +26,10 @@ const WALK_IN_PATH = '/products/admin/bookings/create/'
 const emptyWalkIn = {
   name: '',
   phone: '',
-  service: '',
-  service_price_kes: '',
-  payment_method: 'cash',
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),
+  services: [emptyWalkInLine()],
 }
 
 const TABS = [
@@ -331,17 +329,17 @@ const AdminPanel = () => {
       const response = await apiFetch(WALK_IN_PATH, {
         method: 'POST',
         body: JSON.stringify({
-          ...walkInForm,
-          service_price_kes: walkInForm.service_price_kes
-            ? Number(walkInForm.service_price_kes)
-            : null,
+          ...walkInPayload(walkInForm),
           salon_id: Number(resolvedWalkInSalonId),
         }),
       })
       const data = await parseApiResponse(response, 'Walk-in')
 
-      setWalkInForm({ ...emptyWalkIn, requested_date: todayIso() })
-      setShowWalkIn(false)
+      setWalkInForm((current) => ({
+        ...current,
+        services: [emptyWalkInLine()],
+        requested_date: current.requested_date || todayIso(),
+      }))
       await loadData()
       setStatus({
         type: 'success',

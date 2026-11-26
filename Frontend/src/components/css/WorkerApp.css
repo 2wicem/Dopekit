@@ -1,5 +1,7 @@
 .worker-app {
   min-height: 100dvh;
+  min-width: 0;
+  overflow-x: clip;
   background: var(--dk-bg);
   color: var(--dk-text);
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));

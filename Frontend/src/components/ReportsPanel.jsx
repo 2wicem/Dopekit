@@ -55,6 +55,13 @@ const emptyExpenseForm = {
   notes: '',
 }
 
+const emptyDepositForm = {
+  business_date: todayIso(),
+  mpesa_code: '',
+  amount_kes: '',
+  notes: '',
+}
+
 const ReportsPanel = ({
   scope = 'technician',
   salonQuery = '',
@@ -82,6 +89,9 @@ const ReportsPanel = ({
   const [expenseForm, setExpenseForm] = useState(emptyExpenseForm)
   const [expenseSaving, setExpenseSaving] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [depositForm, setDepositForm] = useState(emptyDepositForm)
+  const [depositSaving, setDepositSaving] = useState(false)
+  const [showDepositForm, setShowDepositForm] = useState(false)
   const [completingId, setCompletingId] = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
   const [completeMethod, setCompleteMethod] = useState('cash')
@@ -203,6 +213,11 @@ const ReportsPanel = ({
     setExpenseForm((current) => ({ ...current, [name]: value }))
   }
 
+  const handleDepositChange = (event) => {
+    const { name, value } = event.target
+    setDepositForm((current) => ({ ...current, [name]: value }))
+  }
+
   const handleExpenseSubmit = async (event) => {
     event.preventDefault()
     setExpenseSaving(true)
@@ -230,6 +245,36 @@ const ReportsPanel = ({
       setStatus({ type: 'error', message: error.message })
     } finally {
       setExpenseSaving(false)
+    }
+  }
+
+  const handleDepositSubmit = async (event) => {
+    event.preventDefault()
+    setDepositSaving(true)
+    setStatus(null)
+
+    const payload = {
+      ...depositForm,
+      amount_kes: Number(depositForm.amount_kes),
+    }
+    if (salonIdFromQuery) {
+      payload.salon_id = salonIdFromQuery
+    }
+
+    try {
+      const response = await apiFetch('/products/reports/daily-mpesa-deposit/', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      const data = await parseJson(response)
+      setDepositForm({ ...emptyDepositForm, business_date: toDate })
+      setShowDepositForm(false)
+      await loadReports()
+      setStatus({ type: 'success', message: data.message || 'End-of-day M-Pesa deposit saved.' })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message })
+    } finally {
+      setDepositSaving(false)
     }
   }
 
@@ -505,6 +550,14 @@ const ReportsPanel = ({
                 <span className="dashboard-stat-value">{inventory.totals.services_count}</span>
                 <span className="dashboard-stat-label">Services logged</span>
               </div>
+              {allowExpenses ? (
+                <div className="dashboard-stat-card">
+                  <span className="dashboard-stat-value">
+                    {formatKes(inventory.totals.mpesa_deposited_kes)}
+                  </span>
+                  <span className="dashboard-stat-label">Deposited to M-Pesa</span>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -514,20 +567,29 @@ const ReportsPanel = ({
               <div>
                 <h3 className="reports-card-title mb-1">Daily inventory</h3>
                 <p className="text-muted reports-panel-subtitle mb-0">
-                  Per-day services, prices, technician, and expenses for your selected range.
+                  Per-day services, record codes, technician, expenses, and end-of-day M-Pesa deposit.
                   {allowExpenses && !isAdminScope ? (
                     <span className="reports-premium-badge"> Expenses</span>
                   ) : null}
                 </p>
               </div>
               {allowExpenses && (
-                <button
-                  type="button"
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => setShowExpenseForm((open) => !open)}
-                >
-                  {showExpenseForm ? 'Close expense form' : 'Record expense'}
-                </button>
+                <div className="d-flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => setShowExpenseForm((open) => !open)}
+                  >
+                    {showExpenseForm ? 'Close expense form' : 'Record expense'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => setShowDepositForm((open) => !open)}
+                  >
+                    {showDepositForm ? 'Close M-Pesa deposit' : 'End-of-day M-Pesa'}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -614,8 +676,74 @@ const ReportsPanel = ({
               </form>
             )}
 
+            {allowExpenses && showDepositForm && (
+              <form className="reports-expense-form" onSubmit={handleDepositSubmit}>
+                <div>
+                  <label htmlFor="deposit-date" className="form-label">
+                    Date
+                  </label>
+                  <input
+                    id="deposit-date"
+                    type="date"
+                    name="business_date"
+                    className="form-control"
+                    value={depositForm.business_date}
+                    max={todayIso()}
+                    onChange={handleDepositChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="deposit-code" className="form-label">
+                    M-Pesa code
+                  </label>
+                  <input
+                    id="deposit-code"
+                    name="mpesa_code"
+                    className="form-control"
+                    value={depositForm.mpesa_code}
+                    onChange={handleDepositChange}
+                    placeholder="e.g. TGH7K2M91P"
+                    required
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="deposit-amount" className="form-label">
+                    Amount deposited (KES)
+                  </label>
+                  <input
+                    id="deposit-amount"
+                    name="amount_kes"
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    value={depositForm.amount_kes}
+                    onChange={handleDepositChange}
+                    required
+                  />
+                </div>
+                <div className="reports-expense-form-notes">
+                  <label htmlFor="deposit-notes" className="form-label">
+                    Notes
+                  </label>
+                  <input
+                    id="deposit-notes"
+                    name="notes"
+                    className="form-control"
+                    value={depositForm.notes}
+                    onChange={handleDepositChange}
+                    placeholder="Optional till close note"
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={depositSaving}>
+                  {depositSaving ? 'Saving…' : 'Save M-Pesa deposit'}
+                </button>
+              </form>
+            )}
+
             {!inventory?.days?.some(
-              (day) => day.services_count > 0 || day.expenses_kes > 0
+              (day) => day.services_count > 0 || day.expenses_kes > 0 || day.mpesa_deposit
             ) ? (
               <p className="text-muted reports-empty mb-0">
                 No services or expenses recorded in this period.
@@ -623,7 +751,7 @@ const ReportsPanel = ({
             ) : (
               <div className="reports-inventory-days">
                 {[...inventory.days].reverse().map((day) => {
-                  const hasActivity = day.services_count > 0 || day.expenses_kes > 0
+                  const hasActivity = day.services_count > 0 || day.expenses_kes > 0 || Boolean(day.mpesa_deposit)
                   if (!hasActivity) {
                     return null
                   }
@@ -647,6 +775,9 @@ const ReportsPanel = ({
                           {day.services_count} service{day.services_count === 1 ? '' : 's'} ·{' '}
                           {formatKes(day.revenue_kes)} revenue · {formatKes(day.expenses_kes)} expenses ·{' '}
                           <strong>{formatKes(day.net_kes)} net</strong>
+                          {day.mpesa_deposit
+                            ? ` · Till ${day.mpesa_deposit.mpesa_code} ${formatKes(day.mpesa_deposit.amount_kes)}`
+                            : ''}
                         </span>
                       </button>
                       {expanded && (
@@ -657,7 +788,8 @@ const ReportsPanel = ({
                           {day.details_loaded && day.by_worker?.length > 0 && (
                             <div className="mb-3">
                               <h4 className="reports-inventory-subtitle">By technician</h4>
-                              <table className="table reports-table mb-0">
+                              <div className="reports-table-scroll">
+                              <table className="table reports-table reports-table--stack mb-0">
                                 <thead>
                                   <tr>
                                     <th>Technician</th>
@@ -670,23 +802,26 @@ const ReportsPanel = ({
                                 <tbody>
                                   {day.by_worker.map((row) => (
                                     <tr key={row.worker_name}>
-                                      <td>{row.worker_name}</td>
-                                      <td className="text-end">{row.count}</td>
-                                      <td className="text-end">{formatKes(row.cash_kes)}</td>
-                                      <td className="text-end">{formatKes(row.bank_kes)}</td>
-                                      <td className="text-end">{formatKes(row.revenue_kes)}</td>
+                                      <td data-label="Technician">{row.worker_name}</td>
+                                      <td data-label="Services" className="text-end">{row.count}</td>
+                                      <td data-label="Cash" className="text-end">{formatKes(row.cash_kes)}</td>
+                                      <td data-label="Bank" className="text-end">{formatKes(row.bank_kes)}</td>
+                                      <td data-label="Revenue" className="text-end">{formatKes(row.revenue_kes)}</td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
+                              </div>
                             </div>
                           )}
                           {day.details_loaded && day.services?.length > 0 && (
                             <div className="mb-3">
                               <h4 className="reports-inventory-subtitle">Services</h4>
-                              <table className="table reports-table mb-0">
+                              <div className="reports-table-scroll">
+                              <table className="table reports-table reports-table--stack mb-0">
                                 <thead>
                                   <tr>
+                                    <th>Record code</th>
                                     <th>Client</th>
                                     <th>Phone</th>
                                     <th>Service</th>
@@ -700,29 +835,36 @@ const ReportsPanel = ({
                                 <tbody>
                                   {day.services.map((row) => (
                                     <tr key={row.booking_id}>
-                                      <td>
+                                      <td data-label="Record code">
+                                        {row.record_code ? (
+                                          <code className="reports-record-code">{row.record_code}</code>
+                                        ) : (
+                                          '—'
+                                        )}
+                                      </td>
+                                      <td data-label="Client">
                                         {row.client_name}
                                         {row.is_walk_in ? (
                                           <span className="text-muted d-block small">Walk-in</span>
                                         ) : null}
                                       </td>
-                                      <td>
+                                      <td data-label="Phone">
                                         {row.client_phone ? (
                                           <a href={`tel:${row.client_phone}`}>{row.client_phone}</a>
                                         ) : (
                                           '—'
                                         )}
                                       </td>
-                                      <td>{row.service}</td>
-                                      <td>{row.worker_name}</td>
-                                      <td className="text-end">{formatKes(row.price_kes)}</td>
-                                      <td>
+                                      <td data-label="Service">{row.service}</td>
+                                      <td data-label="Technician">{row.worker_name}</td>
+                                      <td data-label="Price" className="text-end">{formatKes(row.price_kes)}</td>
+                                      <td data-label="Paid">
                                         {row.payment_method
                                           ? paymentMethodLabel(row.payment_method)
                                           : '—'}
                                       </td>
-                                      <td>{row.status_label}</td>
-                                      <td className="text-end">
+                                      <td data-label="Status">{row.status_label}</td>
+                                      <td className="text-end reports-table-actions">
                                         {row.can_complete && completingId === row.booking_id ? (
                                           <div className="d-flex flex-column align-items-end gap-1">
                                             <select
@@ -772,12 +914,27 @@ const ReportsPanel = ({
                                   ))}
                                 </tbody>
                               </table>
+                              </div>
+                            </div>
+                          )}
+                          {day.mpesa_deposit && (
+                            <div className="mb-3">
+                              <h4 className="reports-inventory-subtitle">End-of-day M-Pesa deposit</h4>
+                              <p className="mb-0">
+                                <code className="reports-record-code">{day.mpesa_deposit.mpesa_code}</code>
+                                {' · '}
+                                {formatKes(day.mpesa_deposit.amount_kes)}
+                                {day.mpesa_deposit.notes ? (
+                                  <span className="text-muted"> · {day.mpesa_deposit.notes}</span>
+                                ) : null}
+                              </p>
                             </div>
                           )}
                           {day.details_loaded && day.expenses?.length > 0 && (
                             <div>
                               <h4 className="reports-inventory-subtitle">Expenses</h4>
-                              <table className="table reports-table mb-0">
+                              <div className="reports-table-scroll">
+                              <table className="table reports-table reports-table--stack mb-0">
                                 <thead>
                                   <tr>
                                     <th>Item</th>
@@ -789,16 +946,16 @@ const ReportsPanel = ({
                                 <tbody>
                                   {day.expenses.map((row) => (
                                     <tr key={row.id}>
-                                      <td>
+                                      <td data-label="Item">
                                         {row.label}
                                         {row.notes ? (
                                           <span className="text-muted d-block small">{row.notes}</span>
                                         ) : null}
                                       </td>
-                                      <td>{row.category_label}</td>
-                                      <td className="text-end">{formatKes(row.amount_kes)}</td>
+                                      <td data-label="Category">{row.category_label}</td>
+                                      <td data-label="Amount" className="text-end">{formatKes(row.amount_kes)}</td>
                                       {allowExpenses && (
-                                        <td className="text-end">
+                                        <td className="text-end reports-table-actions">
                                           {row.can_delete !== false ? (
                                             <button
                                               type="button"
@@ -814,6 +971,7 @@ const ReportsPanel = ({
                                   ))}
                                 </tbody>
                               </table>
+                              </div>
                             </div>
                           )}
                         </div>

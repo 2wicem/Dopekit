@@ -9,7 +9,7 @@ import ThemeToggle from './ThemeToggle'
 import WorkerBookingList from './WorkerBookingList'
 import WorkerSchedule from './WorkerSchedule'
 import { apiFetch, parseApiResponse } from '../config/api'
-import WalkInForm from './WalkInForm'
+import WalkInForm, { emptyWalkInLine, walkInPayload } from './WalkInForm'
 import TechnicianServices from './TechnicianServices'
 import PaymentCollectForm from './PaymentCollectForm'
 import WorkerPayoutsPanel from './WorkerPayoutsPanel'
@@ -22,13 +22,10 @@ const WALK_IN_PATH = '/products/bookings/walk-in/'
 const emptyWalkIn = {
   name: '',
   phone: '',
-  service: '',
-  service_price_kes: '',
-  payment_method: 'cash',
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),
-  service_id: '',
+  services: [emptyWalkInLine()],
 }
 
 const WORKER_BOOKINGS_PATH = '/products/bookings/worker/'
@@ -339,16 +336,14 @@ const WorkerDashboard = () => {
     try {
       const response = await apiFetch(WALK_IN_PATH, {
         method: 'POST',
-        body: JSON.stringify({
-          ...walkInForm,
-          service_price_kes: walkInForm.service_price_kes
-            ? Number(walkInForm.service_price_kes)
-            : null,
-        }),
+        body: JSON.stringify(walkInPayload(walkInForm)),
       })
       const data = await parseApiResponse(response, 'Walk-in')
-      setWalkInForm({ ...emptyWalkIn, requested_date: todayIso() })
-      setShowWalkIn(false)
+      setWalkInForm((current) => ({
+        ...current,
+        services: [emptyWalkInLine()],
+        requested_date: current.requested_date || todayIso(),
+      }))
       await loadSummary(true)
       if (activeTab === 'bookings') {
         await loadBookings(true)
@@ -538,8 +533,9 @@ const WorkerDashboard = () => {
             {canRecordWalkIn && (
               <div className="admin-walkin-toolbar">
                 <p className="admin-walkin-lead">
-                  Log extra walk-ins and mark jobs complete. The same record shows on your inventory
-                  and, if you work at a salon, on the owner&apos;s inventory.
+                  Log extra walk-ins and mark jobs complete. Add every service the same client took
+                  today — each gets a unique record code and shows on your inventory and the
+                  owner&apos;s.
                 </p>
                 <button
                   type="button"

@@ -96,7 +96,7 @@ const WorkerPayoutsPanel = () => {
           </p>
           {report.days?.length > 0 && (
             <div className="dashboard-table-wrap table-responsive">
-              <table className="table reports-table mb-0">
+              <table className="table reports-table reports-table--stack mb-0">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -109,11 +109,11 @@ const WorkerPayoutsPanel = () => {
                 <tbody>
                   {report.days.map((row) => (
                     <tr key={row.date}>
-                      <td>{row.date}</td>
-                      <td className="text-end">{formatKes(row.income_kes)}</td>
-                      <td className="text-end">{formatKes(row.commission_kes)}</td>
-                      <td className="text-end">{formatKes(row.advances_kes)}</td>
-                      <td className="text-end">{formatKes(row.net_pay_kes)}</td>
+                      <td data-label="Date">{row.date}</td>
+                      <td data-label="Income" className="text-end">{formatKes(row.income_kes)}</td>
+                      <td data-label="Commission" className="text-end">{formatKes(row.commission_kes)}</td>
+                      <td data-label="Advance" className="text-end">{formatKes(row.advances_kes)}</td>
+                      <td data-label="Net" className="text-end">{formatKes(row.net_pay_kes)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -122,7 +122,7 @@ const WorkerPayoutsPanel = () => {
           )}
           {report.advances?.length > 0 && (
             <div className="dashboard-table-wrap table-responsive mt-3">
-              <table className="table reports-table mb-0">
+              <table className="table reports-table reports-table--stack mb-0">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -133,9 +133,9 @@ const WorkerPayoutsPanel = () => {
                 <tbody>
                   {report.advances.map((advance) => (
                     <tr key={advance.id}>
-                      <td>{advance.business_date}</td>
-                      <td>{advance.notes || '—'}</td>
-                      <td className="text-end">{formatKes(advance.amount_kes)}</td>
+                      <td data-label="Date">{advance.business_date}</td>
+                      <td data-label="Note">{advance.notes || '—'}</td>
+                      <td data-label="Advance" className="text-end">{formatKes(advance.amount_kes)}</td>
                     </tr>
                   ))}
                 </tbody>

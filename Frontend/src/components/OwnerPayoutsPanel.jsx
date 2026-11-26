@@ -227,7 +227,7 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
               <p className="text-muted mb-0">No income, commission or advances in this range.</p>
             ) : (
               <div className="dashboard-table-wrap table-responsive">
-                <table className="table reports-table mb-0">
+                <table className="table reports-table reports-table--stack mb-0">
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -242,19 +242,19 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
                   <tbody>
                     {days.map((row) => (
                       <tr key={`${row.date}-${row.worker_id}`}>
-                        <td>
+                        <td data-label="Date">
                           {new Date(`${row.date}T12:00:00`).toLocaleDateString(undefined, {
                             weekday: 'short',
                             month: 'short',
                             day: 'numeric',
                           })}
                         </td>
-                        <td>{row.worker_name}</td>
-                        <td className="text-end">{row.jobs}</td>
-                        <td className="text-end">{formatKes(row.income_kes)}</td>
-                        <td className="text-end">{formatKes(row.commission_kes)}</td>
-                        <td className="text-end">{formatKes(row.advances_kes)}</td>
-                        <td className="text-end">
+                        <td data-label="Technician">{row.worker_name}</td>
+                        <td data-label="Jobs" className="text-end">{row.jobs}</td>
+                        <td data-label="Income" className="text-end">{formatKes(row.income_kes)}</td>
+                        <td data-label="Commission" className="text-end">{formatKes(row.commission_kes)}</td>
+                        <td data-label="Advance" className="text-end">{formatKes(row.advances_kes)}</td>
+                        <td data-label="Net" className="text-end">
                           <strong>{formatKes(row.net_pay_kes)}</strong>
                         </td>
                       </tr>
@@ -411,7 +411,7 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
                   </button>
                 )}
                 {row.advances.length > 0 && (
-                  <table className="table reports-table mt-3 mb-0">
+                  <table className="table reports-table reports-table--stack mt-3 mb-0">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -423,10 +423,10 @@ const OwnerPayoutsPanel = ({ salons, onStatus }) => {
                     <tbody>
                       {row.advances.map((advance) => (
                         <tr key={advance.id}>
-                          <td>{advance.business_date}</td>
-                          <td>{advance.notes || '—'}</td>
-                          <td className="text-end">{formatKes(advance.amount_kes)}</td>
-                          <td className="text-end">
+                          <td data-label="Date">{advance.business_date}</td>
+                          <td data-label="Note">{advance.notes || '—'}</td>
+                          <td data-label="Advance" className="text-end">{formatKes(advance.amount_kes)}</td>
+                          <td className="text-end reports-table-actions">
                             <button
                               type="button"
                               className="btn btn-link btn-sm p-0"

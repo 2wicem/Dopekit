@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -528,59 +529,123 @@ def create_walk_in_booking(request):
         return JsonResponse({'error': 'Walk-ins can be backdated up to 30 days.'}, status=400)
 
     from .salon_utils import resolve_walk_in_catalog
-
-    catalog, catalog_error = resolve_walk_in_catalog(
-        data.get('service_id'),
-        salon=salon,
-        preferred_worker=preferred_worker,
-    )
-    if catalog_error:
-        return JsonResponse({'error': catalog_error}, status=400)
-    if catalog is not None and not service:
-        service = catalog.name
-
-    service_price_kes = resolve_service_price_kes(
-        service,
-        data.get('service_price_kes'),
-    )
-    if service_price_kes is None and catalog is not None:
-        service_price_kes = catalog.price_kes
-
     from .payment_utils import apply_client_payment, parse_payment_fields
-
-    payment, payment_error = parse_payment_fields(
-        data,
-        default_amount=service_price_kes,
-        required=True,
-    )
-    if payment_error:
-        return JsonResponse({'error': payment_error}, status=400)
-
-    booking = Booking.objects.create(
-        user=None,
-        name=name,
-        phone=phone,
-        location=location,
-        service=service,
-        service_price_kes=service_price_kes,
-        venue=venue,
-        requested_date=requested_date,
-        preferred_worker=preferred_worker,
-        salon=salon,
-        status=BookingStatus.COMPLETED,
-        is_walk_in=True,
-    )
-    apply_client_payment(booking, payment)
+    from .record_codes import mint_record_code
     from .booking_utils import save_shared_job
 
-    save_shared_job(booking, extra_fields=['payment_method', 'payment_amount_kes', 'paid_at'])
+    raw_lines = data.get('services')
+    if not isinstance(raw_lines, list) or not raw_lines:
+        raw_lines = [
+            {
+                'service_id': data.get('service_id'),
+                'service': service,
+                'service_price_kes': data.get('service_price_kes'),
+                'payment_method': data.get('payment_method'),
+                'payment_amount_kes': data.get('payment_amount_kes'),
+            }
+        ]
+    if len(raw_lines) > 12:
+        return JsonResponse({'error': 'You can log up to 12 services for one visit.'}, status=400)
 
-    schedule_booking_created_notification(booking.id)
+    prepared = []
+    for index, line in enumerate(raw_lines, start=1):
+        if not isinstance(line, dict):
+            return JsonResponse({'error': f'Service {index} is invalid.'}, status=400)
+
+        line_service = (line.get('service') or '').strip()
+        catalog, catalog_error = resolve_walk_in_catalog(
+            line.get('service_id'),
+            salon=salon,
+            preferred_worker=preferred_worker,
+        )
+        if catalog_error:
+            return JsonResponse({'error': catalog_error}, status=400)
+        if catalog is not None and not line_service:
+            line_service = catalog.name
+        if not line_service:
+            return JsonResponse(
+                {'error': f'Choose or name service {index}.'},
+                status=400,
+            )
+
+        service_price_kes = resolve_service_price_kes(
+            line_service,
+            line.get('service_price_kes'),
+        )
+        if service_price_kes is None and catalog is not None:
+            service_price_kes = catalog.price_kes
+
+        payment, payment_error = parse_payment_fields(
+            {
+                'payment_method': line.get('payment_method') or data.get('payment_method'),
+                'payment_amount_kes': line.get('payment_amount_kes', line.get('amount_kes')),
+            },
+            default_amount=service_price_kes,
+            required=True,
+        )
+        if payment_error:
+            return JsonResponse({'error': f'Service {index}: {payment_error}'}, status=400)
+
+        prepared.append((line_service, service_price_kes, payment))
+
+    created = []
+    with transaction.atomic():
+        for line_service, service_price_kes, payment in prepared:
+            booking = None
+            for _ in range(6):
+                try:
+                    booking = Booking.objects.create(
+                        user=None,
+                        name=name,
+                        phone=phone,
+                        location=location,
+                        service=line_service,
+                        service_price_kes=service_price_kes,
+                        venue=venue,
+                        requested_date=requested_date,
+                        preferred_worker=preferred_worker,
+                        salon=salon,
+                        status=BookingStatus.COMPLETED,
+                        is_walk_in=True,
+                        record_code=mint_record_code(),
+                    )
+                    break
+                except IntegrityError:
+                    booking = None
+            if booking is None:
+                return JsonResponse(
+                    {'error': 'Could not issue a unique record code. Try again.'},
+                    status=500,
+                )
+            apply_client_payment(booking, payment)
+            save_shared_job(
+                booking,
+                extra_fields=['payment_method', 'payment_amount_kes', 'paid_at'],
+            )
+            created.append(booking)
+
+    for booking in created:
+        schedule_booking_created_notification(booking.id)
+
+    codes = [booking.record_code for booking in created if booking.record_code]
+    if len(created) == 1:
+        record_code = codes[0] if codes else ''
+        message = (
+            f'Walk-in saved. Record code {record_code}.'
+            if record_code
+            else 'Walk-in booking added.'
+        )
+    else:
+        joined = ', '.join(codes)
+        message = f'Saved {len(created)} services for {name}.'
+        if joined:
+            message = f'{message} Record codes {joined}.'
 
     return JsonResponse(
         {
-            'message': 'Walk-in booking added.',
-            'booking': _booking_to_dict(booking),
+            'message': message,
+            'booking': _booking_to_dict(created[0]),
+            'bookings': [_booking_to_dict(booking) for booking in created],
         },
         status=201,
     )

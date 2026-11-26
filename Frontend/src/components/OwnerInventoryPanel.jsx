@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { todayIso } from '../constants/slots'
 import { apiFetch, parseApiResponse } from '../config/api'
-import WalkInForm from './WalkInForm'
+import WalkInForm, { emptyWalkInLine, walkInPayload } from './WalkInForm'
 import OwnerSalonServices from './OwnerSalonServices'
 import TechnicianServices from './TechnicianServices'
 
@@ -21,14 +21,11 @@ const WALK_IN_PATH = '/products/bookings/walk-in/'
 const emptyWalkIn = {
   name: '',
   phone: '',
-  service: '',
-  service_price_kes: '',
-  payment_method: 'cash',
   venue: 'indoor',
   location: '',
   requested_date: todayIso(),
   preferred_worker_id: '',
-  service_id: '',
+  services: [emptyWalkInLine()],
 }
 
 const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
@@ -45,7 +42,13 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
   }, [salonId, salons])
 
   useEffect(() => {
-    setWalkInForm((current) => ({ ...current, service_id: '', service: '', service_price_kes: '' }))
+    setWalkInForm((current) => ({
+      ...current,
+      services: (current.services || [emptyWalkInLine()]).map((line) => ({
+        ...emptyWalkInLine(),
+        payment_method: line.payment_method || 'cash',
+      })),
+    }))
   }, [salonId])
 
   const selectedSalon = salons.find((salon) => String(salon.id) === String(salonId))
@@ -71,16 +74,28 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
   const handleWalkInChange = (event) => {
     const { name, value } = event.target
     setWalkInForm((current) => {
-      if (name === 'preferred_worker_id') {
-        return {
-          ...current,
-          preferred_worker_id: value,
-          service_id: '',
-          service: '',
-          service_price_kes: '',
-        }
+      if (name !== 'preferred_worker_id') {
+        return { ...current, [name]: value }
       }
-      return { ...current, [name]: value }
+
+      const nextTech = technicians.find((tech) => String(tech.id) === String(value))
+      const nextCatalogIds = new Set(
+        [
+          ...catalogOptions(selectedSalon?.services, 'Salon'),
+          ...catalogOptions(nextTech?.services, nextTech?.name),
+        ].map((entry) => String(entry.catalog_id)),
+      )
+      return {
+        ...current,
+        preferred_worker_id: value,
+        services: (current.services || [emptyWalkInLine()]).map((line) => ({
+          ...line,
+          service_id:
+            Boolean(line.service_id) && nextCatalogIds.has(String(line.service_id))
+              ? line.service_id
+              : '',
+        })),
+      }
     })
   }
 
@@ -105,17 +120,17 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
       const response = await apiFetch(WALK_IN_PATH, {
         method: 'POST',
         body: JSON.stringify({
-          ...walkInForm,
-          service_price_kes: walkInForm.service_price_kes
-            ? Number(walkInForm.service_price_kes)
-            : null,
+          ...walkInPayload(walkInForm),
           preferred_worker_id: Number(walkInForm.preferred_worker_id),
           salon_id: Number(salonId),
         }),
       })
       const data = await parseApiResponse(response, 'Walk-in')
-      setWalkInForm({ ...emptyWalkIn, requested_date: todayIso() })
-      setShowWalkIn(false)
+      setWalkInForm((current) => ({
+        ...current,
+        services: [emptyWalkInLine()],
+        requested_date: current.requested_date || todayIso(),
+      }))
       setRefreshKey((current) => current + 1)
       onStatus?.({
         type: 'success',
@@ -135,8 +150,8 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
 
       <div className="admin-walkin-toolbar">
         <p className="admin-walkin-lead mb-0">
-          Log completed walk-ins for yourself or a technician. That same job appears on their
-          inventory and yours — one record, not a copy.
+          Log one or more services for the same client on the same day. Each service gets its own
+          record code and shows on that technician&apos;s inventory and yours.
         </p>
         <button
           type="button"

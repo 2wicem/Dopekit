@@ -131,7 +131,8 @@ const OwnerPaymentsPanel = ({ salons, onStatus }) => {
                   {day.unpaid_kes > 0 ? ` · ${formatKes(day.unpaid_kes)} not recorded` : ''}
                 </p>
                 {day.by_worker.length > 0 && (
-                  <table className="table reports-table mb-3">
+                  <div className="reports-table-scroll mb-3">
+                  <table className="table reports-table reports-table--stack mb-0">
                     <thead>
                       <tr>
                         <th>Technician</th>
@@ -144,17 +145,19 @@ const OwnerPaymentsPanel = ({ salons, onStatus }) => {
                     <tbody>
                       {day.by_worker.map((row) => (
                         <tr key={row.worker_name}>
-                          <td>{row.worker_name}</td>
-                          <td className="text-end">{row.jobs}</td>
-                          <td className="text-end">{formatKes(row.cash_kes)}</td>
-                          <td className="text-end">{formatKes(row.bank_kes)}</td>
-                          <td className="text-end">{formatKes(row.collected_kes)}</td>
+                          <td data-label="Technician">{row.worker_name}</td>
+                          <td data-label="Jobs" className="text-end">{row.jobs}</td>
+                          <td data-label="Cash" className="text-end">{formatKes(row.cash_kes)}</td>
+                          <td data-label="Bank" className="text-end">{formatKes(row.bank_kes)}</td>
+                          <td data-label="Total" className="text-end">{formatKes(row.collected_kes)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 )}
-                <table className="table reports-table mb-0">
+                <div className="reports-table-scroll">
+                <table className="table reports-table reports-table--stack mb-0">
                   <thead>
                     <tr>
                       <th>Client</th>
@@ -167,20 +170,21 @@ const OwnerPaymentsPanel = ({ salons, onStatus }) => {
                   <tbody>
                     {day.payments.map((row) => (
                       <tr key={row.booking_id}>
-                        <td>
+                        <td data-label="Client">
                           {row.client_name}
                           {row.is_walk_in ? (
                             <span className="text-muted d-block small">Walk-in</span>
                           ) : null}
                         </td>
-                        <td>{row.service}</td>
-                        <td>{row.worker_name}</td>
-                        <td>{row.payment_method_label}</td>
-                        <td className="text-end">{formatKes(row.amount_kes)}</td>
+                        <td data-label="Service">{row.service}</td>
+                        <td data-label="Technician">{row.worker_name}</td>
+                        <td data-label="Paid">{row.payment_method_label}</td>
+                        <td data-label="Amount" className="text-end">{formatKes(row.amount_kes)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
               </section>
             ))
           )}

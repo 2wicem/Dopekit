@@ -184,6 +184,21 @@
   line-height: 1;
 }
 
+@media (max-width: 767px) {
+  .owner-staff-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .owner-add-tech-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-branch-picker {
+    max-width: none;
+  }
+}
+
 @media (orientation: landscape) and (max-width: 1100px) {
   .owner-shell {
     padding: 0.55rem 0.85rem 1rem;

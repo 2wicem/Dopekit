@@ -54,6 +54,7 @@ def _booking_to_dict(booking):
         ),
         'payment_amount_kes': booking.payment_amount_kes,
         'paid_at': booking.paid_at.isoformat() if booking.paid_at else None,
+        'record_code': booking.record_code or '',
     }
     if booking.salon_id:
         data['salon_id'] = booking.salon_id
