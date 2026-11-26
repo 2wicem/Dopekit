@@ -789,6 +789,19 @@
   color: var(--dk-gold-soft);
 }
 
+.available-salon-rating {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.available-salon-rating-source {
+  margin: 0.15rem 0 0;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dk-text-muted);
+}
+
 .available-salon-socials {
   display: flex;
   flex-wrap: wrap;

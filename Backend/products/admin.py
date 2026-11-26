@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from .models import (
     Booking,
@@ -94,10 +94,44 @@ class TechnicianServiceAdmin(admin.ModelAdmin):
 
 @admin.register(Salon)
 class SalonAdmin(admin.ModelAdmin):
-    list_display = ('name', 'location', 'phone_primary', 'is_active', 'is_primary', 'updated_at')
+    list_display = (
+        'name',
+        'location',
+        'phone_primary',
+        'google_rating_average',
+        'google_rating_count',
+        'is_active',
+        'is_primary',
+        'updated_at',
+    )
     list_filter = ('is_active', 'is_primary')
-    search_fields = ('name', 'location', 'email', 'phone_primary')
+    search_fields = ('name', 'location', 'email', 'phone_primary', 'google_place_id')
     prepopulated_fields = {'slug': ('name',)}
+    readonly_fields = (
+        'google_rating_average',
+        'google_rating_count',
+        'google_ratings_fetched_at',
+    )
+    actions = ('refresh_google_ratings',)
+
+    @admin.action(description='Refresh Google ratings for selected salons')
+    def refresh_google_ratings(self, request, queryset):
+        from .google_places import refresh_salon_google_ratings
+
+        updated = 0
+        failed = 0
+        for salon in queryset:
+            _salon, error = refresh_salon_google_ratings(salon, force=True)
+            if error:
+                failed += 1
+                self.message_user(request, f'{salon.name}: {error}', level=messages.WARNING)
+            else:
+                updated += 1
+        self.message_user(
+            request,
+            f'Google ratings refreshed for {updated} salon(s)'
+            + (f'; {failed} failed.' if failed else '.'),
+        )
 
 
 @admin.register(SalonContactInfo)

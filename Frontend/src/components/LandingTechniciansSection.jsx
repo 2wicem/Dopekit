@@ -43,8 +43,8 @@ const LandingTechniciansSection = () => {
           Top ratings
         </h2>
         <p className="landing-technicians-sub">
-          Top-rated salons and technicians — salon staff and freelancers ranked together by client
-          ratings.
+          Top-rated salons from Google reviews, plus salon staff and freelancers ranked together by
+          client ratings.
         </p>
       </div>
 

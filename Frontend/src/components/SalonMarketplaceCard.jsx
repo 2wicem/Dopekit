@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Bookservice from './Bookservice'
+import TechnicianRating from './TechnicianRating'
 
 const salonSocialLinks = (salon) =>
   [
@@ -31,6 +32,19 @@ const SalonMarketplaceCard = ({ salon }) => {
       </div>
 
       {salon.services_summary && <p className="available-salon-services">{salon.services_summary}</p>}
+
+      {(salon.rating_count > 0 || salon.rating_source === 'google') && (
+        <div className="available-salon-rating">
+          <TechnicianRating
+            ratingAverage={salon.rating_average}
+            ratingCount={salon.rating_count}
+            compact
+          />
+          {salon.rating_source === 'google' && (
+            <p className="available-salon-rating-source">Google reviews</p>
+          )}
+        </div>
+      )}
 
       <div className="available-salon-contact">
         <a href={`tel:${salon.phone_primary}`}>{salon.phone_primary}</a>

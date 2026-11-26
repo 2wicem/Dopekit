@@ -30,6 +30,9 @@ const LandingSalonRatingCard = ({ salon }) => (
         completedJobs={salon.completed_jobs}
         compact
       />
+      {salon.rating_source === 'google' && (
+        <p className="landing-salon-rating-card__source">Google reviews</p>
+      )}
 
       <div className="landing-tech-card__actions">
         <Link to={`/salons/${salon.slug}`} className="btn btn-sm btn-outline-light landing-salon-rating-card__open">

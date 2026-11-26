@@ -926,6 +926,15 @@
   font-size: 0.95rem;
 }
 
+.landing-salon-rating-card__source {
+  margin: 0;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dk-text-muted, #b8a9ae);
+}
+
 .landing-salon-rating-card__open {
   width: 100%;
   border-color: rgba(245, 217, 168, 0.35);

@@ -46,7 +46,22 @@ def salon_to_dict(salon: Salon, *, include_owner: bool = False, include_invite_c
         'is_active': salon.is_active,
         'is_primary': salon.is_primary,
         'updated_at': salon.updated_at.isoformat(),
+        'google_place_id': salon.google_place_id or '',
+        'rating_source': None,
+        'rating_average': None,
+        'rating_count': 0,
     }
+
+    if salon.google_rating_count > 0 and salon.google_rating_average is not None:
+        data['rating_source'] = 'google'
+        data['rating_average'] = float(salon.google_rating_average)
+        data['rating_count'] = salon.google_rating_count
+        data['google_ratings_fetched_at'] = (
+            salon.google_ratings_fetched_at.isoformat()
+            if salon.google_ratings_fetched_at
+            else None
+        )
+
     if include_invite_code:
         data['technician_invite_code'] = salon.technician_invite_code
 

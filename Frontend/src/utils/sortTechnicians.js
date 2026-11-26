@@ -56,7 +56,7 @@ export const sortTechnicians = (workers, sortBy = 'top-rated') => {
   return list.sort(compareByTopRated)
 }
 
-/** Derive salon ratings from staff technician ratings (weighted by rating count). */
+/** Prefer Google Places ratings; fall back to staff technician ratings when Google is missing. */
 export const salonsWithDerivedRatings = (salons, workers) => {
   const bySalonId = new Map()
 
@@ -76,12 +76,28 @@ export const salonsWithDerivedRatings = (salons, workers) => {
   }
 
   return salons.map((salon) => {
+    const hasGoogleRating =
+      salon.rating_source === 'google' &&
+      (salon.rating_count || 0) > 0 &&
+      salon.rating_average != null
+
+    if (hasGoogleRating) {
+      return {
+        ...salon,
+        rating_average: Number(salon.rating_average),
+        rating_count: salon.rating_count || 0,
+        rating_source: 'google',
+        completed_jobs: salon.completed_jobs || 0,
+      }
+    }
+
     const aggregate = bySalonId.get(salon.id)
     if (!aggregate || aggregate.countSum === 0) {
       return {
         ...salon,
         rating_average: null,
         rating_count: 0,
+        rating_source: null,
         completed_jobs: 0,
       }
     }
@@ -90,6 +106,7 @@ export const salonsWithDerivedRatings = (salons, workers) => {
       ...salon,
       rating_average: aggregate.weightSum / aggregate.countSum,
       rating_count: aggregate.countSum,
+      rating_source: 'technicians',
       completed_jobs: aggregate.jobsSum,
     }
   })
