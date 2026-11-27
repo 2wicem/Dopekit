@@ -95,6 +95,7 @@ const ReportsPanel = ({
   const [completingId, setCompletingId] = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
   const [completeMethod, setCompleteMethod] = useState('cash')
+  const [completeMpesaCode, setCompleteMpesaCode] = useState('')
   const [workerId, setWorkerId] = useState('')
 
   const isSalonWide = scope === 'admin' || scope === 'owner'
@@ -283,7 +284,10 @@ const ReportsPanel = ({
     try {
       const response = await apiFetch(`/products/bookings/${bookingId}/complete/`, {
         method: 'POST',
-        body: JSON.stringify({ payment_method: paymentMethod }),
+        body: JSON.stringify({
+          payment_method: paymentMethod,
+          mpesa_code: paymentMethod === 'bank' ? completeMpesaCode : '',
+        }),
       })
       const data = await parseJson(response)
       setCompletingId(null)
@@ -821,7 +825,7 @@ const ReportsPanel = ({
                               <table className="table reports-table reports-table--stack mb-0">
                                 <thead>
                                   <tr>
-                                    <th>Record code</th>
+                                    <th>Receipt</th>
                                     <th>Client</th>
                                     <th>Phone</th>
                                     <th>Service</th>
@@ -835,8 +839,15 @@ const ReportsPanel = ({
                                 <tbody>
                                   {day.services.map((row) => (
                                     <tr key={row.booking_id}>
-                                      <td data-label="Record code">
-                                        {row.record_code ? (
+                                      <td data-label="Receipt">
+                                        {row.mpesa_code ? (
+                                          <>
+                                            <code className="reports-record-code">{row.mpesa_code}</code>
+                                            {row.record_code ? (
+                                              <span className="text-muted d-block small">{row.record_code}</span>
+                                            ) : null}
+                                          </>
+                                        ) : row.record_code ? (
                                           <code className="reports-record-code">{row.record_code}</code>
                                         ) : (
                                           '—'
@@ -879,6 +890,18 @@ const ReportsPanel = ({
                                                 </option>
                                               ))}
                                             </select>
+                                            {completeMethod === 'bank' ? (
+                                              <input
+                                                className="form-control form-control-sm"
+                                                value={completeMpesaCode}
+                                                onChange={(event) =>
+                                                  setCompleteMpesaCode(event.target.value.toUpperCase())
+                                                }
+                                                placeholder="M-Pesa code"
+                                                autoComplete="off"
+                                                aria-label="M-Pesa receipt code"
+                                              />
+                                            ) : null}
                                             <button
                                               type="button"
                                               className="btn btn-link btn-sm p-0"
@@ -894,6 +917,7 @@ const ReportsPanel = ({
                                             onClick={() => {
                                               setCompletingId(row.booking_id)
                                               setCompleteMethod('cash')
+                                              setCompleteMpesaCode('')
                                             }}
                                           >
                                             Add to inventory

@@ -53,16 +53,6 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
 
   const selectedSalon = salons.find((salon) => String(salon.id) === String(salonId))
   const technicians = selectedSalon?.technicians || []
-  const selectedTechnician = technicians.find(
-    (tech) => String(tech.id) === String(walkInForm.preferred_worker_id),
-  )
-  const serviceOptions = [
-    ...catalogOptions(selectedSalon?.services, selectedSalon?.name || 'Salon'),
-    ...catalogOptions(
-      selectedTechnician?.services,
-      selectedTechnician?.is_owner ? 'You' : selectedTechnician?.name,
-    ),
-  ]
 
   const salonQuery = useMemo(() => {
     if (!salonId) {
@@ -77,23 +67,12 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
       if (name !== 'preferred_worker_id') {
         return { ...current, [name]: value }
       }
-
-      const nextTech = technicians.find((tech) => String(tech.id) === String(value))
-      const nextCatalogIds = new Set(
-        [
-          ...catalogOptions(selectedSalon?.services, 'Salon'),
-          ...catalogOptions(nextTech?.services, nextTech?.name),
-        ].map((entry) => String(entry.catalog_id)),
-      )
       return {
         ...current,
         preferred_worker_id: value,
         services: (current.services || [emptyWalkInLine()]).map((line) => ({
           ...line,
-          service_id:
-            Boolean(line.service_id) && nextCatalogIds.has(String(line.service_id))
-              ? line.service_id
-              : '',
+          preferred_worker_id: line.preferred_worker_id || value,
         })),
       }
     })
@@ -105,8 +84,9 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
       onStatus?.({ type: 'error', message: 'Choose a salon branch.' })
       return
     }
-    if (!walkInForm.preferred_worker_id) {
-      onStatus?.({ type: 'error', message: 'Choose the technician who did this service.' })
+    const payload = walkInPayload(walkInForm)
+    if (payload.services.some((line) => !line.preferred_worker_id)) {
+      onStatus?.({ type: 'error', message: 'Choose who did each service. Different technicians can share one client.' })
       return
     }
     if (walkInForm.venue === 'outdoor' && !walkInForm.location.trim()) {
@@ -120,8 +100,7 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
       const response = await apiFetch(WALK_IN_PATH, {
         method: 'POST',
         body: JSON.stringify({
-          ...walkInPayload(walkInForm),
-          preferred_worker_id: Number(walkInForm.preferred_worker_id),
+          ...payload,
           salon_id: Number(salonId),
         }),
       })
@@ -150,8 +129,9 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
 
       <div className="admin-walkin-toolbar">
         <p className="admin-walkin-lead mb-0">
-          Log one or more services for the same client on the same day. Each service gets its own
-          record code and shows on that technician&apos;s inventory and yours.
+          Log one client visit with several services, even if different technicians did them.
+          Use the client phone so cash jobs are not entered twice. M-Pesa jobs need the real
+          receipt code.
         </p>
         <button
           type="button"
@@ -196,19 +176,19 @@ const OwnerInventoryPanel = ({ salons, onStatus, onChanged }) => {
           onChange={handleWalkInChange}
           onSubmit={handleWalkInSubmit}
           saving={walkInSaving}
-          serviceOptions={serviceOptions}
+          technicians={technicians}
+          salonServices={catalogOptions(selectedSalon?.services, selectedSalon?.name || 'Salon')}
           extraFields={
             <div>
-              <label htmlFor="walkin-technician">Who did this</label>
+              <label htmlFor="walkin-technician">Default technician</label>
               <select
                 id="walkin-technician"
                 className="form-select site-select"
                 name="preferred_worker_id"
                 value={walkInForm.preferred_worker_id}
                 onChange={handleWalkInChange}
-                required
               >
-                <option value="">You or a technician</option>
+                <option value="">Set on each service</option>
                 {technicians.map((tech) => (
                   <option key={tech.id} value={String(tech.id)}>
                     {tech.name}

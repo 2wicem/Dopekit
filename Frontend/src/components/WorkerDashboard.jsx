@@ -54,6 +54,7 @@ const WorkerDashboard = () => {
   const [paymentTarget, setPaymentTarget] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMpesaCode, setPaymentMpesaCode] = useState('')
 
   const canRecordWalkIn = true
   const serviceOptions = [
@@ -300,6 +301,7 @@ const WorkerDashboard = () => {
   const openCompletePayment = (booking) => {
     setPaymentTarget(booking)
     setPaymentMethod('cash')
+    setPaymentMpesaCode('')
     setPaymentAmount(
       booking.service_price_kes != null ? String(booking.service_price_kes) : ''
     )
@@ -313,6 +315,7 @@ const WorkerDashboard = () => {
     const saved = await handleBookingAction(paymentTarget.id, 'complete', {
       payment_method: paymentMethod,
       payment_amount_kes: paymentAmount === '' ? null : Number(paymentAmount),
+      mpesa_code: paymentMethod === 'bank' ? paymentMpesaCode : '',
     })
     if (saved) {
       setPaymentTarget(null)
@@ -533,9 +536,8 @@ const WorkerDashboard = () => {
             {canRecordWalkIn && (
               <div className="admin-walkin-toolbar">
                 <p className="admin-walkin-lead">
-                  Log extra walk-ins and mark jobs complete. Add every service the same client took
-                  today — each gets a unique record code and shows on your inventory and the
-                  owner&apos;s.
+                  Log extra walk-ins and mark jobs complete. Always enter the client phone so a
+                  cash visit is not logged twice. M-Pesa jobs also need the real receipt code.
                 </p>
                 <button
                   type="button"
@@ -583,6 +585,8 @@ const WorkerDashboard = () => {
                 amount={paymentAmount}
                 onMethodChange={setPaymentMethod}
                 onAmountChange={setPaymentAmount}
+                mpesaCode={paymentMpesaCode}
+                onMpesaCodeChange={setPaymentMpesaCode}
               />
               <div className="worker-payment-actions">
                 <button type="submit" className="btn btn-success" disabled={busyId === paymentTarget.id}>

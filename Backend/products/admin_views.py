@@ -19,6 +19,7 @@ from .models import (
     Booking,
     BookingStatus,
     ContactMessage,
+    PaymentMethod,
     Salon,
     SalonContactInfo,
     ServiceVenue,
@@ -453,11 +454,20 @@ def create_walk_in_booking(request):
 
     if not name:
         return JsonResponse({'error': 'Client name is required.'}, status=400)
-    if phone:
-        from .technician_verification import is_valid_ke_phone
+    from .technician_verification import is_valid_ke_phone
 
-        if not is_valid_ke_phone(phone):
-            return JsonResponse({'error': 'Enter a valid Kenyan phone number, or leave it blank.'}, status=400)
+    if not phone:
+        return JsonResponse(
+            {
+                'error': (
+                    'Enter the client phone. For cash jobs this is how we stop the owner and '
+                    'technician recording the same visit twice.'
+                )
+            },
+            status=400,
+        )
+    if not is_valid_ke_phone(phone):
+        return JsonResponse({'error': 'Enter a valid Kenyan phone number.'}, status=400)
 
     if venue not in (ServiceVenue.INDOOR, ServiceVenue.OUTDOOR):
         return JsonResponse({'error': 'Please choose indoor or outdoor service.'}, status=400)
@@ -484,25 +494,26 @@ def create_walk_in_booking(request):
             return JsonResponse({'error': 'Salon not found.'}, status=404)
 
         raw_worker_id = data.get('preferred_worker_id') or data.get('technician_id')
-        try:
-            worker_id = int(raw_worker_id)
-        except (TypeError, ValueError):
-            return JsonResponse(
-                {'error': 'Choose the technician who did this service.'},
-                status=400,
+        if raw_worker_id not in (None, '', 'null'):
+            try:
+                worker_id = int(raw_worker_id)
+            except (TypeError, ValueError):
+                return JsonResponse(
+                    {'error': 'Choose the technician who did this service.'},
+                    status=400,
+                )
+            preferred_worker = (
+                User.objects.filter(pk=worker_id).select_related('profile', 'profile__salon').first()
             )
-        preferred_worker = (
-            User.objects.filter(pk=worker_id).select_related('profile', 'profile__salon').first()
-        )
-        if not preferred_worker or not technician_on_owned_salon(
-            request.user,
-            preferred_worker,
-            salon.id,
-        ):
-            return JsonResponse(
-                {'error': 'Choose a technician who works at this salon.'},
-                status=400,
-            )
+            if not preferred_worker or not technician_on_owned_salon(
+                request.user,
+                preferred_worker,
+                salon.id,
+            ):
+                return JsonResponse(
+                    {'error': 'Choose a technician who works at this salon.'},
+                    status=400,
+                )
     else:
         if salon_id:
             salon = Salon.objects.filter(pk=salon_id, is_active=True).first()
@@ -530,7 +541,12 @@ def create_walk_in_booking(request):
 
     from .salon_utils import resolve_walk_in_catalog
     from .payment_utils import apply_client_payment, parse_payment_fields
-    from .record_codes import mint_record_code
+    from .record_codes import (
+        create_mpesa_receipt,
+        duplicate_mpesa_message,
+        mint_record_code,
+        parse_mpesa_code,
+    )
     from .booking_utils import save_shared_job
 
     raw_lines = data.get('services')
@@ -542,21 +558,50 @@ def create_walk_in_booking(request):
                 'service_price_kes': data.get('service_price_kes'),
                 'payment_method': data.get('payment_method'),
                 'payment_amount_kes': data.get('payment_amount_kes'),
+                'mpesa_code': data.get('mpesa_code'),
             }
         ]
     if len(raw_lines) > 12:
         return JsonResponse({'error': 'You can log up to 12 services for one visit.'}, status=400)
+
+    def resolve_line_worker(line, index):
+        if profile.role == UserRole.WORKER:
+            return preferred_worker, None
+        raw_id = line.get('preferred_worker_id') or line.get('technician_id')
+        if raw_id in (None, '', 'null'):
+            raw_id = data.get('preferred_worker_id') or data.get('technician_id')
+        if raw_id in (None, '', 'null'):
+            if profile.role == UserRole.SALON_OWNER:
+                return None, f'Choose who did service {index}.'
+            return preferred_worker, None
+        try:
+            worker_id = int(raw_id)
+        except (TypeError, ValueError):
+            return None, f'Choose who did service {index}.'
+        worker = (
+            User.objects.filter(pk=worker_id).select_related('profile', 'profile__salon').first()
+        )
+        if profile.role == UserRole.SALON_OWNER:
+            from .salon_owner_permissions import technician_on_owned_salon
+
+            if not worker or not technician_on_owned_salon(request.user, worker, salon.id if salon else None):
+                return None, f'Choose a technician at this salon for service {index}.'
+        return worker, None
 
     prepared = []
     for index, line in enumerate(raw_lines, start=1):
         if not isinstance(line, dict):
             return JsonResponse({'error': f'Service {index} is invalid.'}, status=400)
 
+        line_worker, worker_error = resolve_line_worker(line, index)
+        if worker_error:
+            return JsonResponse({'error': worker_error}, status=400)
+
         line_service = (line.get('service') or '').strip()
         catalog, catalog_error = resolve_walk_in_catalog(
             line.get('service_id'),
             salon=salon,
-            preferred_worker=preferred_worker,
+            preferred_worker=line_worker,
         )
         if catalog_error:
             return JsonResponse({'error': catalog_error}, status=400)
@@ -586,60 +631,145 @@ def create_walk_in_booking(request):
         if payment_error:
             return JsonResponse({'error': f'Service {index}: {payment_error}'}, status=400)
 
-        prepared.append((line_service, service_price_kes, payment))
+        mpesa_code = ''
+        if payment['payment_method'] == PaymentMethod.BANK:
+            mpesa_code, mpesa_error = parse_mpesa_code(
+                line.get('mpesa_code') or data.get('mpesa_code'),
+                required=True,
+            )
+            if mpesa_error:
+                return JsonResponse({'error': f'Service {index}: {mpesa_error}'}, status=400)
+
+        prepared.append((line_service, service_price_kes, payment, mpesa_code, line_worker))
+
+    from .booking_utils import conflicting_walk_in, duplicate_walk_in_message, normalize_service_key
+
+    seen_services = set()
+    for index, (line_service, _price, _payment, _mpesa, line_worker) in enumerate(prepared, start=1):
+        service_key = normalize_service_key(line_service)
+        if service_key in seen_services:
+            return JsonResponse(
+                {
+                    'error': (
+                        f'{line_service} is listed twice for this client. '
+                        'Keep one line unless they paid for that service twice.'
+                    )
+                },
+                status=400,
+            )
+        seen_services.add(service_key)
+        clash = conflicting_walk_in(
+            salon=salon,
+            worker=line_worker,
+            requested_date=requested_date,
+            phone=phone,
+            service=line_service,
+        )
+        if clash:
+            return JsonResponse({'error': duplicate_walk_in_message(clash)}, status=409)
+
+    from .models import MpesaReceipt
+
+    receipt_totals = {}
+    for _line_service, _price, payment, mpesa_code, _line_worker in prepared:
+        if not mpesa_code:
+            continue
+        paid = payment.get('payment_amount_kes')
+        if paid is None:
+            paid = _price or 0
+        receipt_totals[mpesa_code] = receipt_totals.get(mpesa_code, 0) + int(paid)
+
+    clash = MpesaReceipt.objects.filter(code__in=list(receipt_totals)).first()
+    if clash:
+        return JsonResponse({'error': duplicate_mpesa_message(clash.code)}, status=409)
+
+    class WalkInSaveError(Exception):
+        def __init__(self, message, status=400):
+            self.message = message
+            self.status = status
 
     created = []
-    with transaction.atomic():
-        for line_service, service_price_kes, payment in prepared:
-            booking = None
-            for _ in range(6):
-                try:
-                    booking = Booking.objects.create(
-                        user=None,
-                        name=name,
-                        phone=phone,
-                        location=location,
-                        service=line_service,
-                        service_price_kes=service_price_kes,
-                        venue=venue,
-                        requested_date=requested_date,
-                        preferred_worker=preferred_worker,
-                        salon=salon,
-                        status=BookingStatus.COMPLETED,
-                        is_walk_in=True,
-                        record_code=mint_record_code(),
-                    )
-                    break
-                except IntegrityError:
-                    booking = None
-            if booking is None:
-                return JsonResponse(
-                    {'error': 'Could not issue a unique record code. Try again.'},
-                    status=500,
+    try:
+        with transaction.atomic():
+            receipts_by_code = {}
+            for mpesa_code, amount_kes in receipt_totals.items():
+                receipt = create_mpesa_receipt(
+                    code=mpesa_code,
+                    amount_kes=amount_kes,
+                    client_name=name,
+                    business_date=requested_date,
+                    salon=salon,
+                    recorded_by=request.user,
                 )
-            apply_client_payment(booking, payment)
-            save_shared_job(
-                booking,
-                extra_fields=['payment_method', 'payment_amount_kes', 'paid_at'],
-            )
-            created.append(booking)
+                if receipt is None:
+                    raise WalkInSaveError(duplicate_mpesa_message(mpesa_code), 409)
+                receipts_by_code[mpesa_code] = receipt
+
+            for line_service, service_price_kes, payment, mpesa_code, line_worker in prepared:
+                booking = None
+                receipt = receipts_by_code.get(mpesa_code)
+                for _ in range(6):
+                    try:
+                        booking = Booking.objects.create(
+                            user=None,
+                            name=name,
+                            phone=phone,
+                            location=location,
+                            service=line_service,
+                            service_price_kes=service_price_kes,
+                            venue=venue,
+                            requested_date=requested_date,
+                            preferred_worker=line_worker,
+                            salon=salon,
+                            status=BookingStatus.COMPLETED,
+                            is_walk_in=True,
+                            record_code=mint_record_code(),
+                            mpesa_code=mpesa_code,
+                            mpesa_receipt=receipt,
+                        )
+                        break
+                    except IntegrityError:
+                        booking = None
+                if booking is None:
+                    raise WalkInSaveError('Could not issue a unique record code. Try again.', 500)
+                apply_client_payment(booking, payment)
+                save_shared_job(
+                    booking,
+                    extra_fields=[
+                        'payment_method',
+                        'payment_amount_kes',
+                        'paid_at',
+                        'mpesa_code',
+                        'mpesa_receipt',
+                    ],
+                )
+                created.append(booking)
+    except WalkInSaveError as error:
+        return JsonResponse({'error': error.message}, status=error.status)
 
     for booking in created:
         schedule_booking_created_notification(booking.id)
 
-    codes = [booking.record_code for booking in created if booking.record_code]
+    mpesa_codes = []
+    seen_mpesa = set()
+    for booking in created:
+        if booking.mpesa_code and booking.mpesa_code not in seen_mpesa:
+            seen_mpesa.add(booking.mpesa_code)
+            mpesa_codes.append(booking.mpesa_code)
+    record_codes = [booking.record_code for booking in created if booking.record_code]
     if len(created) == 1:
-        record_code = codes[0] if codes else ''
-        message = (
-            f'Walk-in saved. Record code {record_code}.'
-            if record_code
-            else 'Walk-in booking added.'
-        )
+        if mpesa_codes:
+            message = f'Walk-in saved. M-Pesa {mpesa_codes[0]}.'
+        elif record_codes:
+            message = f'Walk-in saved. Record code {record_codes[0]}.'
+        else:
+            message = 'Walk-in booking added.'
     else:
-        joined = ', '.join(codes)
         message = f'Saved {len(created)} services for {name}.'
-        if joined:
-            message = f'{message} Record codes {joined}.'
+        if mpesa_codes:
+            message = f'{message} M-Pesa {", ".join(mpesa_codes)}.'
+        elif record_codes:
+            message = f'{message} Record codes {", ".join(record_codes)}.'
 
     return JsonResponse(
         {

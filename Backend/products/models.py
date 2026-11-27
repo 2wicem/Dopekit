@@ -100,7 +100,21 @@ class Booking(models.Model):
         unique=True,
         null=True,
         blank=True,
-        help_text='Public authenticity code for staff-logged jobs, similar to an M-Pesa receipt.',
+        help_text='Internal Dopekit code for cash or other jobs without an M-Pesa receipt.',
+    )
+    mpesa_code = models.CharField(
+        max_length=16,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text='Real M-Pesa receipt from the customer message. Unique across the business; blocks double entry.',
+    )
+    mpesa_receipt = models.ForeignKey(
+        'MpesaReceipt',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings',
     )
 
     class Meta:
@@ -301,6 +315,34 @@ class DailyExpense(models.Model):
 
     def __str__(self):
         return f'{self.business_date} {self.label} KES {self.amount_kes}'
+
+
+class MpesaReceipt(models.Model):
+    code = models.CharField(max_length=16, unique=True)
+    amount_kes = models.PositiveIntegerField()
+    client_name = models.CharField(max_length=120, blank=True, default='')
+    business_date = models.DateField()
+    salon = models.ForeignKey(
+        'Salon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='mpesa_receipts',
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_mpesa_receipts',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-business_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.code} KES {self.amount_kes}'
 
 
 class DailyMpesaDeposit(models.Model):

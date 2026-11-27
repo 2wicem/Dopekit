@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from .models import Booking, BookingStatus, Salon, SlotStatus, TimeSlot, UserRole
+from .models import Booking, BookingStatus, PaymentMethod, Salon, SlotStatus, TimeSlot, UserRole
 from .slot_utils import (
     PUBLIC_SCHEDULE_DAYS,
     SLOT_HOURS,
@@ -479,8 +479,33 @@ def complete_booking(request, booking_id):
     if payment_error:
         return JsonResponse({'error': payment_error}, status=400)
 
+    from .record_codes import create_mpesa_receipt, duplicate_mpesa_message, parse_mpesa_code
+
+    mpesa_code = ''
+    receipt = None
+    if payment['payment_method'] == PaymentMethod.BANK:
+        mpesa_code, mpesa_error = parse_mpesa_code(payload.get('mpesa_code'), required=True)
+        if mpesa_error:
+            return JsonResponse({'error': mpesa_error}, status=400)
+        paid = payment.get('payment_amount_kes')
+        if paid is None:
+            paid = booking.service_price_kes or 0
+        business_date = booking.requested_date or timezone.localdate()
+        receipt = create_mpesa_receipt(
+            code=mpesa_code,
+            amount_kes=int(paid),
+            client_name=booking.name,
+            business_date=business_date,
+            salon=booking.salon,
+            recorded_by=request.user,
+        )
+        if receipt is None:
+            return JsonResponse({'error': duplicate_mpesa_message(mpesa_code)}, status=409)
+
     booking.status = BookingStatus.COMPLETED
-    update_fields = ['status'] + apply_client_payment(booking, payment)
+    booking.mpesa_code = mpesa_code
+    booking.mpesa_receipt = receipt
+    update_fields = ['status', 'mpesa_code', 'mpesa_receipt'] + apply_client_payment(booking, payment)
     from .booking_utils import save_shared_job
 
     save_shared_job(booking, extra_fields=update_fields)

@@ -9,11 +9,13 @@ const daysAgoIso = (days) => {
   return date.toISOString().slice(0, 10)
 }
 
-export const emptyWalkInLine = () => ({
+export const emptyWalkInLine = (workerId = '') => ({
   service_id: '',
   service: '',
   service_price_kes: '',
   payment_method: 'cash',
+  mpesa_code: '',
+  preferred_worker_id: workerId || '',
 })
 
 export const walkInLines = (form) => {
@@ -26,6 +28,8 @@ export const walkInLines = (form) => {
       service: form.service || '',
       service_price_kes: form.service_price_kes || '',
       payment_method: form.payment_method || 'cash',
+      mpesa_code: form.mpesa_code || '',
+      preferred_worker_id: form.preferred_worker_id || '',
     },
   ]
 }
@@ -42,8 +46,12 @@ export const walkInPayload = (form) => ({
     service: (line.service || '').trim(),
     service_price_kes: line.service_price_kes === '' ? null : Number(line.service_price_kes),
     payment_method: line.payment_method || 'cash',
+    mpesa_code: (line.mpesa_code || '').trim(),
+    preferred_worker_id: line.preferred_worker_id || form.preferred_worker_id || '',
   })),
 })
+
+const optionKey = (entry) => entry.catalog_id || `${entry.source || 'salon'}:${entry.id}`
 
 const WalkInForm = ({
   form,
@@ -52,11 +60,27 @@ const WalkInForm = ({
   saving = false,
   extraFields = null,
   serviceOptions = [],
+  technicians = [],
+  salonServices = [],
 }) => {
-  const optionKey = (entry) => entry.catalog_id || `${entry.source || 'salon'}:${entry.id}`
   const lines = walkInLines(form)
-  const usingCatalog = serviceOptions.length > 0
   const visitTotal = lines.reduce((sum, line) => sum + (Number(line.service_price_kes) || 0), 0)
+  const catalogForLine = (line) => {
+    const workerId = line.preferred_worker_id || form.preferred_worker_id
+    const tech = technicians.find((entry) => String(entry.id) === String(workerId))
+    const salonRows = salonServices.length ? salonServices : []
+    const techRows = (tech?.services || [])
+      .filter((entry) => entry.is_active !== false)
+      .map((entry) => ({
+        ...entry,
+        group: tech?.is_owner ? 'You' : tech?.name,
+        catalog_id: entry.catalog_id || `tech:${entry.id}`,
+      }))
+    if (technicians.length) {
+      return [...salonRows, ...techRows]
+    }
+    return serviceOptions
+  }
 
   const setLines = (nextLines) => {
     onChange({ target: { name: 'services', value: nextLines } })
@@ -68,7 +92,7 @@ const WalkInForm = ({
 
   const handleServicePick = (index, event) => {
     const serviceId = event.target.value
-    const picked = serviceOptions.find((entry) => optionKey(entry) === String(serviceId))
+    const picked = catalogForLine(lines[index]).find((entry) => optionKey(entry) === String(serviceId))
     if (picked) {
       updateLine(index, {
         service_id: serviceId,
@@ -88,7 +112,8 @@ const WalkInForm = ({
     if (lines.length >= 12) {
       return
     }
-    setLines([...lines, emptyWalkInLine()])
+    const lastWorker = lines[lines.length - 1]?.preferred_worker_id || form.preferred_worker_id || ''
+    setLines([...lines, emptyWalkInLine(lastWorker)])
   }
 
   const removeService = (index) => {
@@ -114,7 +139,7 @@ const WalkInForm = ({
         />
       </div>
       <div>
-        <label htmlFor="walkin-phone">Phone (optional)</label>
+        <label htmlFor="walkin-phone">Phone</label>
         <input
           id="walkin-phone"
           name="phone"
@@ -123,7 +148,8 @@ const WalkInForm = ({
           autoComplete="tel"
           value={form.phone}
           onChange={onChange}
-          placeholder="Optional"
+          placeholder="07xx so cash visits are not entered twice"
+          required
         />
       </div>
       <div>
@@ -174,10 +200,14 @@ const WalkInForm = ({
       <div className="admin-walkin-services-head">
         <h3 className="admin-walkin-services-title">Services this visit</h3>
         <p className="admin-walkin-services-hint">
-          Add every service this client took today. Each one is saved as its own record.
+          Add every service this client took today. Choose who did each one if different
+          technicians worked on the same client. Bank / M-Pesa jobs need the real till receipt
+          code so the same visit cannot be logged twice.
         </p>
       </div>
       {lines.map((line, index) => {
+        const lineOptions = catalogForLine(line)
+        const usingCatalog = lineOptions.length > 0
         const customService = !usingCatalog || !line.service_id
         return (
           <div key={index} className="admin-walkin-service-line">
@@ -194,6 +224,37 @@ const WalkInForm = ({
               ) : null}
             </div>
             <div className="admin-walkin-form-grid">
+              {technicians.length > 0 && (
+                <div>
+                  <label htmlFor={`walkin-line-tech-${index}`}>Who did this</label>
+                  <select
+                    id={`walkin-line-tech-${index}`}
+                    className="form-select site-select"
+                    value={line.preferred_worker_id || form.preferred_worker_id || ''}
+                    onChange={(event) => {
+                      const workerId = event.target.value
+                      const nextIds = new Set(
+                        catalogForLine({ ...line, preferred_worker_id: workerId }).map((entry) =>
+                          String(optionKey(entry)),
+                        ),
+                      )
+                      updateLine(index, {
+                        preferred_worker_id: workerId,
+                        service_id:
+                          line.service_id && nextIds.has(String(line.service_id)) ? line.service_id : '',
+                      })
+                    }}
+                    required
+                  >
+                    <option value="">Choose technician</option>
+                    {technicians.map((tech) => (
+                      <option key={tech.id} value={String(tech.id)}>
+                        {tech.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {usingCatalog && (
                 <div>
                   <label htmlFor={`walkin-service-id-${index}`}>Service menu</label>
@@ -204,7 +265,7 @@ const WalkInForm = ({
                     onChange={(event) => handleServicePick(index, event)}
                   >
                     <option value="">Custom / other</option>
-                    {serviceOptions.map((entry) => (
+                    {lineOptions.map((entry) => (
                       <option key={optionKey(entry)} value={optionKey(entry)}>
                         {entry.group ? `${entry.group} · ` : ''}
                         {entry.name}
@@ -255,6 +316,23 @@ const WalkInForm = ({
                   ))}
                 </select>
               </div>
+              {(line.payment_method || 'cash') === 'bank' && (
+                <div className="admin-walkin-form-span">
+                  <label htmlFor={`walkin-mpesa-${index}`}>M-Pesa receipt code</label>
+                  <input
+                    id={`walkin-mpesa-${index}`}
+                    value={line.mpesa_code || ''}
+                    onChange={(event) => updateLine(index, { mpesa_code: event.target.value.toUpperCase() })}
+                    placeholder="e.g. TGH7K2M91P"
+                    autoComplete="off"
+                    required
+                  />
+                  <p className="admin-walkin-services-hint mb-0 mt-1">
+                    Copy the code from the customer message. One payment for several services: paste
+                    the same code on each M-Pesa line.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )

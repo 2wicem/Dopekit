@@ -2,6 +2,62 @@ from django.db.models import Q
 
 from .models import UserRole
 from .technician_utils import is_freelance_technician
+from .technician_verification import normalize_ke_phone_digits
+
+
+def normalize_service_key(service: str) -> str:
+    return ' '.join((service or '').casefold().split())
+
+
+def _worker_display_name(user):
+    if user is None:
+        return 'staff'
+    full = user.get_full_name().strip()
+    return full or user.username
+
+
+def conflicting_walk_in(*, salon, worker, requested_date, phone, service):
+    from .models import Booking, BookingStatus
+
+    digits = normalize_ke_phone_digits(phone)
+    if not digits or not requested_date:
+        return None
+
+    queryset = Booking.objects.filter(
+        is_walk_in=True,
+        requested_date=requested_date,
+        status=BookingStatus.COMPLETED,
+    ).select_related('preferred_worker')
+    if salon is not None:
+        queryset = queryset.filter(salon=salon)
+    elif worker is not None:
+        queryset = queryset.filter(
+            Q(preferred_worker=worker) | Q(time_slot__worker=worker),
+        )
+    else:
+        return None
+
+    last9 = digits[-9:]
+    queryset = queryset.filter(phone__icontains=last9)
+    service_key = normalize_service_key(service)
+    for booking in queryset:
+        if normalize_ke_phone_digits(booking.phone) != digits:
+            continue
+        if normalize_service_key(booking.service) == service_key:
+            return booking
+    return None
+
+
+def duplicate_walk_in_message(booking) -> str:
+    worker_name = _worker_display_name(booking.preferred_worker)
+    date_label = booking.requested_date.isoformat() if booking.requested_date else 'that day'
+    receipt = booking.mpesa_code or booking.record_code or f'#{booking.id}'
+    return (
+        f'{booking.service} for this phone is already on inventory for {date_label} '
+        f'(logged by {worker_name}, {receipt}). '
+        'Do not record the same cash visit again from owner and technician. '
+        'Add a different service only if they took more than one.'
+    )
 
 
 def job_worker(booking):

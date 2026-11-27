@@ -328,6 +328,7 @@ def report_timeline(request):
 EXPORT_HEADERS = [
     'ID',
     'Record code',
+    'M-Pesa code',
     'Client name',
     'Phone',
     'Service',
@@ -371,6 +372,7 @@ def _booking_export_rows(request):
             [
                 booking.id,
                 booking.record_code or '',
+                booking.mpesa_code or '',
                 booking.name,
                 booking.phone,
                 booking.service,
@@ -473,17 +475,18 @@ def export_bookings_pdf(request):
         repeatRows=1,
         colWidths=[
             12 * mm,
-            24 * mm,
-            24 * mm,
+            20 * mm,
             22 * mm,
-            24 * mm,
+            22 * mm,
+            20 * mm,
+            22 * mm,
+            14 * mm,
             16 * mm,
-            18 * mm,
-            22 * mm,
-            18 * mm,
-            22 * mm,
-            36 * mm,
-            22 * mm,
+            20 * mm,
+            16 * mm,
+            20 * mm,
+            32 * mm,
+            20 * mm,
         ],
     )
     table.setStyle(

@@ -5,6 +5,8 @@ const PaymentCollectForm = ({
   amount,
   onMethodChange,
   onAmountChange,
+  mpesaCode = '',
+  onMpesaCodeChange,
   amountId = 'payment-amount',
   methodName = 'payment_method',
 }) => (
@@ -39,6 +41,20 @@ const PaymentCollectForm = ({
         placeholder="Same as service price if blank"
       />
     </div>
+    {method === 'bank' && onMpesaCodeChange ? (
+      <div>
+        <label htmlFor={`${amountId}-mpesa`}>M-Pesa receipt code</label>
+        <input
+          id={`${amountId}-mpesa`}
+          name="mpesa_code"
+          value={mpesaCode}
+          onChange={(event) => onMpesaCodeChange(event.target.value.toUpperCase())}
+          placeholder="e.g. TGH7K2M91P"
+          autoComplete="off"
+          required
+        />
+      </div>
+    ) : null}
   </div>
 )
 

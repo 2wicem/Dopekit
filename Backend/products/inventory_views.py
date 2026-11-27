@@ -254,6 +254,7 @@ def report_daily_inventory(request):
             ),
             'payment_amount_kes': booking.payment_amount_kes,
             'record_code': booking.record_code or '',
+            'mpesa_code': booking.mpesa_code or '',
         }
         days_map[day.isoformat()]['services'].append(entry)
 

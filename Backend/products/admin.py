@@ -5,6 +5,7 @@ from .models import (
     ContactMessage,
     DailyExpense,
     DailyMpesaDeposit,
+    MpesaReceipt,
     Salon,
     SalonContactInfo,
     SalonService,
@@ -12,6 +13,13 @@ from .models import (
     TimeSlot,
     UserProfile,
 )
+
+
+@admin.register(MpesaReceipt)
+class MpesaReceiptAdmin(admin.ModelAdmin):
+    list_display = ('code', 'amount_kes', 'client_name', 'business_date', 'salon', 'recorded_by', 'created_at')
+    search_fields = ('code', 'client_name')
+    list_filter = ('business_date', 'salon')
 
 
 @admin.register(DailyMpesaDeposit)
@@ -32,6 +40,7 @@ class DailyExpenseAdmin(admin.ModelAdmin):
 class BookingAdmin(admin.ModelAdmin):
     list_display = (
         'record_code',
+        'mpesa_code',
         'name',
         'phone',
         'service',
@@ -41,7 +50,7 @@ class BookingAdmin(admin.ModelAdmin):
         'created_at',
     )
     list_filter = ('service', 'is_walk_in', 'created_at')
-    search_fields = ('name', 'phone', 'location', 'record_code')
+    search_fields = ('name', 'phone', 'location', 'record_code', 'mpesa_code')
 
 
 @admin.register(TimeSlot)
