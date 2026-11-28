@@ -456,6 +456,45 @@
   line-height: 1.5;
 }
 
+.available-workers-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin: 0 auto 1.1rem;
+  padding: 0.35rem 0.45rem;
+  max-width: 22rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 217, 168, 0.14) 0%,
+    rgba(224, 107, 138, 0.1) 50%,
+    rgba(109, 53, 87, 0.18) 100%
+  );
+  border: 1px solid rgba(245, 217, 168, 0.14);
+}
+
+.available-workers-sort-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dk-gold-soft);
+  white-space: nowrap;
+}
+
+.available-workers-sort {
+  width: auto;
+  min-width: 9.5rem;
+  max-width: 100%;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
 .available-workers-status {
   color: var(--dk-text-muted);
   font-size: 0.9rem;
@@ -748,6 +787,19 @@
 
 .available-salon-contact a:hover {
   color: var(--dk-gold-soft);
+}
+
+.available-salon-rating {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.available-salon-rating-source {
+  margin: 0.15rem 0 0;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dk-text-muted);
 }
 
 .available-salon-socials {

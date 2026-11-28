@@ -897,6 +897,8 @@ def _apply_salon_fields(salon: Salon, data: dict) -> str | None:
         salon.tiktok_url = data.get('tiktok_url', '').strip()
     if 'whatsapp_url' in data:
         salon.whatsapp_url = data.get('whatsapp_url', '').strip()
+    if 'google_place_id' in data:
+        salon.google_place_id = data.get('google_place_id', '').strip()
     if 'is_active' in data:
         salon.is_active = bool(data.get('is_active'))
 

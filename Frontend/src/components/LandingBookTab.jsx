@@ -11,9 +11,9 @@ import { BOOK_SLIDES } from './landingBookSlides'
 const NearbyMapPanel = lazy(() => import('./LandingNearbyMap'))
 const TechniciansPanel = lazy(() => import('./LandingTechniciansSection'))
 
-const scrollToDiscovery = (event) => {
+const scrollToTopRatings = (event) => {
   event.preventDefault()
-  document.getElementById('book-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById('top-ratings')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 const LandingBookTab = () => (
@@ -35,18 +35,18 @@ const LandingBookTab = () => (
       <ul className="landing-hero-pills">
         <li><i className="fa-solid fa-sparkles" aria-hidden="true" /> Gel &amp; acrylic</li>
         <li><i className="fa-solid fa-house-chimney" aria-hidden="true" /> Indoor &amp; mobile</li>
-        <li><i className="fa-solid fa-star" aria-hidden="true" /> Rated technicians</li>
+        <li><i className="fa-solid fa-star" aria-hidden="true" /> Top ratings</li>
       </ul>
       <div className="landing-hero-actions d-flex justify-content-center gap-2 flex-wrap">
         <Link to="/Services" className="btn btn-outline-light btn-sm rounded-pill px-3 landing-btn-secondary">
           View services
         </Link>
         <a
-          href="#book-discovery"
+          href="#top-ratings"
           className="btn btn-outline-light btn-sm rounded-pill px-3 landing-btn-secondary"
-          onClick={scrollToDiscovery}
+          onClick={scrollToTopRatings}
         >
-          View technicians
+          Top ratings
         </a>
         <LazyBookservice />
       </div>
@@ -64,11 +64,13 @@ const LandingBookTab = () => (
       <div className="landing-book-discovery-salons">
         <AvailableSalons />
       </div>
-      <DeferredMount delay={200} fallback={null}>
-        <Suspense fallback={null}>
-          <TechniciansPanel />
-        </Suspense>
-      </DeferredMount>
+      <div id="top-ratings">
+        <DeferredMount delay={200} fallback={null}>
+          <Suspense fallback={null}>
+            <TechniciansPanel />
+          </Suspense>
+        </DeferredMount>
+      </div>
       <LandingLocalTrust />
     </div>
   </>

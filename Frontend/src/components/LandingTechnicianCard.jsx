@@ -33,7 +33,9 @@ const LandingTechnicianCard = ({ worker }) => {
 
       <div className="landing-tech-card__body">
         <h3 className="landing-tech-card__name">{worker.name}</h3>
-        <p className="landing-tech-card__role">{worker.role_label}</p>
+        <p className="landing-tech-card__role">
+          {worker.is_freelance ? 'Freelance technician' : worker.role_label || 'Salon technician'}
+        </p>
         {worker.salon_name && !worker.is_freelance && (
           <p className="landing-tech-card__salon">{worker.salon_name}</p>
         )}

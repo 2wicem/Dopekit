@@ -43,12 +43,16 @@ def _contact_message_to_dict(message):
 
 @require_http_methods(['GET'])
 def list_public_salons(request):
-    cache_key = 'dk:public_salons:v1'
-    payload = cache.get(cache_key)
+    from .google_places import PUBLIC_SALONS_CACHE_KEY, maybe_refresh_public_salon_ratings
+
+    # Soft-refresh a few stale Google ratings in the background of this request.
+    maybe_refresh_public_salon_ratings()
+
+    payload = cache.get(PUBLIC_SALONS_CACHE_KEY)
     if payload is None:
         salons = Salon.objects.filter(is_active=True).order_by('-is_primary', 'name')
         payload = {'salons': [salon_to_dict(salon) for salon in salons]}
-        cache.set(cache_key, payload, 180)
+        cache.set(PUBLIC_SALONS_CACHE_KEY, payload, 180)
     return public_json(payload, max_age=60, stale=180)
 
 

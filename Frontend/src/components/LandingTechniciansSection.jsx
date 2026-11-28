@@ -1,44 +1,54 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { usePublicSalons } from '../hooks/usePublicSalons'
 import { usePublicWorkers } from '../hooks/usePublicWorkers'
 import {
-  partitionTechniciansByType,
+  salonsWithDerivedRatings,
+  sortSalonsByRating,
   sortTechnicians,
   TECHNICIAN_SORT_OPTIONS,
 } from '../utils/sortTechnicians'
+import LandingSalonRatingCard from './LandingSalonRatingCard'
 import LandingTechnicianCard from './LandingTechnicianCard'
 
 const LandingTechniciansSection = () => {
-  const { workers, loading, error } = usePublicWorkers()
+  const { workers, loading: workersLoading, error: workersError } = usePublicWorkers()
+  const { salons, loading: salonsLoading, error: salonsError } = usePublicSalons()
   const [sortBy, setSortBy] = useState('top-rated')
 
-  const { salonTechnicians, freelanceTechnicians } = useMemo(() => {
-    const { salonTechnicians: salon, freelanceTechnicians: freelance } =
-      partitionTechniciansByType(workers)
+  const loading = workersLoading || salonsLoading
+  const error = workersError || salonsError
 
-    return {
-      salonTechnicians: sortTechnicians(salon, sortBy),
-      freelanceTechnicians: sortTechnicians(freelance, sortBy),
-    }
-  }, [workers, sortBy])
+  const rankedTechnicians = useMemo(
+    () => sortTechnicians(workers, sortBy),
+    [workers, sortBy]
+  )
 
-  if (!loading && !error && workers.length === 0) {
+  const rankedSalons = useMemo(
+    () => sortSalonsByRating(salonsWithDerivedRatings(salons, workers), sortBy),
+    [salons, workers, sortBy]
+  )
+
+  const hasContent = rankedSalons.length > 0 || rankedTechnicians.length > 0
+
+  if (!loading && !error && !hasContent) {
     return null
   }
 
   return (
-    <section className="landing-technicians" aria-labelledby="landing-technicians-heading">
+    <section className="landing-technicians" aria-labelledby="landing-top-ratings-heading">
       <div className="landing-technicians-header text-center">
-        <span className="landing-technicians-eyebrow">Our team</span>
-        <h2 id="landing-technicians-heading" className="landing-technicians-title">
-          Meet our technicians
+        <span className="landing-technicians-eyebrow">Top ratings</span>
+        <h2 id="landing-top-ratings-heading" className="landing-technicians-title">
+          Top ratings
         </h2>
         <p className="landing-technicians-sub">
-          Latest work, live ratings — pick your artist and book.
+          Top-rated salons from Google reviews, plus salon staff and freelancers ranked together by
+          client ratings.
         </p>
       </div>
 
-      {!loading && !error && workers.length > 0 && (
+      {!loading && !error && hasContent && (
         <div className="landing-technicians-toolbar">
           <label htmlFor="landing-tech-sort" className="landing-technicians-sort-label">
             Sort by
@@ -48,7 +58,7 @@ const LandingTechniciansSection = () => {
             className="form-select site-select landing-technicians-sort"
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value)}
-            aria-label="Sort technicians"
+            aria-label="Sort top ratings"
           >
             {TECHNICIAN_SORT_OPTIONS.map(({ id, label }) => (
               <option key={id} value={id}>
@@ -59,29 +69,29 @@ const LandingTechniciansSection = () => {
         </div>
       )}
 
-      {loading && <p className="landing-technicians-status text-center">Loading technicians...</p>}
+      {loading && <p className="landing-technicians-status text-center">Loading top ratings...</p>}
       {error && (
         <p className="landing-technicians-status landing-technicians-status--error text-center">{error}</p>
       )}
 
-      {!loading && !error && workers.length > 0 && (
+      {!loading && !error && hasContent && (
         <>
-          {salonTechnicians.length > 0 && (
+          {rankedSalons.length > 0 && (
             <div className="landing-technicians-section">
-              <h3 className="landing-technicians-section-title">Salon technicians</h3>
+              <h3 className="landing-technicians-section-title">Top-rated salons</h3>
               <div className="landing-technicians-grid">
-                {salonTechnicians.map((worker) => (
-                  <LandingTechnicianCard key={worker.id} worker={worker} />
+                {rankedSalons.map((salon) => (
+                  <LandingSalonRatingCard key={`salon-${salon.id}`} salon={salon} />
                 ))}
               </div>
             </div>
           )}
 
-          {freelanceTechnicians.length > 0 && (
+          {rankedTechnicians.length > 0 && (
             <div className="landing-technicians-section">
-              <h3 className="landing-technicians-section-title">Freelance technicians</h3>
+              <h3 className="landing-technicians-section-title">Top-rated technicians</h3>
               <div className="landing-technicians-grid">
-                {freelanceTechnicians.map((worker) => (
+                {rankedTechnicians.map((worker) => (
                   <LandingTechnicianCard key={worker.id} worker={worker} />
                 ))}
               </div>
@@ -90,7 +100,7 @@ const LandingTechniciansSection = () => {
 
           <p className="landing-technicians-more text-center">
             <Link to="/Services/discover" className="landing-technicians-more-link">
-              View full team
+              Explore all salons &amp; technicians
             </Link>
           </p>
         </>

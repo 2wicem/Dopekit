@@ -433,6 +433,28 @@ class Salon(models.Model):
         default=False,
         help_text='Default salon on the public contact page and for new bookings.',
     )
+    google_place_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Google Places ID used to fetch public Google ratings for this branch.',
+    )
+    google_rating_average = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Cached Google Places rating (1.00–5.00).',
+    )
+    google_rating_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Cached Google Places review count.',
+    )
+    google_ratings_fetched_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When Google ratings were last refreshed for this salon.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

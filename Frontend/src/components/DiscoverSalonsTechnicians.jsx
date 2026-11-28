@@ -22,10 +22,10 @@ const DiscoverSalonsTechnicians = () => {
   <div className="services-page services-page--discover">
     <section className="section-band section-band--alt">
       <div className="container-fluid px-2 px-md-4 py-4 text-center discover-intro">
-        <h1 className="services-page-title h4 mb-2">Salons &amp; technicians</h1>
+        <h1 className="services-page-title h4 mb-2">Top ratings</h1>
         <p className="text-muted mb-0">
-          Choose a salon branch or book directly with a technician — no price menu, just who and
-          where.
+          Browse salons and technicians ranked by client ratings — salon staff and freelancers
+          together.
         </p>
       </div>
     </section>

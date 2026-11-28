@@ -375,6 +375,10 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
+# Server-side Places API key for salon Google ratings (never expose to the frontend).
+GOOGLE_PLACES_API_KEY = os.getenv('GOOGLE_PLACES_API_KEY', '').strip()
+GOOGLE_PLACES_RATINGS_ENABLED = env_bool('GOOGLE_PLACES_RATINGS_ENABLED', 'True')
+GOOGLE_PLACES_RATINGS_TTL_SECONDS = env_int('GOOGLE_PLACES_RATINGS_TTL_SECONDS', 86400)
 
 AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
 AT_API_KEY = os.getenv('AT_API_KEY', '')

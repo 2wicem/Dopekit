@@ -1,24 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { usePublicWorkers } from '../hooks/usePublicWorkers'
-import { partitionTechniciansByType } from '../utils/sortTechnicians'
+import { sortTechnicians, TECHNICIAN_SORT_OPTIONS } from '../utils/sortTechnicians'
 import TechnicianCard from './TechnicianCard'
 
 const AvailableWorkers = () => {
   const { workers, loading, error } = usePublicWorkers()
+  const [sortBy, setSortBy] = useState('top-rated')
 
-  const { salonTechnicians, freelanceTechnicians } = useMemo(
-    () => partitionTechniciansByType(workers),
-    [workers]
-  )
-
-  const renderGrid = (items, className = '') =>
-    items.length > 0 ? (
-      <div className={`available-workers-grid${className ? ` ${className}` : ''}`}>
-        {items.map((worker) => (
-          <TechnicianCard key={worker.id} worker={worker} />
-        ))}
-      </div>
-    ) : null
+  const rankedTechnicians = useMemo(() => sortTechnicians(workers, sortBy), [workers, sortBy])
 
   return (
     <section
@@ -27,17 +16,38 @@ const AvailableWorkers = () => {
       aria-labelledby="available-workers-heading"
     >
       <div className="available-workers-header text-center">
-        <span className="available-workers-eyebrow">Our team</span>
+        <span className="available-workers-eyebrow">Top ratings</span>
         <h2 id="available-workers-heading" className="available-workers-title">
-          Available technicians
+          Top-rated technicians
         </h2>
         <p className="available-workers-sub">
-          Book with salon staff or independent freelance technicians — review portfolios and ratings
-          before you choose.
+          Salon staff and freelance technicians ranked together by client ratings — review
+          portfolios before you choose.
         </p>
       </div>
 
-      {loading && <p className="available-workers-status text-center">Loading team...</p>}
+      {!loading && !error && workers.length > 0 && (
+        <div className="available-workers-toolbar">
+          <label htmlFor="discover-tech-sort" className="available-workers-sort-label">
+            Sort by
+          </label>
+          <select
+            id="discover-tech-sort"
+            className="form-select site-select available-workers-sort"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            aria-label="Sort technicians"
+          >
+            {TECHNICIAN_SORT_OPTIONS.map(({ id, label }) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {loading && <p className="available-workers-status text-center">Loading technicians...</p>}
       {error && (
         <p className="available-workers-status available-workers-status--error text-center">{error}</p>
       )}
@@ -48,22 +58,12 @@ const AvailableWorkers = () => {
         </p>
       )}
 
-      {!loading && !error && workers.length > 0 && (
-        <>
-          {salonTechnicians.length > 0 && (
-            <div className="available-workers-section">
-              <h3 className="available-workers-section-title">Salon technicians</h3>
-              {renderGrid(salonTechnicians)}
-            </div>
-          )}
-
-          {freelanceTechnicians.length > 0 && (
-            <div className="available-workers-section">
-              <h3 className="available-workers-section-title">Freelance technicians</h3>
-              {renderGrid(freelanceTechnicians)}
-            </div>
-          )}
-        </>
+      {!loading && !error && rankedTechnicians.length > 0 && (
+        <div className="available-workers-grid">
+          {rankedTechnicians.map((worker) => (
+            <TechnicianCard key={worker.id} worker={worker} />
+          ))}
+        </div>
       )}
     </section>
   )

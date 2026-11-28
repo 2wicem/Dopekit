@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadPublicResource } from './publicResource'
 
 const SALONS_PATH = '/products/salons/'
-const CACHE_KEY = 'dk:public_salons:v1'
+const CACHE_KEY = 'dk:public_salons:v2'
 
 export const usePublicSalons = () => {
   const [salons, setSalons] = useState([])
